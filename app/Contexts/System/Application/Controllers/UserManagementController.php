@@ -32,7 +32,10 @@ class UserManagementController extends Controller
 
         // Filter by CP if not Admin
         if (!$isAdmin) {
-            $query->where('cp_id', $currentUser->cp_id);
+            $query->where('cp_id', $currentUser->cp_id)
+                ->whereHas('role', function($q) {
+                    $q->where('name', '!=', 'admin');
+                });
         }
 
         $users = $query->orderBy('name')->get();
@@ -50,11 +53,15 @@ class UserManagementController extends Controller
     {
         $currentUser = $request->user();
         $isAdmin = $currentUser->role->name === 'admin';
-        $isFounder = $currentUser->cp_id && $currentUser->id === $currentUser->cp->leader_id;
-        $isLeader = $currentUser->role->name === 'cp_leader' && $currentUser->cp_id === $currentUser->cp_id;
+        
+        // El Líder Fundador es quien figura como leader_id en la tabla const_parties
+        $isFounder = $currentUser->cp_id && $currentUser->cp && $currentUser->id === $currentUser->cp->leader_id;
+        
+        // Un Co-Líder es alguien con el rol cp_leader pero que NO es el líder fundador de la CP
+        $isCoLeader = !$isFounder && $currentUser->role->name === 'cp_leader';
 
-        if (!$isAdmin && !$isFounder && !$isLeader) {
-            abort(403);
+        if (!$isAdmin && !$isFounder && !$isCoLeader) {
+            abort(403, 'No tienes permiso para gestionar usuarios.');
         }
 
         $request->validate([
@@ -64,35 +71,44 @@ class UserManagementController extends Controller
 
         $newRole = Role::find($request->role_id);
 
-        // Security logic for non-admins
+        // Lógica de seguridad para no-administradores
         if (!$isAdmin) {
-            // Can only modify users in their own CP
+            // Solo pueden modificar usuarios de su propia CP
             if ($user->cp_id !== $currentUser->cp_id) {
                 abort(403, 'No puedes gestionar usuarios ajenos a tu CP.');
             }
 
-            // A Co-Leader cannot demote another leader or change roles of other leaders
-            if ($isLeader && !$isFounder) {
+            // El Líder Fundador puede hacer cualquier cambio dentro de su CP
+            // Pero un Co-Líder tiene restricciones
+            if ($isCoLeader) {
+                // Un Co-Líder NO puede degradar ni cambiar el rol de otros líderes
                 if ($user->role->name === 'cp_leader') {
-                    abort(403, 'Solo el líder fundador puede gestionar otros líderes.');
+                    abort(403, 'Solo el líder fundador puede gestionar a otros líderes.');
                 }
-                if (!in_array($newRole->name, ['member', 'accountant', 'cp_leader'])) {
-                     abort(403);
+                
+                // Un Co-Líder solo puede asignar roles de su nivel o inferior (cp_leader, accountant, member)
+                // En la práctica, esto significa que no puede asignar el rol 'admin'
+                if ($newRole->name === 'admin') {
+                    abort(403, 'No puedes asignar el rol de administrador global.');
                 }
             }
 
-            // Cannot change CP of a user (reserved for Admin)
-            if ($request->cp_id != $user->cp_id) {
-                abort(403, 'Solo un administrador puede reasignar un usuario a otra CP.');
+            // Ninguno (ni Fundador ni Co-Líder) puede cambiar la CP de un usuario
+            if ($request->has('cp_id') && $request->cp_id != $user->cp_id) {
+                abort(403, 'Solo un administrador global puede reasignar un usuario a otra CP.');
             }
         }
 
         $user->update([
             'role_id' => $request->role_id,
-            'cp_id' => $request->cp_id, // This will be the same for non-admins due to check above
         ]);
 
-        return back()->with('success', "Usuario {$user->name} actualizado.");
+        // Si es Admin, también puede cambiar la CP
+        if ($isAdmin && $request->has('cp_id')) {
+            $user->update(['cp_id' => $request->cp_id]);
+        }
+
+        return back()->with('success', "Usuario {$user->name} actualizado exitosamente.");
     }
 
     /**

@@ -1,11 +1,12 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import { throttle } from 'lodash';
 import axios from 'axios';
+import emitter from '../event-bus';
 
-const { props } = usePage();
-const user = computed(() => props.auth.user);
+const page = usePage();
+const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value.role?.name === 'admin');
 
 const showingNavigationDropdown = ref(false);
@@ -36,6 +37,14 @@ const openLootModal = () => {
     itemSearch.value = '';
     searchResults.value = [];
 };
+
+onMounted(() => {
+    emitter.on('open-loot-modal', openLootModal);
+});
+
+onUnmounted(() => {
+    emitter.off('open-loot-modal');
+});
 
 const addToSession = (item) => {
     const existing = lootForm.items.find(i => i.item_id === item.id);
@@ -105,7 +114,7 @@ watch(itemSearch, throttle(async (val) => {
                         </template>
                     </div>
 
-                    <div class="flex items-center space-x-4">
+                    <div v-if="user" class="flex items-center space-x-4">
                         <Link :href="route('profile.edit')" class="flex items-center space-x-3 bg-gray-800/50 p-2 px-4 rounded-full border border-gray-700 hover:border-red-600 transition group">
                             <span class="text-xs text-gray-400 group-hover:text-white font-bold tracking-widest uppercase">{{ user.name }}</span>
                             <div class="w-6 h-6 bg-red-900 rounded-full flex items-center justify-center text-[10px]">
@@ -177,6 +186,13 @@ watch(itemSearch, throttle(async (val) => {
                 </div>
 
                 <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                    <!-- Validation Errors -->
+                    <div v-if="Object.keys(lootForm.errors).length > 0" class="p-4 bg-red-950/20 border border-red-900/50 rounded-xl">
+                        <ul class="list-disc list-inside text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                            <li v-for="(error, field) in lootForm.errors" :key="field">{{ error }}</li>
+                        </ul>
+                    </div>
+
                     <!-- Step 1: Session Type -->
                     <div class="space-y-3">
                         <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">Tipo de Actividad</label>

@@ -41,6 +41,9 @@ class LootController extends Controller
             ->get();
 
         $members = \App\Contexts\Identity\Domain\Models\User::where('cp_id', $user->cp_id)
+            ->whereHas('role', function($q) {
+                $q->where('name', '!=', 'admin');
+            })
             ->orderBy('name')
             ->get(['id', 'name']);
 

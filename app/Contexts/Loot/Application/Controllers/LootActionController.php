@@ -67,10 +67,15 @@ class LootActionController extends Controller
     public function resolve(Request $request, LootReport $report)
     {
         $user = $request->user();
+        $isAdmin = $user->role->name === 'admin';
+        $isLeader = $user->role->name === 'cp_leader';
+        $isFounder = $user->cp_id && $user->cp && $user->id === $user->cp->leader_id;
 
-        // Check if user is the leader of the CP
-        if ($user->id !== $report->cp->leader_id) {
-            abort(403, 'Solo el líder de la CP puede resolver reportes.');
+        // Solo el Admin o Líderes (Fundador o Co-Líderes) de la misma CP pueden resolver
+        if (!$isAdmin) {
+            if (!$isLeader || $user->cp_id !== $report->cp_id) {
+                abort(403, 'No tienes permiso para resolver este reporte de loot.');
+            }
         }
 
         $request->validate([
@@ -81,12 +86,10 @@ class LootActionController extends Controller
         ]);
 
         if ($request->status === 'rejected') {
-            if ($report->image_proof) {
-                Storage::disk('public')->delete($report->image_proof);
-            }
-            // Entries will be deleted via cascade
-            $report->delete();
-            return back()->with('success', 'Reporte rechazado y eliminado.');
+            // En lugar de borrar, marcamos como rechazado para mantener la auditoría
+            $report->update(['status' => 'rejected']);
+            
+            return back()->with('success', 'El reporte ha sido marcado como RECHAZADO.');
         }
 
         // Logic for "Confirmed" (Success)

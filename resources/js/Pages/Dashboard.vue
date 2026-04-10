@@ -54,10 +54,10 @@ const props = defineProps({
         <div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <!-- Render specific dashboard based on role -->
             <template v-if="roleName === 'admin'">
-                <CpStats v-if="selectedCp" :stats="stats" :selectedCp="selectedCp" />
-                <AdminStats v-else :stats="stats" :cps="cps" />
+                <CpStats v-if="selectedCp" :stats="stats" :selectedCp="selectedCp" :chartData="chartData" />
+                <AdminStats v-else :stats="stats" :cps="cps" :chartData="chartData" />
             </template>
-            <CpStats v-else-if="roleName === 'cp_leader'" :stats="stats" />
+            <CpStats v-else-if="roleName === 'cp_leader'" :stats="stats" :chartData="chartData" />
             <MemberStats v-else :stats="stats" />
         </div>
     </MainLayout>

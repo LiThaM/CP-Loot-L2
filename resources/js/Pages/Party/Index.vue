@@ -13,6 +13,13 @@ const props = defineProps({
 
 const activeTab = ref('members');
 
+const copyInviteLink = () => {
+    const link = `${window.location.origin}/register?invite=${props.cp.invite_code}`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('¡Enlace de invitación copiado al portapapeles!');
+    });
+};
+
 // Config Form Logic
 const configForm = useForm({
     event_type: 'FARM',
@@ -71,6 +78,19 @@ const categories = [
                             </div>
                         </div>
                     </div>
+
+                    <div v-if="isLeader" class="flex-1 max-w-xs ml-auto">
+                        <div class="bg-black/40 border border-gray-800 p-3 rounded-2xl flex items-center justify-between group hover:border-red-900/40 transition-all">
+                            <div>
+                                <div class="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Link de Invitación</div>
+                                <div class="text-[10px] text-red-500 font-black tracking-widest truncate max-w-[150px]">{{ cp.invite_code }}</div>
+                            </div>
+                            <button @click="copyInviteLink" class="bg-gray-800 hover:bg-red-600 p-2 rounded-xl transition-all shadow-lg group-hover:scale-110 active:scale-95">
+                                🔗
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-2">
                         <div class="text-right mr-4 hidden md:block">
                             <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Líder de CP</div>

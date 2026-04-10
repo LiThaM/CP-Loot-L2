@@ -19,6 +19,9 @@ class PartyController extends Controller
         $cp = $user->cp->load('leader');
         
         $members = \App\Contexts\Identity\Domain\Models\User::where('cp_id', $user->cp_id)
+            ->whereHas('role', function($query) {
+                $query->where('name', '!=', 'admin');
+            })
             ->withSum('pointsLogs as total_points', 'points')
             ->orderByDesc('total_points')
             ->get();

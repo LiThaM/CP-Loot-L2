@@ -23,6 +23,9 @@ Route::get('/dashboard', DashboardController::class)
 use App\Contexts\Party\Application\Controllers\PartyController;
 use App\Contexts\Party\Application\Controllers\ConstPartyController;
 use App\Contexts\Loot\Application\Controllers\LootController;
+use App\Contexts\Loot\Application\Controllers\LootActionController;
+use App\Contexts\Loot\Application\Controllers\CpEventConfigController;
+use App\Contexts\Loot\Application\Controllers\WishlistController;
 use App\Contexts\System\Application\Controllers\TranslationController;
 
 Route::middleware('auth')->group(function () {

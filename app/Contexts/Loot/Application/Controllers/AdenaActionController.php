@@ -23,12 +23,16 @@ class AdenaActionController extends Controller
         $currentUser = $request->user();
         $targetUser = User::findOrFail($request->user_id);
 
-        // Security: Leader can only manage their own CP members
+        // Seguridad: Admin, Líder o Contable de la misma CP
         $isAdmin = $currentUser->role->name === 'admin';
-        $isLeader = $currentUser->cp_id && $currentUser->id === $currentUser->cp->leader_id;
+        $isLeader = $currentUser->role->name === 'cp_leader';
+        $isAccountant = $currentUser->role->name === 'accountant';
 
         if (!$isAdmin) {
-            if (!$isLeader || $targetUser->cp_id !== $currentUser->cp_id) {
+            // Si no es admin, debe pertenecer a la misma CP y ser Líder o Contable
+            if (($isLeader || $isAccountant) && $targetUser->cp_id === $currentUser->cp_id) {
+                // Permitido
+            } else {
                 abort(403, 'No tienes permiso para gestionar el saldo de este usuario.');
             }
         }

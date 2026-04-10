@@ -23,6 +23,7 @@
     "dependencies": {
         "chart.js": "^4.5.1",
         "lodash": "^4.18.1",
+        "mitt": "^3.0.1",
         "vue-chartjs": "^5.3.3"
     }
 }

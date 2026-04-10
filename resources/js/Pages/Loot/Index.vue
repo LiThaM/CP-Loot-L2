@@ -45,7 +45,7 @@ const submitResolve = () => {
 };
 
 const rejectReport = (report) => {
-    if (confirm('¿Estás seguro de rechazar este reporte de sesión? Se borrarán todos los items asociados.')) {
+    if (confirm('¿Estás seguro de rechazar este reporte de sesión? El reporte quedará guardado como RECHAZADO para el historial.')) {
         router.post(route('loot.report.resolve', { report: report.id }), {
             status: 'rejected'
         });
