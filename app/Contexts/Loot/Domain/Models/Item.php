@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Item extends Model
 {
-    protected $fillable = ['name', 'grade', 'category', 'image_url', 'base_points'];
+    protected $fillable = [
+        'name', 'grade', 'category', 'image_url', 'base_points',
+        'external_id', 'chronicle', 'source', 'icon_name', 'description',
+    ];
 
     public function lootEntries()
     {

@@ -34,4 +34,19 @@ class User extends Authenticatable
     {
         return $this->belongsTo(ConstParty::class, 'cp_id');
     }
+
+    public function pointsLogs()
+    {
+        return $this->hasMany(\App\Contexts\Party\Domain\Models\PointsLog::class);
+    }
+
+    public function getTotalPointsAttribute()
+    {
+        return $this->pointsLogs()->sum('points');
+    }
+
+    public function getTotalAdenaAttribute()
+    {
+        return $this->pointsLogs()->sum('adena');
+    }
 }

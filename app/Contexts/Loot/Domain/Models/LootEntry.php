@@ -3,26 +3,20 @@
 namespace App\Contexts\Loot\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Identity\Domain\Models\User;
 
 class LootEntry extends Model
 {
-    protected $fillable = ['cp_id', 'item_id', 'requested_by', 'awarded_to', 'status', 'image_proof'];
+    protected $fillable = ['loot_report_id', 'item_id', 'awarded_to', 'amount'];
 
-    public function cp()
+    public function report()
     {
-        return $this->belongsTo(ConstParty::class, 'cp_id');
+        return $this->belongsTo(LootReport::class, 'loot_report_id');
     }
 
     public function item()
     {
         return $this->belongsTo(Item::class);
-    }
-
-    public function requestedBy()
-    {
-        return $this->belongsTo(User::class, 'requested_by');
     }
 
     public function awardedTo()

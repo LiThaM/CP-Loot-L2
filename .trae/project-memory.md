@@ -25,17 +25,22 @@
 ## Roles y Permisos
 - **Admin**:
   - Vista global de todas las CP.
-  - Estadísticas de todo el servidor.
+  - **Estadísticas globales de todas las CPs y del servidor.**
   - Gestión general de base de datos de Items (cruds base).
+  - **Crea nuevas Const Parties y genera un link de registro para un nuevo CP Leader.**
 - **CP Leader**:
+  - **Se registra utilizando un link/código proporcionado por un Admin y esto lo asocia a su nueva Const Party.**
+  - **Estadísticas globales de su propia CP y de sí mismo.**
   - Administra su propia Const Party.
-  - Invitar miembros (generación de enlace único/código).
+  - Invitar miembros (generación de enlace único/código exclusivo para su CP).
   - Configurar puntos de eventos (FARM, BOSS, etc.).
   - Aprobar o denegar `LootEntries` pendientes.
   - Asignar items crafteados/dropeados a miembros de la CP.
   - Marcar ítems en la *Wishlist*.
   - Vista restringida sólo a su CP.
 - **Member**:
+  - **Se registra utilizando el link/código proporcionado por el CP Leader.**
+  - **Estadísticas exclusivas de su propio progreso.**
   - Subir fotos/registros de items looteados.
   - Ver sus puntos (Score) y los drops/tributos propios.
   - Confirmar recepciones de items.
@@ -47,3 +52,19 @@
 - [x] Desarrollo de Migraciones (users, roles, const_parties, items, loot, points, translations...)
 - [x] Comando de Scraping (`fetch:l2-items` de la wiki de MasterWork)
 - [x] Creación de Layout Base en Vue 3 con Tailwind (L2 Dark Theme)
+- [x] Fase 2: Implementar roles y flujo de Auth según links de invitación (Admin -> Leader -> Members) + Fakes (Seed/Mock Items)
+- [x] Fase 3: Gestión de Party y Loot (Vistas de Panel y Generación de Links Interactivos de Invites)
+- [x] Fase 4: Implementación de Sistema de Traducción en Base de Datos
+  - [x] Exponer `App\Contexts\System\Domain\Models\Translation` dinámicamente al Frontend a través de Inertia.
+  - [x] Eliminar textos *hardcodeados* en componentes (Welcome, Layouts, Dashboards).
+  - [x] Interfaz exclusiva de Super Admin para crear, editar y borrar textos globales.
+- [x] Fase 5: Gestión de CPs y Visualización para SuperAdmin
+  - [x] Listado de CPs en el Dashboard de Admin como "boxes" (tarjetas).
+  - [x] Navegación detallada desde la caja de CP a sus estadísticas específicas.
+  - [x] Limpieza de base de datos de items con nombres icónicos de Lineage II.
+- [x] Fase 6: Sistema de Scraper Multi-Crónica (ElmoreLab)
+  - [x] Migración de BD: campos `external_id`, `chronicle`, `source`, `icon_name`, `description`.
+  - [x] `ElmoreScraper.php`: Cliente para API `resources-service.elmorelab.com`.
+  - [x] `FetchElmoreCommand.php`: Comando Artisan `items:fetch-elmore` con barra de progreso y auto-stop.
+  - [x] Importación completada: **25,755 items** (IL: 9,246 | C5: 8,664 | C4: 7,845).
+  - [x] Imágenes accesibles via `https://resources.elmorelab.com/images/{icon_name}.jpg`.
