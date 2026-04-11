@@ -13,23 +13,23 @@ class RoleSeeder extends Seeder
             [
                 'name' => 'admin',
                 'display_name' => 'Administrator',
-                'description' => 'System Administrator with global privileges'
+                'description' => 'System Administrator with global privileges',
             ],
             [
                 'name' => 'cp_leader',
                 'display_name' => 'CP Leader',
-                'description' => 'Leader of a Const Party'
+                'description' => 'Leader of a Const Party',
             ],
             [
                 'name' => 'member',
                 'display_name' => 'Member',
-                'description' => 'Regular member of a Const Party'
+                'description' => 'Regular member of a Const Party',
             ],
             [
                 'name' => 'accountant',
                 'display_name' => 'CP Accountant',
-                'description' => 'Responsible for Adena distribution'
-            ]
+                'description' => 'Responsible for Adena distribution',
+            ],
         ];
 
         foreach ($roles as $role) {

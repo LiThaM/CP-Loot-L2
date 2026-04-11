@@ -2,8 +2,8 @@
 
 namespace App\Contexts\Party\Domain\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Contexts\Identity\Domain\Models\User;
+use Illuminate\Database\Eloquent\Model;
 
 class PointsLog extends Model
 {

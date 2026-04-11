@@ -2,20 +2,21 @@
 
 namespace App\Contexts\Loot\Domain\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\Party\Domain\Models\ConstParty;
+use Illuminate\Database\Eloquent\Model;
 
 class LootReport extends Model
 {
     protected $fillable = [
-        'cp_id', 
-        'requested_by_id', 
-        'event_type', 
-        'points_per_member', 
-        'status', 
-        'image_proof', 
-        'recipient_ids'
+        'cp_id',
+        'requested_by_id',
+        'event_type',
+        'points_per_member',
+        'status',
+        'image_proof',
+        'recipient_ids',
+        'adena_distribution',
     ];
 
     protected $casts = [

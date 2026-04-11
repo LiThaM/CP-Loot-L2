@@ -20,13 +20,26 @@ Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-use App\Contexts\Party\Application\Controllers\PartyController;
-use App\Contexts\Party\Application\Controllers\ConstPartyController;
-use App\Contexts\Loot\Application\Controllers\LootController;
-use App\Contexts\Loot\Application\Controllers\LootActionController;
+use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\Loot\Application\Controllers\AdenaActionController;
 use App\Contexts\Loot\Application\Controllers\CpEventConfigController;
+use App\Contexts\Loot\Application\Controllers\CraftingController;
+use App\Contexts\Loot\Application\Controllers\LootActionController;
+use App\Contexts\Loot\Application\Controllers\LootController;
+use App\Contexts\Loot\Application\Controllers\LootSearchController;
 use App\Contexts\Loot\Application\Controllers\WishlistController;
+use App\Contexts\Loot\Domain\Models\Item;
+use App\Contexts\Loot\Domain\Models\LootEntry;
+use App\Contexts\Loot\Domain\Models\LootReport;
+use App\Contexts\Party\Application\Controllers\ConstPartyController;
+use App\Contexts\Party\Application\Controllers\PartyController;
+use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Contexts\Party\Domain\Models\PointsLog;
+use App\Contexts\System\Application\Controllers\ItemManagementController;
 use App\Contexts\System\Application\Controllers\TranslationController;
+use App\Contexts\System\Application\Controllers\UserManagementController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -35,6 +48,9 @@ Route::middleware('auth')->group(function () {
 
     // Phase 3 & 4 Routes
     Route::get('/party', [PartyController::class, 'index'])->name('party.index');
+    Route::get('/warehouse-cp', [PartyController::class, 'index'])->name('party.warehouse_cp')->defaults('tab', 'warehouse_cp');
+    Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
+    Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/admin/cp', [ConstPartyController::class, 'store'])->name('admin.cp.store');
 
@@ -45,39 +61,106 @@ Route::middleware('auth')->group(function () {
     Route::delete('/system/translations/{translation}', [TranslationController::class, 'destroy'])->name('system.translations.destroy');
 
     // CP Management (Admin Perspective)
-    Route::get('/admin/cp/{cp}', function (\App\Contexts\Party\Domain\Models\ConstParty $cp) {
-        return Inertia::render('Dashboard', [
-            'stats' => [
-                'total_cps' => 1,
-                'total_items' => 0,
-                'pending_tx' => 0,
+    Route::get('/admin/cp/{cp}', function (ConstParty $cp) {
+        $cpId = $cp->id;
+
+        $stats = [
+            'total_cps' => 1,
+            'total_members' => User::where('cp_id', $cpId)->count(),
+            'total_reports' => LootReport::where('cp_id', $cpId)->count(),
+            'pending_reports' => LootReport::where('cp_id', $cpId)->where('status', 'pending')->count(),
+            'total_points_cp' => PointsLog::where('cp_id', $cpId)->sum('points'),
+            'total_items_cp' => LootEntry::whereHas('report', fn ($q) => $q->where('cp_id', $cpId)->where('status', 'confirmed'))->sum('amount'),
+            'total_items' => Item::count(),
+            'total_points_global' => PointsLog::sum('points'),
+        ];
+
+        $days = collect(range(6, 0))->map(fn ($day) => now()->subDays($day)->format('Y-m-d'));
+        $cpActivity = LootReport::where('cp_id', $cpId)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->selectRaw('DATE(created_at) as date, count(*) as count')
+            ->groupBy('date')
+            ->pluck('count', 'date');
+
+        $chartData = [
+            'labels' => $days->map(fn ($d) => date('D', strtotime($d))),
+            'datasets' => [
+                [
+                    'label' => 'Actividad de CP',
+                    'data' => $days->map(fn ($d) => $cpActivity->get($d, 0)),
+                    'borderColor' => '#ef4444',
+                    'backgroundColor' => 'rgba(239, 68, 68, 0.2)',
+                    'fill' => true,
+                    'tension' => 0.4,
+                ],
             ],
-            'selectedCp' => $cp->load('leader', 'members')
+        ];
+
+        return Inertia::render('Dashboard', [
+            'stats' => $stats,
+            'selectedCp' => $cp->load('leader', 'members'),
+            'chartData' => $chartData,
+            'cps' => [],
         ]);
     })->name('admin.cp.view');
 
     // Item Management (SuperAdmin)
-    Route::get('/system/items', [App\Contexts\System\Application\Controllers\ItemManagementController::class, 'index'])->name('system.items.index');
-    Route::patch('/system/items/{item}', [App\Contexts\System\Application\Controllers\ItemManagementController::class, 'update'])->name('system.items.update');
-    Route::delete('/system/items/{item}', [App\Contexts\System\Application\Controllers\ItemManagementController::class, 'destroy'])->name('system.items.destroy');
+    Route::get('/items-db', [ItemManagementController::class, 'itemsDb'])->name('itemsdb.index');
+    Route::get('/system/items', [ItemManagementController::class, 'index'])->name('system.items.index');
+    Route::patch('/system/items/{item}', [ItemManagementController::class, 'update'])->name('system.items.update');
+    Route::delete('/system/items/{item}', [ItemManagementController::class, 'destroy'])->name('system.items.destroy');
 
     // User Management (Admin & CP Leader Audit)
-    Route::get('/system/users', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'index'])->name('system.users.index');
-    Route::patch('/system/users/{user}', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'update'])->name('system.users.update');
-    Route::delete('/system/users/{user}', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'destroy'])->name('system.users.destroy');
+    Route::get('/system/users', [UserManagementController::class, 'index'])->name('system.users.index');
+    Route::get('/system/users/{user}/logs', [UserManagementController::class, 'logs'])->name('system.users.logs');
+    Route::patch('/system/users/{user}', [UserManagementController::class, 'update'])->name('system.users.update');
+    Route::delete('/system/users/{user}', [UserManagementController::class, 'destroy'])->name('system.users.destroy');
 
     // Adena Ledger
-    Route::post('/adena/transaction', [App\Contexts\Loot\Application\Controllers\AdenaActionController::class, 'store'])->name('adena.transaction.store');
+    Route::post('/adena/transaction', [AdenaActionController::class, 'store'])->name('adena.transaction.store');
+
+    Route::post('/alerts/{alert}/read', function (Request $request, $alert) {
+        $user = $request->user();
+        DB::table('audit_alerts')
+            ->where('id', (int) $alert)
+            ->where('recipient_user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return back();
+    })->name('alerts.read');
+
+    Route::post('/alerts/read-all', function (Request $request) {
+        $user = $request->user();
+        DB::table('audit_alerts')
+            ->where('recipient_user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return back();
+    })->name('alerts.readAll');
 
     // Phase 7: Loot Registration, Approval & Wishlist
-    Route::get('/api/items/search', [App\Contexts\Loot\Application\Controllers\LootSearchController::class, 'search'])->name('api.items.search');    // Loot & Session Reports
+    Route::get('/api/items/search', [LootSearchController::class, 'search'])->name('api.items.search');    // Loot & Session Reports
+    Route::get('/api/members/{user}/warehouse', [PartyController::class, 'memberWarehouse'])->name('api.party.member.warehouse');
+    Route::get('/api/recipes/search', [CraftingController::class, 'search'])->name('api.recipes.search');
+    Route::post('/api/recipes/{recipe}/craft', [CraftingController::class, 'craft'])->name('api.recipes.craft');
+    Route::get('/api/recipes/{recipe}/tree', [CraftingController::class, 'tree'])->name('api.recipes.tree');
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/loot/report', [LootActionController::class, 'store'])->name('loot.report.store');
     Route::post('/loot/report/{report}/resolve', [LootActionController::class, 'resolve'])->name('loot.report.resolve');
-    
+    Route::post('/warehouse/assign', [PartyController::class, 'assign'])->name('warehouse.assign');
+    Route::post('/warehouse/return', [PartyController::class, 'requestReturn'])->name('warehouse.return');
+    Route::post('/warehouse/add', [PartyController::class, 'addStock'])->name('warehouse.add');
+    Route::post('/warehouse/sell', [PartyController::class, 'sell'])->name('warehouse.sell');
+    Route::get('/api/warehouse/sell/default-recipients', [PartyController::class, 'defaultSellRecipients'])->name('api.warehouse.sell.defaultRecipients');
+    Route::post('/cp/recipes', [CraftingController::class, 'store'])->name('cp.recipes.store');
+    Route::post('/cp/recipes/{cpRecipe}/move', [CraftingController::class, 'move'])->name('cp.recipes.move');
+    Route::delete('/cp/recipes/{cpRecipe}', [CraftingController::class, 'destroy'])->name('cp.recipes.destroy');
+
     // CP Custom Points Config
     Route::post('/cp/event-config', [CpEventConfigController::class, 'update'])->name('cp.event-config.update');
-    
+
     // Wishlist
     Route::post('/wishlist', [WishlistController::class, 'store'])->name('wishlist.store');
     Route::delete('/wishlist/{wishlist}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');

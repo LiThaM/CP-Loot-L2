@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::table('const_parties', function (Blueprint $table) {
             // Relax leader_id constraint (it should be assigned when a leader registers)
             $table->unsignedBigInteger('leader_id')->nullable()->change();
-            
+
             // Add missing columns
-            if (!Schema::hasColumn('const_parties', 'server')) {
+            if (! Schema::hasColumn('const_parties', 'server')) {
                 $table->string('server')->nullable()->after('name');
             }
         });

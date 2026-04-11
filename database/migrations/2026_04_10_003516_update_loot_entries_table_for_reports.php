@@ -13,7 +13,7 @@ return new class extends Migration
     {
         // Re-creating the table is safer for major refactors in SQLite
         Schema::dropIfExists('loot_entries');
-        
+
         Schema::create('loot_entries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('loot_report_id')->constrained('loot_reports')->onDelete('cascade');

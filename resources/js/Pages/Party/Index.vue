@@ -1,17 +1,562 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
-import { ref } from 'vue';
+import Modal from '@/Components/Modal.vue';
+import { ref, computed, watch } from 'vue';
+import { throttle } from 'lodash';
+import axios from 'axios';
+import emitter from '@/event-bus';
 
 const props = defineProps({
     has_cp: Boolean,
     cp: Object,
     members: Array,
     eventConfigs: Array,
+    warehouseItems: Array,
+    warehouseAdena: Number,
+    cpAdenaOwed: Number,
+    cpAdenaPaid: Number,
+    cpRecipes: Array,
+    canManageWarehouse: Boolean,
     isLeader: Boolean,
+    initialTab: String,
 });
 
-const activeTab = ref('members');
+const normalizeTab = (tab) => {
+    if (tab === 'config' && !props.isLeader) return 'members';
+    return tab || 'members';
+};
+
+const activeTab = ref(normalizeTab(props.initialTab));
+watch(() => props.initialTab, (val) => {
+    if (val && val !== activeTab.value) activeTab.value = normalizeTab(val);
+});
+const warehouseItemsTotal = computed(() => (props.warehouseItems || []).length + (Number(props.warehouseAdena || 0) > 0 ? 1 : 0));
+
+const expandedMembers = ref(new Set());
+const memberWarehouseById = ref({});
+const memberWarehouseLoading = ref(new Set());
+const memberWarehouseErrorById = ref({});
+
+const memberLogsById = ref({});
+const memberLogsLoading = ref(new Set());
+const memberLogsErrorById = ref({});
+
+const loadMemberWarehouse = async (memberId) => {
+    if (memberWarehouseById.value[memberId]) return;
+    const loading = new Set(memberWarehouseLoading.value);
+    loading.add(memberId);
+    memberWarehouseLoading.value = loading;
+
+    try {
+        const { data } = await axios.get(route('api.party.member.warehouse', { user: memberId }));
+        memberWarehouseById.value = { ...memberWarehouseById.value, [memberId]: data };
+        memberWarehouseErrorById.value = { ...memberWarehouseErrorById.value, [memberId]: null };
+    } catch (e) {
+        memberWarehouseErrorById.value = { ...memberWarehouseErrorById.value, [memberId]: 'error' };
+    } finally {
+        const done = new Set(memberWarehouseLoading.value);
+        done.delete(memberId);
+        memberWarehouseLoading.value = done;
+    }
+};
+
+const loadMemberLogs = async (memberId) => {
+    if (memberLogsById.value[memberId]) return;
+    const loading = new Set(memberLogsLoading.value);
+    loading.add(memberId);
+    memberLogsLoading.value = loading;
+
+    try {
+        const { data } = await axios.get(route('system.users.logs', memberId));
+        memberLogsById.value = {
+            ...memberLogsById.value,
+            [memberId]: {
+                logs: data?.logs || [],
+                audits: data?.audits || [],
+            },
+        };
+        memberLogsErrorById.value = { ...memberLogsErrorById.value, [memberId]: null };
+    } catch (e) {
+        memberLogsErrorById.value = { ...memberLogsErrorById.value, [memberId]: 'error' };
+    } finally {
+        const done = new Set(memberLogsLoading.value);
+        done.delete(memberId);
+        memberLogsLoading.value = done;
+    }
+};
+
+const toggleExpandedMember = async (memberId) => {
+    const next = new Set(expandedMembers.value);
+    if (next.has(memberId)) {
+        next.delete(memberId);
+        expandedMembers.value = next;
+        return;
+    }
+    next.add(memberId);
+    expandedMembers.value = next;
+    await Promise.all([
+        loadMemberWarehouse(memberId),
+        loadMemberLogs(memberId),
+    ]);
+};
+
+const approveMember = (memberId) => {
+    router.patch(route('party.members.approve', { user: memberId }), {}, {
+        preserveScroll: true,
+    });
+};
+
+const warehouseFilter = ref('');
+
+const filteredWarehouseItems = computed(() => {
+    const items = props.warehouseItems || [];
+    const q = warehouseFilter.value.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => {
+        const name = String(item?.name ?? '').toLowerCase();
+        const grade = String(item?.grade ?? '').toLowerCase();
+        return name.includes(q) || grade.includes(q);
+    });
+});
+
+const formatAdenaShort = (val) => {
+    const n = Number(val ?? 0);
+    if (!Number.isFinite(n)) return '0';
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+
+    if (abs >= 1_000_000) {
+        const m = abs / 1_000_000;
+        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1))).replace(/\.0$/, '');
+        return `${sign}${str}kk`;
+    }
+
+    if (abs >= 1_000) {
+        const k = abs / 1_000;
+        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1))).replace(/\.0$/, '');
+        return `${sign}${str}k`;
+    }
+
+    return `${sign}${Math.trunc(abs)}`;
+};
+
+const formatAdenaFull = (val) => {
+    const n = Number(val ?? 0);
+    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+};
+
+const formatNumber = (val) => {
+    const n = Number(val ?? 0);
+    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+};
+
+const formatDateTime = (val) => {
+    if (!val) return '';
+    try {
+        return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(val));
+    } catch (e) {
+        return String(val);
+    }
+};
+
+const formatAuditSummary = (a) => {
+    if (!a) return '';
+    if (a.action === 'USER_UPDATED') {
+        const parts = [];
+        if (a.old_values?.role !== a.new_values?.role && (a.old_values?.role || a.new_values?.role)) {
+            parts.push(`rol ${a.old_values?.role ?? '—'} → ${a.new_values?.role ?? '—'}`);
+        }
+        if (a.old_values?.cp !== a.new_values?.cp && (a.old_values?.cp || a.new_values?.cp)) {
+            parts.push(`CP ${a.old_values?.cp ?? '—'} → ${a.new_values?.cp ?? '—'}`);
+        }
+        return parts.length > 0 ? parts.join(', ') : 'Actualización';
+    }
+    if (a.action === 'USER_DELETED') return 'Usuario eliminado';
+    if (a.action === 'ADENA_ADJUSTED') {
+        const amount = Number(a.new_values?.amount ?? 0);
+        const amountLabel = `${amount < 0 ? '-' : '+'}${formatNumber(Math.abs(amount))}`;
+        return `Adena ${amountLabel} · ${a.new_values?.description ?? ''}`.trim();
+    }
+    return a.action;
+};
+
+const craftingSearchQuery = ref('');
+const craftingSearchResults = ref([]);
+const craftingSearchOpen = ref(false);
+const craftingSearchLoading = ref(false);
+const craftingSearchError = ref(false);
+
+const addCpRecipeForm = useForm({
+    recipe_id: null,
+});
+
+const removeCpRecipeForm = useForm({});
+const moveCpRecipeForm = useForm({
+    direction: null,
+});
+
+const craftingSelectedOutputByRecipeId = ref({});
+const craftingCrafting = ref(new Set());
+const craftingTreeOpenByRecipeId = ref({});
+const craftingTreeByRecipeId = ref({});
+const craftingTreeLoadingByRecipeId = ref({});
+const craftingConfirmOpen = ref(false);
+const craftingConfirmEntry = ref(null);
+
+const getRecipeProgress = (recipe) => {
+    const mats = Array.isArray(recipe?.materials) ? recipe.materials : [];
+    const totalNeed = mats.reduce((sum, m) => sum + Number(m?.need ?? 0), 0);
+    if (totalNeed <= 0) return 0;
+    const totalHaveCapped = mats.reduce((sum, m) => {
+        const need = Number(m?.need ?? 0);
+        const have = Number(m?.have ?? 0);
+        return sum + Math.min(need, have);
+    }, 0);
+    const pct = (totalHaveCapped / totalNeed) * 100;
+    return Math.max(0, Math.min(100, Math.round(pct)));
+};
+
+const canCraftRecipe = (recipe) => {
+    const mats = Array.isArray(recipe?.materials) ? recipe.materials : [];
+    if (mats.length === 0) return false;
+    return mats.every((m) => Number(m?.missing ?? 0) <= 0);
+};
+
+const setSelectedOutputItemId = (recipeId, itemId) => {
+    if (!recipeId) return;
+    craftingSelectedOutputByRecipeId.value = { ...craftingSelectedOutputByRecipeId.value, [recipeId]: itemId };
+};
+
+const getSelectedOutputItemId = (recipe) => {
+    const recipeId = recipe?.id;
+    if (!recipeId) return null;
+    const outputs = Array.isArray(recipe?.outputs) ? recipe.outputs : [];
+    const current = craftingSelectedOutputByRecipeId.value[recipeId];
+    if (current && outputs.some((o) => Number(o?.item_id) === Number(current))) return current;
+    if (current && recipe?.output_item?.id && Number(recipe.output_item.id) === Number(current)) return current;
+
+    const fallback = outputs.length > 0 ? outputs[0]?.item_id : recipe?.output_item?.id;
+    if (fallback) {
+        craftingSelectedOutputByRecipeId.value = { ...craftingSelectedOutputByRecipeId.value, [recipeId]: fallback };
+        return fallback;
+    }
+    return null;
+};
+
+const performCraft = async (entry, lucky) => {
+    const recipe = entry?.recipe;
+    if (!recipe?.id) return;
+    if (!canCraftRecipe(recipe)) return;
+
+    const set = new Set(craftingCrafting.value);
+    if (set.has(recipe.id)) return;
+    set.add(recipe.id);
+    craftingCrafting.value = set;
+
+    try {
+        const outputItemId = getSelectedOutputItemId(recipe);
+
+        await axios.post(route('api.recipes.craft', { recipe: recipe.id }), {
+            lucky,
+            output_item_id: outputItemId,
+        });
+
+        showToast(lucky ? 'Crafteo registrado.' : 'Materiales consumidos (sin éxito).');
+        router.reload({ preserveScroll: true, preserveState: true });
+    } catch (e) {
+        showToast('No se pudo craftear la receta.', 'error');
+    } finally {
+        const done = new Set(craftingCrafting.value);
+        done.delete(recipe.id);
+        craftingCrafting.value = done;
+    }
+};
+
+const openCraftConfirm = (entry) => {
+    const sr = Number(entry?.recipe?.success_rate ?? 0);
+    if (sr >= 100) {
+        performCraft(entry, true);
+        return;
+    }
+    craftingConfirmEntry.value = entry;
+    craftingConfirmOpen.value = true;
+};
+
+const closeCraftConfirm = () => {
+    craftingConfirmOpen.value = false;
+    craftingConfirmEntry.value = null;
+};
+
+const confirmCraft = (lucky) => {
+    const entry = craftingConfirmEntry.value;
+    closeCraftConfirm();
+    performCraft(entry, lucky);
+};
+
+const toggleRecipeTree = async (entry) => {
+    const recipe = entry?.recipe;
+    if (!recipe?.id) return;
+    const id = recipe.id;
+    const open = Boolean(craftingTreeOpenByRecipeId.value[id]);
+    craftingTreeOpenByRecipeId.value = { ...craftingTreeOpenByRecipeId.value, [id]: !open };
+    if (open) return;
+    if (craftingTreeByRecipeId.value[id]) return;
+
+    craftingTreeLoadingByRecipeId.value = { ...craftingTreeLoadingByRecipeId.value, [id]: true };
+    try {
+        const { data } = await axios.get(route('api.recipes.tree', { recipe: id }), { params: { depth: 4 } });
+        craftingTreeByRecipeId.value = { ...craftingTreeByRecipeId.value, [id]: data };
+    } catch (e) {
+        showToast('No se pudo cargar el árbol de receta.', 'error');
+    } finally {
+        craftingTreeLoadingByRecipeId.value = { ...craftingTreeLoadingByRecipeId.value, [id]: false };
+    }
+};
+
+const flattenTreeLeaves = (nodes) => {
+    const out = [];
+    const stack = Array.isArray(nodes) ? [...nodes] : [];
+    while (stack.length > 0) {
+        const n = stack.shift();
+        const children = Array.isArray(n?.children) ? n.children : [];
+        if (children.length === 0) {
+            out.push(n);
+        } else {
+            stack.push(...children);
+        }
+    }
+    return out;
+};
+
+const flattenTreeWithDepth = (nodes) => {
+    const out = [];
+    const stack = Array.isArray(nodes) ? nodes.map((n) => ({ node: n, depth: 0 })) : [];
+    while (stack.length > 0) {
+        const { node, depth } = stack.shift();
+        out.push({ ...node, depth });
+        const children = Array.isArray(node?.children) ? node.children : [];
+        if (children.length > 0) {
+            const next = children.map((c) => ({ node: c, depth: depth + 1 }));
+            stack.unshift(...next);
+        }
+    }
+    return out;
+};
+
+const isTreeOpen = (recipeId) => Boolean(craftingTreeOpenByRecipeId.value[recipeId]);
+const isTreeLoading = (recipeId) => Boolean(craftingTreeLoadingByRecipeId.value[recipeId]);
+const getTreeData = (recipeId) => craftingTreeByRecipeId.value[recipeId] || null;
+
+const fetchCraftingRecipes = async (query) => {
+    const q = String(query ?? '').trim();
+    if (q.length < 2) {
+        craftingSearchResults.value = [];
+        craftingSearchLoading.value = false;
+        craftingSearchError.value = false;
+        return;
+    }
+
+    craftingSearchLoading.value = true;
+    craftingSearchError.value = false;
+    try {
+        const { data } = await axios.get(route('api.recipes.search'), { params: { q } });
+        craftingSearchResults.value = Array.isArray(data) ? data : [];
+    } catch (e) {
+        craftingSearchResults.value = [];
+        craftingSearchError.value = true;
+    } finally {
+        craftingSearchLoading.value = false;
+    }
+};
+
+const throttledFetchCraftingRecipes = throttle((query) => {
+    fetchCraftingRecipes(query);
+}, 350);
+
+watch(craftingSearchQuery, (val) => {
+    const q = String(val ?? '').trim();
+    craftingSearchOpen.value = q.length >= 2;
+    craftingSearchError.value = false;
+    if (q.length < 2) {
+        craftingSearchResults.value = [];
+        return;
+    }
+    throttledFetchCraftingRecipes(q);
+});
+
+const pickCraftingRecipe = (recipe) => {
+    if (!recipe?.id) return;
+    addCpRecipeForm.recipe_id = recipe.id;
+    craftingSearchQuery.value = recipe.name;
+    craftingSearchOpen.value = false;
+};
+
+const submitAddCpRecipe = () => {
+    if (!addCpRecipeForm.recipe_id) return;
+    addCpRecipeForm.post(route('cp.recipes.store'), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            addCpRecipeForm.reset('recipe_id');
+            craftingSearchQuery.value = '';
+            craftingSearchResults.value = [];
+            showToast('Receta añadida a la lista.');
+        },
+        onError: () => {
+            showToast('No se pudo añadir la receta.', 'error');
+        },
+    });
+};
+
+const removeCpRecipe = (cpRecipeId) => {
+    if (!cpRecipeId) return;
+    removeCpRecipeForm.delete(route('cp.recipes.destroy', cpRecipeId), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            showToast('Receta eliminada.');
+        },
+        onError: () => {
+            showToast('No se pudo eliminar la receta.', 'error');
+        },
+    });
+};
+
+const moveCpRecipe = (cpRecipeId, direction) => {
+    if (!cpRecipeId || !direction) return;
+    moveCpRecipeForm.direction = direction;
+    moveCpRecipeForm.post(route('cp.recipes.move', cpRecipeId), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            showToast('Prioridad actualizada.');
+        },
+        onError: () => {
+            showToast('No se pudo cambiar la prioridad.', 'error');
+        },
+        onFinish: () => {
+            moveCpRecipeForm.reset('direction');
+        },
+    });
+};
+
+// Warehouse assign modal
+const assignModalOpen = ref(false);
+const selectedItem = ref(null);
+const assignForm = useForm({
+    item_id: null,
+    user_id: null,
+    amount: 1,
+    image_proof: null,
+});
+
+const showToast = (message, tone = 'success') => {
+    emitter.emit('toast', {
+        tone,
+        title: tone === 'error' ? 'Error' : 'Hecho',
+        message,
+        kind: 'action'
+    });
+};
+
+const openAssign = (item) => {
+    selectedItem.value = item;
+    assignForm.item_id = item.id;
+    assignForm.amount = 1;
+    assignForm.user_id = null;
+    assignForm.image_proof = null;
+    assignModalOpen.value = true;
+};
+
+const onFileChange = (e) => {
+    assignForm.image_proof = e.target.files[0];
+};
+
+const submitAssign = () => {
+    assignForm.post(route('warehouse.assign'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            assignModalOpen.value = false;
+            showToast('Ítem asignado y registrado.');
+        },
+        onError: () => {
+            showToast('No se pudo asignar el ítem.', 'error');
+        }
+    });
+};
+
+// Warehouse sell modal
+const sellModalOpen = ref(false);
+const selectedSellItem = ref(null);
+const sellForm = useForm({
+    item_id: null,
+    amount: 1,
+    unit_price: 1,
+    adena_distribution: 'cp',
+    recipient_ids: [],
+    image_proof: null,
+});
+
+const sellTotalAdena = computed(() => {
+    const amount = Number(sellForm.amount ?? 0);
+    const price = Number(sellForm.unit_price ?? 0);
+    if (!Number.isFinite(amount) || !Number.isFinite(price)) return 0;
+    return Math.max(0, Math.trunc(amount) * Math.trunc(price));
+});
+
+const sellSplitCount = computed(() => {
+    if (sellForm.adena_distribution !== 'attendees') return 0;
+    return Array.isArray(sellForm.recipient_ids) ? sellForm.recipient_ids.length : 0;
+});
+
+const sellPerMember = computed(() => {
+    const c = sellSplitCount.value;
+    if (c <= 0) return 0;
+    return Math.floor(sellTotalAdena.value / c);
+});
+
+const openSell = (item) => {
+    selectedSellItem.value = item;
+    sellForm.item_id = item.id;
+    sellForm.amount = 1;
+    sellForm.unit_price = 1;
+    sellForm.adena_distribution = 'cp';
+    sellForm.recipient_ids = [];
+    sellForm.image_proof = null;
+    sellModalOpen.value = true;
+};
+
+const submitSell = () => {
+    sellForm.post(route('warehouse.sell'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            sellModalOpen.value = false;
+            showToast('Venta registrada.');
+        },
+        onError: () => {
+            showToast('No se pudo registrar la venta.', 'error');
+        }
+    });
+};
+
+const loadDefaultSellRecipients = async (itemId) => {
+    try {
+        const { data } = await axios.get(route('api.warehouse.sell.defaultRecipients'), { params: { item_id: itemId } });
+        return Array.isArray(data?.recipient_ids) ? data.recipient_ids : [];
+    } catch (_) {
+        return [];
+    }
+};
+
+watch(() => sellForm.adena_distribution, async (val, oldVal) => {
+    if (val === 'attendees' && (!sellForm.recipient_ids || sellForm.recipient_ids.length === 0) && selectedSellItem?.value?.id) {
+        const ids = await loadDefaultSellRecipients(selectedSellItem.value.id);
+        sellForm.recipient_ids = ids;
+    }
+});
 
 const copyInviteLink = () => {
     const link = `${window.location.origin}/register?invite=${props.cp.invite_code}`;
@@ -50,42 +595,147 @@ const categories = [
     { id: 'EPIC', name: 'Epic Boss', icon: '👑', desc: 'Puntos por participar en Valakas, Antharas, etc.' },
     { id: 'SIEGE', name: 'Siege / Fortress', icon: '🏰', desc: 'Puntos por asedios o toma de fortalezas.' },
 ];
+
+const addStockModalOpen = ref(false);
+const stockSearch = ref('');
+const stockSearchResults = ref([]);
+const stockIsSearching = ref(false);
+const stockForm = useForm({
+    items: [],
+    image_proof: null,
+});
+
+const addStockItem = (item) => {
+    const existing = stockForm.items.find(i => i.item_id === item.id);
+    if (existing) {
+        existing.amount++;
+        return;
+    }
+    stockForm.items.push({
+        item_id: item.id,
+        name: item.name,
+        image_url: item.image_url,
+        amount: 1
+    });
+    stockSearch.value = '';
+    stockSearchResults.value = [];
+};
+
+const removeStockItem = (idx) => {
+    stockForm.items.splice(idx, 1);
+};
+
+const normalizeStockAmount = (row) => {
+    const parsed = Number.parseInt(String(row.amount), 10);
+    row.amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+};
+
+const isAdenaRow = (row) => String(row?.name ?? '').toLowerCase() === 'adena';
+
+const openAddStock = () => {
+    stockForm.reset();
+    stockForm.items = [];
+    stockForm.image_proof = null;
+    stockSearch.value = '';
+    stockSearchResults.value = [];
+    addStockModalOpen.value = true;
+};
+
+const submitAddStock = () => {
+    stockForm.post(route('warehouse.add'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            addStockModalOpen.value = false;
+            showToast('Stock añadido y registrado.');
+        },
+        onError: () => {
+            showToast('No se pudo añadir el stock.', 'error');
+        }
+    });
+};
+
+const stockTotalLines = computed(() => (stockForm.items || []).length);
+const stockTotalUnits = computed(() => {
+    const items = stockForm.items || [];
+    return items.reduce((sum, row) => {
+        const n = Number.parseInt(String(row?.amount ?? 0), 10);
+        return sum + (Number.isFinite(n) ? Math.max(0, n) : 0);
+    }, 0);
+});
+
+const quickAddAdena = async () => {
+    const existing = stockForm.items.find(i => String(i.name).toLowerCase() === 'adena');
+    if (existing) {
+        existing.amount = Math.max(1, Number.parseInt(String(existing.amount), 10) || 1);
+        return;
+    }
+    try {
+        stockIsSearching.value = true;
+        const { data } = await axios.get(route('api.items.search'), { params: { q: 'adena' } });
+        const found = Array.isArray(data) ? data.find(it => String(it.name).toLowerCase() === 'adena') : null;
+        if (found) {
+            stockForm.items.push({
+                item_id: found.id,
+                name: found.name,
+                image_url: found.image_url,
+                amount: 1
+            });
+        }
+    } finally {
+        stockIsSearching.value = false;
+    }
+};
+
+watch(stockSearch, throttle(async (val) => {
+    if (!val || val.length < 3) {
+        stockSearchResults.value = [];
+        return;
+    }
+    stockIsSearching.value = true;
+    try {
+        const { data } = await axios.get(route('api.items.search'), { params: { q: val } });
+        stockSearchResults.value = data;
+    } finally {
+        stockIsSearching.value = false;
+    }
+}, 300));
 </script>
 
 <template>
     <Head title="Mi Const Party" />
 
     <MainLayout>
-        <div v-if="!has_cp" class="l2-panel p-20 text-center rounded-3xl border-red-900/20 max-w-2xl mx-auto mt-12 animate-in slide-in-from-bottom duration-500">
+        <div v-if="!has_cp" class="l2-panel p-20 text-center rounded-3xl border-purple-500/15 max-w-2xl mx-auto mt-12 animate-in slide-in-from-bottom duration-500">
             <div class="text-7xl mb-6">🛡️</div>
-            <h3 class="font-cinzel text-3xl text-white mb-4">Unirse a una CP</h3>
+            <h3 class="font-cinzel text-3xl text-gray-900 dark:text-white mb-4">Unirse a una CP</h3>
             <p class="text-gray-500 mb-8 italic">No perteneces a ninguna Constant Party todavía. Contacta con tu líder para que te proporcione el código de invitación.</p>
         </div>
 
         <div v-else class="space-y-8 animate-in fade-in duration-700">
             <!-- CP Hero -->
-            <div class="l2-panel p-8 rounded-[2rem] border-gray-800 bg-gradient-to-br from-gray-900 via-gray-950 to-black relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <div class="l2-panel p-8 rounded-[2rem] border-gray-800 bg-gradient-to-br from-white via-indigo-50 to-white dark:from-gray-900 dark:via-gray-950 dark:to-black relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div class="flex items-center">
-                        <div class="w-20 h-20 bg-gray-800 rounded-2xl flex items-center justify-center text-4xl mr-6 border border-gray-700 shadow-2xl">🛡️</div>
+                        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-4xl mr-6 border border-gray-200 dark:border-gray-700 shadow-2xl">🛡️</div>
                         <div>
-                            <h2 class="font-cinzel text-4xl text-white tracking-widest uppercase">{{ cp.name }}</h2>
+                            <h2 class="font-cinzel text-4xl text-gray-900 dark:text-white tracking-widest uppercase">{{ cp.name }}</h2>
                             <div class="flex items-center gap-3 mt-1">
-                                <span class="text-xs font-black uppercase tracking-widest text-red-600">{{ cp.server }}</span>
-                                <span class="text-gray-700">•</span>
-                                <span class="text-xs font-black uppercase tracking-widest text-gray-400">{{ cp.chronicle }}</span>
+                                <span class="text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">{{ cp.server }}</span>
+                                <span class="text-gray-400 dark:text-gray-700">•</span>
+                                <span class="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-400">{{ cp.chronicle }}</span>
                             </div>
                         </div>
                     </div>
 
                     <div v-if="isLeader" class="flex-1 max-w-xs ml-auto">
-                        <div class="bg-black/40 border border-gray-800 p-3 rounded-2xl flex items-center justify-between group hover:border-red-900/40 transition-all">
+                        <div class="bg-white/70 border border-gray-200 p-3 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all dark:bg-black/40 dark:border-gray-800">
                             <div>
                                 <div class="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Link de Invitación</div>
-                                <div class="text-[10px] text-red-500 font-black tracking-widest truncate max-w-[150px]">{{ cp.invite_code }}</div>
+                                <div class="text-[10px] text-purple-700 dark:text-purple-300 font-black tracking-widest truncate max-w-[150px]">{{ cp.invite_code }}</div>
                             </div>
-                            <button @click="copyInviteLink" class="bg-gray-800 hover:bg-red-600 p-2 rounded-xl transition-all shadow-lg group-hover:scale-110 active:scale-95">
+                            <button @click="copyInviteLink" class="bg-gray-100 hover:bg-purple-600 p-2 rounded-xl transition-all shadow-lg group-hover:scale-110 active:scale-95 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                                 🔗
                             </button>
                         </div>
@@ -94,89 +744,873 @@ const categories = [
                     <div class="flex items-center gap-2">
                         <div class="text-right mr-4 hidden md:block">
                             <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Líder de CP</div>
-                            <div class="text-sm font-black text-white hover:text-red-500 transition">{{ cp.leader.name }}</div>
+                            <div class="text-sm font-black text-gray-900 dark:text-white hover:text-purple-700 dark:hover:text-purple-300 transition">{{ cp.leader.name }}</div>
                         </div>
-                        <div class="flex flex-col items-end gap-2">
-                             <Link :href="route('system.users.index')" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-lg shadow-red-950/20">
-                                📊 {{ isLeader ? 'Auditoría y Pagos' : 'Auditoría de CP' }}
-                            </Link>
-                        </div>
-                        <div class="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center text-xs font-black">
+                        <div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-black text-gray-800 dark:text-white">
                             {{ cp.leader.name.charAt(0) }}
                         </div>
                     </div>
                 </div>
 
                 <!-- Tabs -->
-                <div class="flex border-t border-gray-800 mt-8 pt-4 gap-8">
-                    <button @click="activeTab = 'members'" :class="activeTab === 'members' ? 'text-white border-b-2 border-red-600 pb-2' : 'text-gray-500 hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Miembros</button>
-                    <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-white border-b-2 border-red-600 pb-2' : 'text-gray-500 hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Ajustes de Puntos</button>
+                <div class="flex border-t border-gray-200 mt-8 pt-4 gap-8 dark:border-gray-800">
+                    <button @click="activeTab = 'members'" :class="activeTab === 'members' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Miembros</button>
+                    <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Warehouse CP</button>
+                    <button @click="activeTab = 'crafting'" :class="activeTab === 'crafting' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Crafting</button>
+                    <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Ajustes de Puntos</button>
                 </div>
             </div>
 
             <!-- Members Tab -->
-            <div v-if="activeTab === 'members'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="(member, idx) in members" :key="member.id" class="l2-panel p-5 rounded-2xl border-gray-800 hover:border-red-900/50 transition group">
-                    <div class="flex items-center">
-                        <div class="relative">
-                            <div class="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center text-xl font-cinzel border border-gray-700 group-hover:bg-red-900/20 transition-colors">
-                                {{ member.name.charAt(0) }}
+            <div v-if="activeTab === 'members'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+                <div class="divide-y divide-gray-200 dark:divide-gray-800">
+                    <div v-for="(member, idx) in members" :key="member.id" class="bg-white/60 dark:bg-black/20">
+                        <div class="grid grid-cols-12 items-center gap-4 p-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-900/40" @click="toggleExpandedMember(member.id)">
+                            <div class="col-span-7 flex items-center min-w-0">
+                                <div class="relative shrink-0">
+                                    <div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-lg font-cinzel border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white">
+                                        {{ member.name.charAt(0) }}
+                                    </div>
+                                    <div class="absolute -top-2 -left-2 w-6 h-6 bg-gray-900 border border-gray-700 rounded-full flex items-center justify-center text-[10px] font-black text-gray-500">
+                                        #{{ idx + 1 }}
+                                    </div>
+                                </div>
+                                <div class="ml-4 min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <span class="font-black uppercase tracking-tight text-gray-900 dark:text-white truncate">{{ member.name }}</span>
+                                        <span v-if="member.id === cp.leader_id" class="text-[8px] bg-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">Leader</span>
+                                        <span v-if="member.membership_status === 'pending'" class="text-[8px] bg-yellow-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-gray-900">Pendiente</span>
+                                    </div>
+                                    <div class="flex items-center mt-1">
+                                        <div class="h-1.5 flex-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden mr-3">
+                                            <div class="h-full bg-gradient-to-r from-purple-600 to-blue-600" :style="{ width: Math.min(100, (member.total_points / 1000) * 100) + '%' }"></div>
+                                        </div>
+                                        <span class="text-xs font-black text-gray-900 dark:text-white shrink-0">{{ member.total_points || 0 }} pts</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="absolute -top-2 -left-2 w-6 h-6 bg-gray-900 border border-gray-700 rounded-full flex items-center justify-center text-[10px] font-black text-gray-500">
-                                #{{ idx + 1 }}
+
+                            <div class="col-span-5 flex items-center justify-end gap-3">
+                                <button
+                                    v-if="isLeader && member.membership_status === 'pending' && member.id !== cp.leader_id"
+                                    class="px-3 py-2 rounded-xl bg-yellow-500/90 hover:bg-yellow-500 text-gray-900 text-[10px] font-black uppercase tracking-widest border border-yellow-600/30"
+                                    @click.stop="approveMember(member.id)"
+                                >
+                                    Aprobar
+                                </button>
+                                <div class="bg-white/70 border border-gray-200 rounded-xl px-3 py-2 dark:bg-black/40 dark:border-gray-800 text-right min-w-[92px]">
+                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Debe</div>
+                                    <div class="text-sm font-cinzel text-orange-600 dark:text-orange-500 mt-0.5" v-tooltip="formatAdenaFull(member.adena_owed || 0)">{{ formatAdenaShort(member.adena_owed || 0) }}</div>
+                                </div>
+                                <div class="bg-white/70 border border-gray-200 rounded-xl px-3 py-2 dark:bg-black/40 dark:border-gray-800 text-right min-w-[92px]">
+                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Pagado</div>
+                                    <div class="text-sm font-cinzel text-emerald-700 dark:text-green-400 mt-0.5" v-tooltip="formatAdenaFull(member.adena_paid || 0)">{{ formatAdenaShort(member.adena_paid || 0) }}</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <div class="flex justify-between items-center">
-                                <span class="font-black uppercase tracking-tight text-white group-hover:text-red-500 transition-colors">{{ member.name }}</span>
-                                <span v-if="member.id === cp.leader_id" class="text-[8px] bg-red-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">Leader</span>
-                            </div>
-                            <div class="flex items-center mt-1">
-                                <div class="h-1.5 flex-1 bg-gray-800 rounded-full overflow-hidden mr-3">
-                                    <div class="h-full bg-gradient-to-r from-red-600 to-orange-500" :style="{ width: Math.min(100, (member.total_points / 1000) * 100) + '%' }"></div>
+
+                        <div v-if="expandedMembers.has(member.id)" class="border-t border-gray-200 dark:border-gray-800 p-5 bg-gray-100/60 dark:bg-black/30">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div>
+                                    <div class="flex items-center justify-between gap-4 mb-3">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Warehouse de {{ member.name }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase text-gray-700 bg-white/70 border-gray-200 dark:text-gray-300 dark:bg-black/30 dark:border-gray-800">
+                                                {{ (memberWarehouseById[member.id]?.items || []).length }} items
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="memberWarehouseLoading.has(member.id)" class="text-sm text-gray-600 dark:text-gray-400 italic">
+                                        Cargando warehouse...
+                                    </div>
+
+                                    <div v-else-if="memberWarehouseErrorById[member.id]" class="flex items-center justify-between gap-4 bg-white/70 border border-gray-200 dark:bg-black/40 dark:border-gray-800 rounded-xl p-4">
+                                        <div class="text-sm text-gray-700 dark:text-gray-300 font-bold">No se pudo cargar el warehouse.</div>
+                                        <button class="px-4 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest" @click.stop="loadMemberWarehouse(member.id)">
+                                            Reintentar
+                                        </button>
+                                    </div>
+
+                                    <div v-else>
+                                        <div v-if="(memberWarehouseById[member.id]?.items || []).length === 0" class="text-sm text-gray-600 dark:text-gray-400 italic">
+                                            Sin items en su warehouse.
+                                        </div>
+                                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                            <div
+                                                v-for="item in memberWarehouseById[member.id].items"
+                                                :key="item.id"
+                                                class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800"
+                                            >
+                                                <img v-if="item.image_url" :src="item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                                                <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ item.name }}</div>
+                                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ item.grade || 'N/A' }}</div>
+                                                </div>
+                                                <div class="text-sm font-cinzel text-gray-900 dark:text-white" v-tooltip="String(item.total_amount || 0)">x{{ item.total_amount || 0 }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span class="text-xs font-black text-white">{{ member.total_points || 0 }} pts</span>
+
+                                <div>
+                                    <div class="flex items-center justify-between gap-4 mb-3">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Auditoría de {{ member.name }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase text-gray-700 bg-white/70 border-gray-200 dark:text-gray-300 dark:bg-black/30 dark:border-gray-800">
+                                                {{ (memberLogsById[member.id]?.logs || []).length }} mov.
+                                            </div>
+                                            <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase text-gray-700 bg-white/70 border-gray-200 dark:text-gray-300 dark:bg-black/30 dark:border-gray-800">
+                                                {{ (memberLogsById[member.id]?.audits || []).length }} audits
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="memberLogsLoading.has(member.id)" class="text-sm text-gray-600 dark:text-gray-400 italic">
+                                        Cargando auditoría...
+                                    </div>
+
+                                    <div v-else-if="memberLogsErrorById[member.id]" class="flex items-center justify-between gap-4 bg-white/70 border border-gray-200 dark:bg-black/40 dark:border-gray-800 rounded-xl p-4">
+                                        <div class="text-sm text-gray-700 dark:text-gray-300 font-bold">No se pudo cargar la auditoría.</div>
+                                        <button class="px-4 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest" @click.stop="loadMemberLogs(member.id)">
+                                            Reintentar
+                                        </button>
+                                    </div>
+
+                                    <div v-else class="space-y-6">
+                                        <div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Pagos / Movimientos de Adena</div>
+
+                                            <div v-if="(memberLogsById[member.id]?.logs || []).length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                                                Sin movimientos de Adena.
+                                            </div>
+
+                                            <div v-else class="mt-3 space-y-2">
+                                                <div v-for="log in memberLogsById[member.id].logs" :key="log.id" class="flex items-center justify-between gap-4 bg-white/70 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-800 rounded-xl p-3">
+                                                    <div class="min-w-0">
+                                                        <div class="text-xs font-black text-gray-900 dark:text-white truncate">{{ log.description }}</div>
+                                                        <div class="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">
+                                                            {{ formatDateTime(log.created_at) }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center gap-4 shrink-0">
+                                                        <div class="text-right">
+                                                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Adena</div>
+                                                            <div class="text-sm font-black font-cinzel" :class="log.adena < 0 ? 'text-red-500' : 'text-green-400'" v-tooltip="`${log.adena < 0 ? '-' : '+'}${formatNumber(Math.abs(log.adena))}`">
+                                                                {{ log.adena < 0 ? '-' : '+' }}{{ formatAdenaShort(Math.abs(log.adena)) }}
+                                                            </div>
+                                                        </div>
+                                                        <Link v-if="log.report_id" :href="route('loot.index') + '?report=' + log.report_id" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-purple-700 dark:text-gray-400 dark:hover:text-purple-300 transition">
+                                                            Ver histórico
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Auditoría de Acciones</div>
+
+                                            <div v-if="(memberLogsById[member.id]?.audits || []).length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                                                Sin acciones registradas.
+                                            </div>
+
+                                            <div v-else class="mt-3 space-y-2">
+                                                <div v-for="a in memberLogsById[member.id].audits" :key="a.id" class="flex items-center justify-between gap-4 bg-white/70 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-800 rounded-xl p-3">
+                                                    <div class="min-w-0">
+                                                        <div class="text-xs font-black text-gray-900 dark:text-white truncate">
+                                                            {{ formatAuditSummary(a) }}
+                                                        </div>
+                                                        <div class="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">
+                                                            {{ a.actor ? a.actor + ' · ' : '' }}{{ formatDateTime(a.created_at) }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 shrink-0">
+                                                        {{ a.action }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Warehouse CP Tab -->
+            <div v-if="activeTab === 'warehouse_cp'" class="space-y-6">
+                <div class="l2-panel p-6 rounded-3xl border-gray-800">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Warehouse CP</h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Items confirmados de la CP</p>
+                        </div>
+                        <button v-if="canManageWarehouse" @click="openAddStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest transition">
+                            Añadir Items
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Items</div>
+                            <div class="text-2xl font-cinzel text-gray-900 dark:text-white mt-1">{{ warehouseItemsTotal }}</div>
+                        </div>
+
+                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena en Warehouse</div>
+                            <div class="text-2xl font-cinzel text-purple-700 dark:text-purple-300 mt-1" v-tooltip="formatAdenaFull(warehouseAdena || 0)">{{ formatAdenaShort(warehouseAdena || 0) }}</div>
+                        </div>
+
+                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena que Debe</div>
+                            <div class="text-2xl font-cinzel text-orange-600 dark:text-orange-500 mt-1" v-tooltip="formatAdenaFull(cpAdenaOwed || 0)">{{ formatAdenaShort(cpAdenaOwed || 0) }}</div>
+                        </div>
+
+                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena Entregada</div>
+                            <div class="text-2xl font-cinzel text-emerald-700 dark:text-green-400 mt-1" v-tooltip="formatAdenaFull(cpAdenaPaid || 0)">{{ formatAdenaShort(cpAdenaPaid || 0) }}</div>
+                        </div>
+                    </div>
+
+                    <div class="relative mt-5">
+                        <input v-model="warehouseFilter" type="text" placeholder="Filtrar item..." class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
+                        <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
+
+                <div v-if="filteredWarehouseItems.length === 0" class="l2-panel p-10 rounded-3xl border-gray-800 text-center text-gray-600 dark:text-gray-500 font-cinzel text-xl italic opacity-50">
+                    {{ warehouseFilter.trim() ? 'No hay resultados para ese filtro...' : 'Todavía no hay items confirmados en la CP...' }}
+                </div>
+
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-for="item in filteredWarehouseItems" :key="item.id" class="l2-panel p-4 rounded-2xl border-gray-800 flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
+                            <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover">
+                            <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">N/A</div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || '—' }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Cantidad</div>
+                            <div class="text-lg font-cinzel text-gray-900 dark:text-white">x{{ item.total_amount }}</div>
+                        </div>
+                        <div v-if="canManageWarehouse" class="ml-3">
+                            <div class="flex flex-col gap-2">
+                                <button @click="openAssign(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg transition shadow-lg shadow-purple-950/20">
+                                    Asignar
+                                </button>
+                                <button @click="openSell(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white rounded-lg transition shadow-lg shadow-emerald-950/20">
+                                    Vender
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'crafting'" class="space-y-6">
+                <div class="l2-panel p-6 rounded-3xl border-gray-800">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Crafting</h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Recetas priorizadas por el líder y materiales faltantes según el Warehouse CP</p>
+                        </div>
+
+                        <div v-if="isLeader" class="flex flex-col sm:flex-row gap-3 sm:items-center">
+                            <div class="relative w-full sm:w-[360px]">
+                                <input
+                                    v-model="craftingSearchQuery"
+                                    type="text"
+                                    placeholder="Buscar receta..."
+                                    class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 h-11 px-4 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
+                                    @focus="craftingSearchOpen = craftingSearchQuery.trim().length >= 2"
+                                    @keydown.esc="craftingSearchOpen = false"
+                                >
+
+                                <div v-if="craftingSearchOpen" class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden dark:bg-gray-950 dark:border-gray-800">
+                                    <div v-if="craftingSearchLoading" class="p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                                        Buscando...
+                                    </div>
+                                    <div v-else-if="craftingSearchError" class="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">
+                                        No se pudo buscar recetas.
+                                    </div>
+                                    <div v-else-if="craftingSearchResults.length === 0" class="p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                                        Sin resultados.
+                                    </div>
+                                    <button
+                                        v-else
+                                        v-for="r in craftingSearchResults"
+                                        :key="r.id"
+                                        type="button"
+                                        class="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition flex items-center justify-between gap-4"
+                                        @click="pickCraftingRecipe(r)"
+                                    >
+                                        <div class="min-w-0">
+                                            <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ r.name }}</div>
+                                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">
+                                                {{ r.success_rate || 0 }}% éxito
+                                            </div>
+                                        </div>
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 shrink-0">Añadir</div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                :disabled="!addCpRecipeForm.recipe_id || addCpRecipeForm.processing"
+                                @click="submitAddCpRecipe"
+                            >
+                                Añadir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="(cpRecipes || []).length === 0" class="l2-panel p-10 rounded-3xl border-gray-800 text-center text-gray-600 dark:text-gray-500 font-cinzel text-xl italic opacity-50">
+                    No hay recetas priorizadas todavía.
+                </div>
+
+                <div v-else class="space-y-4">
+                    <div v-for="(entry, idx) in cpRecipes" :key="entry.id" class="l2-panel p-6 rounded-3xl border-gray-800">
+                        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-3">
+                                    <div class="px-3 py-1 rounded-full bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-700 dark:bg-black/30 dark:border-gray-800 dark:text-gray-300">
+                                        Prioridad {{ entry.priority ?? 0 }}
+                                    </div>
+                                    <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
+                                        {{ entry.recipe?.success_rate || 0 }}% éxito
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-lg font-black text-gray-900 dark:text-white truncate">
+                                    {{ entry.recipe?.name || 'Receta' }}
+                                </div>
+                                    <div class="mt-3">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Progreso</div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                                {{ getRecipeProgress(entry.recipe) }}%
+                                            </div>
+                                        </div>
+                                        <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden mt-2">
+                                            <div
+                                                class="h-full bg-emerald-500"
+                                                :style="{ width: `${getRecipeProgress(entry.recipe)}%` }"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                <div v-if="(entry.recipe?.outputs || []).length > 0" class="mt-3">
+                                    <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Resultados</div>
+                                        <div v-if="(entry.recipe.outputs || []).length > 1" class="mt-2">
+                                            <select
+                                                class="w-full px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-sm dark:bg-black/30 dark:border-gray-800 dark:text-gray-200"
+                                                :value="getSelectedOutputItemId(entry.recipe)"
+                                                @change="(e) => setSelectedOutputItemId(entry.recipe.id, Number(e.target.value))"
+                                            >
+                                                <option v-for="out in entry.recipe.outputs" :key="out.item_id" :value="out.item_id">
+                                                    {{ out.name || 'Item' }} x{{ formatNumber(out.quantity || 1) }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        <div
+                                            v-for="out in entry.recipe.outputs"
+                                            :key="out.item_id"
+                                            class="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-xl px-2 py-1.5 dark:bg-gray-900/40 dark:border-gray-800"
+                                        >
+                                            <img v-if="out.image_url" :src="out.image_url" class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                                            <div v-else class="w-7 h-7 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                            <div class="min-w-0">
+                                                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ out.name || 'Item' }}</div>
+                                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">x{{ formatNumber(out.quantity || 1) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else-if="entry.recipe?.output_item" class="mt-3 flex items-center gap-3">
+                                    <img v-if="entry.recipe.output_item.image_url" :src="entry.recipe.output_item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                                    <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                    <div class="min-w-0">
+                                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Resultado</div>
+                                        <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ entry.recipe.output_item.name }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="canManageWarehouse" class="shrink-0">
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="!canCraftRecipe(entry.recipe) || craftingCrafting.has(entry.recipe.id)"
+                                        @click="openCraftConfirm(entry)"
+                                    >
+                                        Craftear
+                                    </button>
+                                    <template v-if="isLeader">
+                                    <button
+                                        class="px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
+                                        :disabled="idx === 0 || moveCpRecipeForm.processing"
+                                        @click="moveCpRecipe(entry.id, 'up')"
+                                    >
+                                        Subir
+                                    </button>
+                                    <button
+                                        class="px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
+                                        :disabled="idx === (cpRecipes || []).length - 1 || moveCpRecipeForm.processing"
+                                        @click="moveCpRecipe(entry.id, 'down')"
+                                    >
+                                        Bajar
+                                    </button>
+                                    <button
+                                        class="px-4 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="removeCpRecipeForm.processing"
+                                        @click="removeCpRecipe(entry.id)"
+                                    >
+                                        Quitar
+                                    </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Materiales</div>
+
+                            <div v-if="(entry.recipe?.materials || []).length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                                No hay materiales registrados para esta receta.
+                            </div>
+
+                            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                                <div
+                                    v-for="mat in entry.recipe.materials"
+                                    :key="mat.item_id"
+                                    class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800"
+                                >
+                                    <img v-if="mat.image_url" :src="mat.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                                    <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ mat.name || 'Material' }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="text-[10px] font-black uppercase tracking-widest" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                                {{ formatNumber(mat.have || 0) }} / {{ formatNumber(mat.need || 0) }}
+                                            </div>
+                                            <div v-if="mat.craftable" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
+                                                crafteable
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Falta</div>
+                                        <div class="text-sm font-cinzel" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                            {{ formatNumber(mat.missing || 0) }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 flex items-center gap-2">
+                                <button
+                                    class="px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
+                                    :disabled="isTreeLoading(entry.recipe.id)"
+                                    @click="toggleRecipeTree(entry)"
+                                >
+                                    {{ isTreeOpen(entry.recipe.id) ? 'Ocultar árbol' : 'Ver árbol' }}
+                                </button>
+                                <div v-if="isTreeLoading(entry.recipe.id)" class="text-[10px] font-black uppercase tracking-widest text-gray-500">Cargando...</div>
+                            </div>
+
+                            <div v-if="isTreeOpen(entry.recipe.id)" class="mt-4">
+                                <div v-if="getTreeData(entry.recipe.id)" class="bg-white/70 border border-gray-200 rounded-2xl p-3 dark:bg-gray-900/40 dark:border-gray-800">
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Árbol de recetas</div>
+                                    <div class="mt-3 space-y-2">
+                                        <div
+                                            v-for="row in flattenTreeWithDepth(getTreeData(entry.recipe.id).nodes)"
+                                            :key="`tree-${row.depth}-${row.item_id}-${row.need}`"
+                                            class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/20 dark:border-gray-800"
+                                            :style="{ marginLeft: `${row.depth * 14}px` }"
+                                        >
+                                            <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                                            <div v-else class="w-8 h-8 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ row.name || 'Item' }}</div>
+                                                    <div v-if="(row.children || []).length > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
+                                                        crafteable
+                                                    </div>
+                                                </div>
+                                                <div class="text-[10px] font-black uppercase tracking-widest" :class="(row.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                                    {{ formatNumber(row.have || 0) }} / {{ formatNumber(row.need || 0) }}
+                                                </div>
+                                            </div>
+                                            <div class="text-right shrink-0">
+                                                <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Falta</div>
+                                                <div class="text-sm font-cinzel" :class="(row.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                                    {{ formatNumber(row.missing || 0) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Materiales base (hojas)</div>
+                                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        <div
+                                            v-for="leaf in flattenTreeLeaves(getTreeData(entry.recipe.id).nodes)"
+                                            :key="`leaf-${leaf.item_id}`"
+                                            class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/20 dark:border-gray-800"
+                                        >
+                                            <img v-if="leaf.image_url" :src="leaf.image_url" class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                                            <div v-else class="w-8 h-8 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ leaf.name || 'Item' }}</div>
+                                                <div class="text-[10px] font-black uppercase tracking-widest" :class="(leaf.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                                    {{ formatNumber(leaf.have || 0) }} / {{ formatNumber(leaf.need || 0) }}
+                                                </div>
+                                            </div>
+                                            <div class="text-right shrink-0">
+                                                <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Falta</div>
+                                                <div class="text-sm font-cinzel" :class="(leaf.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                                    {{ formatNumber(leaf.missing || 0) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="text-sm text-gray-600 dark:text-gray-400 italic">
+                                    No hay árbol para mostrar.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <Modal :show="craftingConfirmOpen" @close="closeCraftConfirm">
+                <div class="p-6">
+                    <div class="text-lg font-black text-gray-900 dark:text-gray-100">
+                        ¿Hubo suerte?
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        Si eliges “Sí”, se añade el crafteado al warehouse. Si eliges “No”, se consumen materiales pero no se añade el resultado.
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            class="px-4 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
+                            @click="confirmCraft(false)"
+                        >
+                            No
+                        </button>
+                        <button
+                            type="button"
+                            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest transition"
+                            @click="confirmCraft(true)"
+                        >
+                            Sí
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <!-- Config Tab (Leader Only) -->
             <div v-if="activeTab === 'config'" class="space-y-6">
                 <div class="l2-panel p-8 rounded-3xl border-gray-800">
                     <div class="mb-8">
-                        <h3 class="font-cinzel text-xl text-white tracking-widest uppercase">Sistema de Puntuación</h3>
-                        <p class="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Define cuántos puntos recibe cada miembro por actividad confirmada.</p>
+                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Sistema de Puntuación</h3>
+                        <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Define cuántos puntos recibe cada miembro por actividad confirmada.</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div v-for="cat in categories" :key="cat.id" class="bg-gray-900/50 p-6 rounded-2xl border border-gray-800 flex items-center group">
+                        <div v-for="cat in categories" :key="cat.id" class="bg-white/70 p-6 rounded-2xl border border-gray-200 flex items-center group dark:bg-gray-900/50 dark:border-gray-800">
                             <div class="text-4xl mr-6">{{ cat.icon }}</div>
                             <div class="flex-1">
-                                <div class="text-sm font-black uppercase tracking-widest text-white">{{ cat.name }}</div>
-                                <p class="text-[10px] text-gray-500 font-bold leading-tight">{{ cat.desc }}</p>
+                                <div class="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white">{{ cat.name }}</div>
+                                <p class="text-[10px] text-gray-600 dark:text-gray-500 font-bold leading-tight">{{ cat.desc }}</p>
                             </div>
                             <div class="flex flex-col items-end gap-2">
-                                <div class="text-[10px] text-gray-600 font-black uppercase tracking-widest">Puntos Actuales</div>
+                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Puntos Actuales</div>
                                 <div class="flex items-center gap-3">
                                     <input 
                                         type="number" 
                                         :value="getDefaultPoints(cat.id)" 
                                         @change="saveConfig(cat.id, $event.target.value)"
-                                        class="w-16 bg-black/50 border-gray-700 text-red-500 font-black text-center py-1 rounded-lg focus:ring-red-600 transition"
+                                        class="w-16 bg-white border border-gray-200 text-purple-700 font-black text-center py-1 rounded-lg focus:ring-purple-600 transition dark:bg-black/50 dark:border-gray-700 dark:text-purple-300"
                                     >
-                                    <div class="text-xs font-bold text-gray-700">PTS</div>
+                                    <div class="text-xs font-bold text-gray-700 dark:text-gray-300">PTS</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-6 bg-red-950/10 border border-red-900/20 rounded-2xl text-xs text-red-400 font-bold italic">
+                <div class="p-6 bg-purple-950/10 border border-purple-500/15 rounded-2xl text-xs text-purple-700 dark:text-purple-200 font-bold italic">
                     💡 Estos puntos serán aplicados automáticamente al aprobar registros de loot marcados con estas categorías. El líder siempre podrá sobrescribirlos manualmente en el momento de la aprobación.
                 </div>
             </div>
         </div>
     </MainLayout>
+    
+    <!-- Assign Modal -->
+    <div v-if="assignModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+        <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Asignar Ítem desde Warehouse</div>
+                <button @click="assignModalOpen = false" class="text-white/50 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden dark:border-gray-700 dark:bg-black/40">
+                        <img v-if="selectedItem?.image_url" :src="selectedItem.image_url" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <div class="text-sm font-black text-gray-900 dark:text-white">{{ selectedItem?.name }}</div>
+                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">En baúl: x{{ selectedItem?.total_amount }}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Miembro</div>
+                        <select v-model="assignForm.user_id" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-200">
+                            <option :value="null" disabled>Selecciona un miembro</option>
+                            <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Cantidad</div>
+                        <input type="number" v-model.number="assignForm.amount" min="1" :max="selectedItem?.total_amount || 1" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-purple-600 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura del Trade (obligatoria)</div>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
+                            <div v-if="!assignForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
+                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                            </div>
+                            <div v-else class="text-purple-300 flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-[10px] text-gray-500 mt-1">{{ assignForm.image_proof.name }}</span>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*" @input="onFileChange" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 pt-0 flex space-x-4">
+                <button @click="assignModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
+                <button @click="submitAssign" :disabled="!assignForm.user_id || !assignForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Asignar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell Modal -->
+    <div v-if="sellModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+        <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-emerald-900 to-green-800 p-4 flex justify-between items-center border-b border-emerald-500/20">
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Vender Ítem desde Warehouse</div>
+                <button @click="sellModalOpen = false" class="text-white/50 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
+                            <img v-if="selectedSellItem?.image_url" :src="selectedSellItem.image_url" class="w-full h-full object-cover">
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ selectedSellItem?.name }}</div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest">En baúl: x{{ selectedSellItem?.total_amount }}</div>
+                        </div>
+                    </div>
+                    <div class="bg-white/70 border border-gray-200 rounded-xl px-4 py-2 text-right dark:bg-black/40 dark:border-gray-700">
+                        <div class="text-[9px] text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest">Total Venta</div>
+                        <div class="text-lg font-cinzel text-emerald-700 dark:text-emerald-300" v-tooltip="formatAdenaFull(sellTotalAdena)">{{ formatAdenaShort(sellTotalAdena) }}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Cantidad</div>
+                        <input type="number" v-model.number="sellForm.amount" min="1" :max="selectedSellItem?.total_amount || 1" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-emerald-500 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Precio / Unidad</div>
+                        <input type="number" v-model.number="sellForm.unit_price" min="1" inputmode="numeric" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-emerald-500 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    </div>
+                </div>
+
+                <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">Destino Adena</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
+                            <input type="radio" value="cp" v-model="sellForm.adena_distribution" class="text-emerald-500">
+                            <div class="min-w-0">
+                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Fondo CP</div>
+                                <div class="text-[10px] text-gray-500">No genera split a miembros.</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
+                            <input type="radio" value="attendees" v-model="sellForm.adena_distribution" class="text-emerald-500">
+                            <div class="min-w-0">
+                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Split</div>
+                                <div class="text-[10px] text-gray-500">Genera Adena a deber por miembro.</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div v-if="sellForm.adena_distribution === 'attendees'" class="mt-4 space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Miembros para split</div>
+                            <div class="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                                {{ sellSplitCount }} • x{{ formatAdenaShort(sellPerMember) }}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                            <label v-for="m in members" :key="m.id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
+                                <input type="checkbox" :value="m.id" v-model="sellForm.recipient_ids" class="text-emerald-500">
+                                <div class="text-sm text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura de la Venta (obligatoria)</div>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
+                            <div v-if="!sellForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-emerald-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
+                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                            </div>
+                            <div v-else class="text-emerald-300 flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-[10px] text-gray-500 mt-1">{{ sellForm.image_proof.name }}</span>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*" @input="sellForm.image_proof = $event.target.files[0]" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 pt-0 flex space-x-4">
+                <button @click="sellModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
+                <button @click="submitSell" :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof || (sellForm.adena_distribution === 'attendees' && (!sellForm.recipient_ids || sellForm.recipient_ids.length === 0))" class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">Registrar Venta</button>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="addStockModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+        <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Añadir Items al Warehouse</div>
+                <button @click="addStockModalOpen = false" class="text-white/50 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                <div class="relative">
+                    <input v-model="stockSearch" type="text" placeholder="Buscar item..." class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 pl-10 h-12 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <button type="button" @click="quickAddAdena" class="absolute right-2 top-2 h-8 px-3 rounded-lg bg-gradient-to-r from-yellow-600 to-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:from-yellow-500 hover:to-amber-400 transition">
+                        Añadir Adena
+                    </button>
+                </div>
+
+                <div v-if="stockIsSearching" class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Buscando...</div>
+
+                <div v-if="stockSearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
+                    <button v-for="item in stockSearchResults" :key="item.id" @click="addStockItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
+                        <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
+                        <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                        <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
+                        <span class="ml-auto text-[10px] text-purple-300 font-bold px-2 py-0.5 bg-purple-950/30 rounded-full">{{ item.grade }}</span>
+                    </button>
+                </div>
+
+                <div v-if="stockForm.items.length > 0" class="space-y-2">
+                    <div v-for="(row, idx) in stockForm.items" :key="row.item_id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/30 dark:border-gray-800">
+                        <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700">
+                        <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate">{{ row.name }}</div>
+                        </div>
+                        <div v-if="isAdenaRow(row)" class="flex items-center gap-2">
+                            <input
+                                v-model="row.amount"
+                                type="number"
+                                min="1"
+                                inputmode="numeric"
+                                class="w-40 h-12 bg-white/80 border border-yellow-400/60 text-yellow-800 rounded-xl text-right pr-3 font-cinzel text-2xl tracking-wide focus:ring-yellow-500 dark:bg-black/60 dark:border-yellow-700/60 dark:text-yellow-300"
+                                @blur="normalizeStockAmount(row)"
+                                @keydown.enter.prevent="normalizeStockAmount(row)"
+                            >
+                            <div class="px-2 py-1 rounded-lg bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm font-black dark:bg-black/40 dark:border-yellow-700/40 dark:text-yellow-300"
+                                 v-tooltip="formatAdenaFull(row.amount)">
+                                {{ formatAdenaShort(row.amount) }}
+                            </div>
+                        </div>
+                        <input v-else v-model="row.amount" type="number" min="1" inputmode="numeric" class="w-24 h-9 bg-white/70 border border-gray-200 text-gray-900 rounded-lg text-center font-black focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100" @blur="normalizeStockAmount(row)" @keydown.enter.prevent="normalizeStockAmount(row)">
+                        <button @click="removeStockItem(idx)" class="text-gray-600 hover:text-red-500">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="stockForm.items.length > 0" class="grid grid-cols-2 gap-3">
+                    <div class="bg-white/70 border border-gray-200 rounded-2xl px-4 py-3 dark:bg-black/40 dark:border-gray-800">
+                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">Líneas</div>
+                        <div class="text-xl font-cinzel text-gray-900 dark:text-white mt-1">{{ stockTotalLines }}</div>
+                    </div>
+                    <div class="bg-white/70 border border-gray-200 rounded-2xl px-4 py-3 text-right dark:bg-black/40 dark:border-gray-800">
+                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">Unidades</div>
+                        <div class="text-xl font-cinzel text-purple-700 dark:text-purple-300 mt-1">{{ stockTotalUnits }}</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura (obligatoria)</div>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
+                            <div v-if="!stockForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
+                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                            </div>
+                            <div v-else class="text-purple-300 flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-[10px] text-gray-500 mt-1">{{ stockForm.image_proof.name }}</span>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*" @input="stockForm.image_proof = $event.target.files[0]" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 pt-0 flex space-x-4">
+                <button @click="addStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
+                <button @click="submitAddStock" :disabled="stockForm.items.length === 0 || !stockForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Guardar</button>
+            </div>
+        </div>
+    </div>
 </template>

@@ -20,7 +20,7 @@ class CpEventConfigController extends Controller
 
         $user = $request->user();
 
-        if (!$user->cp_id || $user->id !== $user->cp->leader_id) {
+        if (! $user->cp_id || $user->id !== $user->cp->leader_id) {
             abort(403, 'Solo el líder de la CP puede configurar puntos.');
         }
 

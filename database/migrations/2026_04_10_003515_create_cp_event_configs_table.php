@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('event_type'); // BOSS, EPIC, SIEGE, FARM
             $table->integer('points')->default(0);
             $table->timestamps();
-            
+
             $table->unique(['cp_id', 'event_type']);
         });
     }

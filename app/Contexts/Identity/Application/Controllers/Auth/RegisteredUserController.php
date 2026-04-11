@@ -2,10 +2,10 @@
 
 namespace App\Contexts\Identity\Application\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
-use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Identity\Domain\Models\Role;
+use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Http\Controllers\Controller;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ class RegisteredUserController extends Controller
     public function create(Request $request): Response
     {
         return Inertia::render('Auth/Register', [
-            'inviteCode' => $request->query('invite')
+            'inviteCode' => $request->query('invite'),
         ]);
     }
 
@@ -41,25 +41,25 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invite_code' => ['required', 'string'],
         ], [
-            'invite_code.required' => 'An invite code is required to register on this system.'
+            'invite_code.required' => 'An invite code is required to register on this system.',
         ]);
 
         $cp = ConstParty::where('invite_code', $request->invite_code)->first();
 
-        if (!$cp) {
+        if (! $cp) {
             throw ValidationException::withMessages([
-                'invite_code' => 'The provided invite code is invalid.'
+                'invite_code' => 'The provided invite code is invalid.',
             ]);
         }
 
         $isLeaderRegistration = is_null($cp->leader_id);
-        
+
         $roleName = $isLeaderRegistration ? 'cp_leader' : 'member';
         $role = Role::where('name', $roleName)->first();
 
-        if (!$role) {
+        if (! $role) {
             throw ValidationException::withMessages([
-                'invite_code' => 'System error: Required role ' . $roleName . ' is missing.'
+                'invite_code' => 'System error: Required role '.$roleName.' is missing.',
             ]);
         }
 
@@ -69,6 +69,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'cp_id' => $cp->id,
             'role_id' => $role->id,
+            'membership_status' => $isLeaderRegistration ? 'approved' : 'pending',
         ]);
 
         // If this was the leader registration, assign the leader

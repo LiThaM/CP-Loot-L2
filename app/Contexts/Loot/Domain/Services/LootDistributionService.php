@@ -11,10 +11,7 @@ class LootDistributionService
     /**
      * Distribute points from a loot report across multiple participants.
      * Each participant receives the FULL points per member defined for the event.
-     * 
-     * @param LootReport $report
-     * @param array $memberIds
-     * @param int $pointsPerMember
+     *
      * @return void
      */
     public function distribute(LootReport $report, array $memberIds, int $pointsPerMember)

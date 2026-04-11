@@ -2,10 +2,11 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Http\Request;
-use Inertia\Middleware;
-
+use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\System\Domain\Models\Translation;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -32,12 +33,35 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         // Obtener traducciones cacheadas o de bd
-        $translations = Translation::pluck('value', 'key')->toArray();
+        try {
+            $translations = Translation::pluck('value', 'key')->toArray();
+        } catch (\Throwable $e) {
+            $translations = [];
+        }
+        $authUser = $request->user();
 
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? clone $request->user()->load('role', 'cp') : null,
+                'user' => $authUser ? clone $authUser->load('role', 'cp') : null,
+            ],
+            'cpMembers' => fn () => $authUser && $authUser->cp_id
+                ? User::where('cp_id', $authUser->cp_id)->orderBy('name')->get(['id', 'name'])
+                : [],
+            'alerts' => fn () => $authUser ? [
+                'unreadCount' => (int) DB::table('audit_alerts')
+                    ->where('recipient_user_id', $authUser->id)
+                    ->whereNull('read_at')
+                    ->count(),
+                'items' => DB::table('audit_alerts')
+                    ->select(['id', 'summary', 'entity_type', 'entity_id', 'action', 'read_at', 'created_at'])
+                    ->where('recipient_user_id', $authUser->id)
+                    ->orderByDesc('created_at')
+                    ->limit(6)
+                    ->get(),
+            ] : [
+                'unreadCount' => 0,
+                'items' => [],
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

@@ -3,19 +3,19 @@
 namespace App\Contexts\Identity\Domain\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
+use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Contexts\Party\Domain\Models\PointsLog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Contexts\Party\Domain\Models\ConstParty;
 
-#[Fillable(['name', 'email', 'password', 'cp_id', 'role_id'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
+
+    protected $fillable = ['name', 'email', 'password', 'cp_id', 'role_id', 'membership_status'];
+
+    protected $hidden = ['password', 'remember_token'];
 
     protected function casts(): array
     {
@@ -37,7 +37,7 @@ class User extends Authenticatable
 
     public function pointsLogs()
     {
-        return $this->hasMany(\App\Contexts\Party\Domain\Models\PointsLog::class);
+        return $this->hasMany(PointsLog::class);
     }
 
     public function getTotalPointsAttribute()

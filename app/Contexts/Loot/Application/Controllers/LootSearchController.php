@@ -16,11 +16,13 @@ class LootSearchController extends Controller
         $user = $request->user();
         $search = $request->input('q');
 
-        if (!$search || strlen($search) < 3) {
+        if (! $search || strlen($search) < 3) {
             return response()->json([]);
         }
 
-        $query = Item::where('name', 'like', "%{$search}%");
+        $query = Item::where('name', 'like', "%{$search}%")
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['%not in use%'])
+            ->whereRaw('LOWER(name) NOT LIKE ?', ['%not use%']);
 
         // Filter by CP Chronicle if the user belongs to one
         if ($user->cp_id && $user->cp) {
@@ -28,7 +30,7 @@ class LootSearchController extends Controller
         }
 
         $items = $query->limit(10)
-            ->get(['id', 'name', 'grade', 'icon_name', 'category', 'chronicle']);
+            ->get(['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle']);
 
         return response()->json($items);
     }

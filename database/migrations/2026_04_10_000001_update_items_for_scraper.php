@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('source', 30)->default('manual')->after('chronicle'); // elmore, masterwork, manual
             $table->string('icon_name')->nullable()->after('image_url');        // value field from API (e.g. weapon_small_sword_i00)
             $table->string('description')->nullable()->after('base_points');
-            
+
             // Unique constraint: same external_id + chronicle = same item
             $table->unique(['external_id', 'chronicle'], 'items_external_chronicle_unique');
             $table->index('chronicle');

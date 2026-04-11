@@ -2,19 +2,19 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Attributes\Description;
-use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('app:fetch-items-command')]
-#[Description('Command description')]
 class FetchItemsCommand extends Command
 {
+    protected $signature = 'app:fetch-items-command';
+
+    protected $description = 'Command description';
+
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        //
+        return self::SUCCESS;
     }
 }

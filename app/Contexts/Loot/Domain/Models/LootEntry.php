@@ -2,8 +2,8 @@
 
 namespace App\Contexts\Loot\Domain\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Contexts\Identity\Domain\Models\User;
+use Illuminate\Database\Eloquent\Model;
 
 class LootEntry extends Model
 {

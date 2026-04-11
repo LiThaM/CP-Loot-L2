@@ -17,7 +17,7 @@ return new class extends Migration
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();
             $table->timestamps();
-            
+
             $table->index(['entity_type', 'entity_id']);
         });
     }

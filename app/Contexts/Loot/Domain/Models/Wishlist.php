@@ -2,8 +2,8 @@
 
 namespace App\Contexts\Loot\Domain\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Contexts\Party\Domain\Models\ConstParty;
+use Illuminate\Database\Eloquent\Model;
 
 class Wishlist extends Model
 {

@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Contexts\Loot\Domain\Models\Item;
+use Illuminate\Console\Command;
 
 class FetchL2Items extends Command
 {
@@ -30,18 +30,18 @@ class FetchL2Items extends Command
 
         // TODO: Implement actual scraping logic using Goutte, Symfony DomCrawler or a Rest API
         // For now, this is just a skeleton.
-        
+
         $this->info('Fetching weapons...');
         $this->info('Fetching armors...');
         $this->info('Fetching jewelry...');
-        
+
         // Example logic
         /*
         $items = [
             ['name' => 'Draconic Bow', 'grade' => 'S', 'category' => 'Weapon'],
             ['name' => 'Imperial Crusader Breastplate', 'grade' => 'S', 'category' => 'Armor']
         ];
-        
+
         foreach ($items as $itemData) {
             Item::updateOrCreate(['name' => $itemData['name']], $itemData);
         }

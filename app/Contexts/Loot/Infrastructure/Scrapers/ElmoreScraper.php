@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Storage;
 class ElmoreScraper
 {
     private Client $client;
+
     private string $apiBase = 'https://resources-service.elmorelab.com/Resources/getItemInfo';
+
     private string $imageBase = 'https://resources.elmorelab.com/images/';
 
     /**
@@ -28,7 +30,7 @@ class ElmoreScraper
     /**
      * Available chronicles on ElmoreLab.
      */
-    public static array $chronicles = ['c4', 'c5', 'IL'];
+    public static array $chronicles = ["c1", "c2", "c3", 'c4', 'c5', 'IL', "hb"];
 
     public function __construct()
     {
@@ -45,7 +47,7 @@ class ElmoreScraper
     /**
      * Fetch a single item from ElmoreLab by ID and chronicle.
      *
-     * @return array|null  Parsed item data or null if item doesn't exist.
+     * @return array|null Parsed item data or null if item doesn't exist.
      */
     public function fetchItem(int $itemId, string $chronicle = 'IL'): ?array
     {
@@ -68,7 +70,7 @@ class ElmoreScraper
             }
 
             $data = json_decode($body, true);
-            if (!$data || empty($data['itemName'])) {
+            if (! $data || empty($data['itemName'])) {
                 return null;
             }
 
@@ -81,17 +83,19 @@ class ElmoreScraper
                 'additional_name' => $data['additionalName'] ?? '',
                 'chronicle' => $chronicle,
                 'source' => 'elmore',
-                'image_url' => $data['value'] ? $this->imageBase . $data['value'] . '.jpg' : null,
+                'image_url' => $data['value'] ? $this->imageBase.$data['value'].'.jpg' : null,
             ];
         } catch (RequestException $e) {
             // 204 responses come as exceptions in some Guzzle configs
             if ($e->hasResponse() && $e->getResponse()->getStatusCode() === 204) {
                 return null;
             }
-            Log::warning("ElmoreScraper: Error fetching item {$itemId} for {$chronicle}: " . $e->getMessage());
+            Log::warning("ElmoreScraper: Error fetching item {$itemId} for {$chronicle}: ".$e->getMessage());
+
             return null;
         } catch (\Exception $e) {
-            Log::error("ElmoreScraper: Unexpected error for item {$itemId}: " . $e->getMessage());
+            Log::error("ElmoreScraper: Unexpected error for item {$itemId}: ".$e->getMessage());
+
             return null;
         }
     }
@@ -99,27 +103,29 @@ class ElmoreScraper
     /**
      * Download item icon to local storage.
      *
-     * @return string|null  Local path relative to storage/app/public, or null on failure.
+     * @return string|null Local path relative to storage/app/public, or null on failure.
      */
-    public function downloadIcon(string $iconName): ?string
+    public function downloadIcon(string $iconName, int $itemId, string $chronicle = 'IL'): ?string
     {
-        $filename = "items/{$iconName}.jpg";
-        $storagePath = "public/{$filename}";
+        $safeChronicle = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $chronicle) ?: 'IL';
+        $safeIconName = preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $iconName);
+        $filename = "items/{$safeChronicle}/{$itemId}-{$safeIconName}.jpg";
 
         // Skip if already downloaded
-        if (Storage::exists($storagePath)) {
-            return "storage/{$filename}";
+        if (Storage::disk('public')->exists($filename)) {
+            return "/storage/{$filename}";
         }
 
         try {
-            $response = $this->client->get($this->imageBase . $iconName . '.jpg');
-            
+            $response = $this->client->get($this->imageBase.$iconName.'.jpg');
+
             if ($response->getStatusCode() === 200) {
-                Storage::put($storagePath, $response->getBody()->getContents());
-                return "storage/{$filename}";
+                Storage::disk('public')->put($filename, $response->getBody()->getContents());
+
+                return "/storage/{$filename}";
             }
         } catch (\Exception $e) {
-            Log::warning("ElmoreScraper: Could not download icon {$iconName}: " . $e->getMessage());
+            Log::warning("ElmoreScraper: Could not download icon {$iconName}: ".$e->getMessage());
         }
 
         return null;

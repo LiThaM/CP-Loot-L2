@@ -2,8 +2,8 @@
 
 namespace App\Contexts\System\Application\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Contexts\System\Domain\Models\Translation;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 

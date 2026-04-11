@@ -2,8 +2,8 @@
 
 namespace App\Contexts\Party\Application\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -37,7 +37,7 @@ class ConstPartyController extends Controller
         return back()->with('success', [
             'message' => 'Const Party creada exitosamente.',
             'link' => $magicLink,
-            'cp_name' => $cp->name
+            'cp_name' => $cp->name,
         ]);
     }
 }
