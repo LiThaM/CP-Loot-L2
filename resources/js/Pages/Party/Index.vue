@@ -452,15 +452,6 @@ const assignForm = useForm({
     image_proof: null,
 });
 
-const showToast = (message, tone = 'success') => {
-    emitter.emit('toast', {
-        tone,
-        title: tone === 'error' ? 'Error' : 'Hecho',
-        message,
-        kind: 'action'
-    });
-};
-
 const openAssign = (item) => {
     selectedItem.value = item;
     assignForm.item_id = item.id;

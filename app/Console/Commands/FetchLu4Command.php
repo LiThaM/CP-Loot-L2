@@ -4,11 +4,10 @@ namespace App\Console\Commands;
 
 use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\Recipe;
-use App\Contexts\Loot\Domain\Models\RecipeMaterial;
-use App\Contexts\Loot\Domain\Models\RecipeOutput;
 use App\Contexts\Loot\Infrastructure\Scrapers\Lu4RecipeScraper;
 use App\Contexts\Loot\Infrastructure\Scrapers\Lu4Scraper;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 
 class FetchLu4Command extends Command
 {
@@ -44,6 +43,7 @@ class FetchLu4Command extends Command
         $skipped = 0;
         $notFound = 0;
         $consecutiveNotFound = 0;
+        $recipeIds = [];
 
         for ($id = $start; $id <= $end; $id++) {
             if ($maxConsecutiveNotFound > 0 && $consecutiveNotFound >= $maxConsecutiveNotFound) {
@@ -129,116 +129,8 @@ class FetchLu4Command extends Command
                 if ($item->category !== 'Recipe') {
                     $item->update(['category' => 'Recipe']);
                 }
-
-                $outputItem = null;
-                $outputExternalId = (int) ($recipeData['output_external_id'] ?? 0);
-                if ($outputExternalId > 0) {
-                    $outName = $recipeData['output_name'] ?? null;
-                    $outIcon = $recipeData['output_icon_name'] ?? null;
-                    $outImg = $recipeData['output_image_url'] ?? null;
-                    $outLocal = $download ? $scraper->downloadIconFromUrl($outImg, $outputExternalId) : null;
-                    $outStoredImg = $outLocal ?: $outImg;
-
-                    $outputItem = Item::updateOrCreate(
-                        ['external_id' => $outputExternalId, 'chronicle' => 'LU4'],
-                        array_filter([
-                            'name' => $outName,
-                            'source' => 'lu4',
-                            'icon_name' => $outIcon,
-                            'image_url' => $outStoredImg,
-                        ], fn ($v) => $v !== null && $v !== '')
-                    );
-                }
-
-                $recipe = Recipe::updateOrCreate(
-                    ['external_id' => $id, 'chronicle' => 'LU4'],
-                    [
-                        'name' => $recipeData['name'] ?? $item->name,
-                        'output_item_id' => $outputItem?->id,
-                        'output_quantity' => 1,
-                        'success_rate' => (float) ($recipeData['success_rate'] ?? 0),
-                        'mp_cost' => (int) ($recipeData['mp_cost'] ?? 0),
-                        'adena_fee' => (int) ($recipeData['adena_fee'] ?? 0),
-                        'icon_name' => $recipeData['icon_name'] ?? null,
-                        'image_url' => $item->image_url,
-                        'scraper_url' => $recipeData['scraper_url'] ?? null,
-                    ]
-                );
-
-                $outputItemIds = [];
-                foreach (($recipeData['outputs'] ?? []) as $out) {
-                    $outExternalId = (int) ($out['external_id'] ?? 0);
-                    if ($outExternalId <= 0) {
-                        continue;
-                    }
-
-                    $outLocal = $download ? $scraper->downloadIconFromUrl($out['image_url'] ?? null, $outExternalId) : null;
-                    $outStoredImg = $outLocal ?: ($out['image_url'] ?? null);
-
-                    $outItem = Item::updateOrCreate(
-                        ['external_id' => $outExternalId, 'chronicle' => 'LU4'],
-                        array_filter([
-                            'name' => $out['name'] ?? null,
-                            'source' => 'lu4',
-                            'icon_name' => $out['icon_name'] ?? null,
-                            'image_url' => $outStoredImg,
-                        ], fn ($v) => $v !== null && $v !== '')
-                    );
-
-                    $outputItemIds[] = $outItem->id;
-                    RecipeOutput::updateOrCreate(
-                        ['recipe_id' => $recipe->id, 'item_id' => $outItem->id],
-                        [
-                            'quantity' => max(1, (int) ($out['quantity'] ?? 1)),
-                            'chance' => isset($out['chance']) ? $out['chance'] : null,
-                        ]
-                    );
-                }
-
-                if (count($outputItemIds) > 0) {
-                    RecipeOutput::where('recipe_id', $recipe->id)
-                        ->whereNotIn('item_id', $outputItemIds)
-                        ->delete();
-                }
-
-                $materialItemIds = [];
-                foreach (($recipeData['materials'] ?? []) as $mat) {
-                    $matExternalId = (int) ($mat['external_id'] ?? 0);
-                    if ($matExternalId <= 0) {
-                        continue;
-                    }
-
-                    $matLocal = $download ? $scraper->downloadIconFromUrl($mat['image_url'] ?? null, $matExternalId) : null;
-                    $matStoredImg = $matLocal ?: ($mat['image_url'] ?? null);
-
-                    $matItem = Item::updateOrCreate(
-                        ['external_id' => $matExternalId, 'chronicle' => 'LU4'],
-                        array_filter([
-                            'name' => $mat['name'] ?? null,
-                            'category' => 'Material',
-                            'source' => 'lu4',
-                            'icon_name' => $mat['icon_name'] ?? null,
-                            'image_url' => $matStoredImg,
-                        ], fn ($v) => $v !== null && $v !== '')
-                    );
-
-                    $materialItemIds[] = $matItem->id;
-                    RecipeMaterial::updateOrCreate(
-                        ['recipe_id' => $recipe->id, 'item_id' => $matItem->id],
-                        ['quantity' => max(1, (int) ($mat['quantity'] ?? 1))]
-                    );
-                }
-
-                if (count($materialItemIds) > 0) {
-                    RecipeMaterial::where('recipe_id', $recipe->id)
-                        ->whereNotIn('item_id', $materialItemIds)
-                        ->delete();
-                }
-
+                $recipeIds[] = $id;
                 $recipesImported++;
-                if ($print) {
-                    $this->line('Recipe: yes');
-                }
             }
 
             $imported++;
@@ -250,7 +142,21 @@ class FetchLu4Command extends Command
 
         $bar->finish();
         $this->newLine(2);
-        $this->info("Imported: {$imported} | Recipes: {$recipesImported} | Skipped: {$skipped} | Not found: {$notFound}");
+        $this->info("Imported: {$imported} | Recipes detected: {$recipesImported} | Skipped: {$skipped} | Not found: {$notFound}");
+
+        $recipeIds = array_values(array_unique($recipeIds));
+        if (count($recipeIds) > 0) {
+            $this->newLine();
+            $this->info('Importando recetas detectadas (recipes:fetch-lu4)...');
+            Artisan::call('recipes:fetch-lu4', array_filter([
+                '--ids' => implode(',', $recipeIds),
+                '--skip-existing' => $skip ? true : null,
+                '--throttle-ms' => $throttleMs,
+                '--print' => $print ? true : null,
+                '--no-download-icons' => $download ? null : true,
+            ], fn ($v) => $v !== null));
+            $this->output->write(Artisan::output());
+        }
 
         return self::SUCCESS;
     }
