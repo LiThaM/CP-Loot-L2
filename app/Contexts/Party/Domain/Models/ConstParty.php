@@ -18,6 +18,11 @@ class ConstParty extends Model
 
     public function members()
     {
+        return $this->hasMany(User::class, 'cp_id')->where('membership_status', '!=', 'banned');
+    }
+
+    public function allMembers()
+    {
         return $this->hasMany(User::class, 'cp_id');
     }
 

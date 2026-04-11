@@ -166,6 +166,7 @@ class LootController extends Controller
             ->get();
 
         $members = User::where('cp_id', $user->cp_id)
+            ->where('membership_status', '!=', 'banned')
             ->orderBy('name')
             ->get(['id', 'name']);
 

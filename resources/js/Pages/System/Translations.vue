@@ -2,6 +2,7 @@
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { ref } from 'vue';
+import { confirmAction } from '@/utils/swal';
 
 const props = defineProps({
     translations: Array,
@@ -43,8 +44,8 @@ const saveEdit = (translation) => {
     });
 };
 
-const deleteTranslation = (translation) => {
-    if (confirm('¿Estás seguro de eliminar esta traducción?')) {
+const deleteTranslation = async (translation) => {
+    if (await confirmAction('¿Eliminar traducción?', '¿Estás seguro de eliminar esta traducción?', 'Eliminar', 'Cancelar')) {
         form.delete(route('system.translations.destroy', translation.id));
     }
 };

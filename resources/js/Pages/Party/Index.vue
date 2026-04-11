@@ -6,6 +6,7 @@ import { ref, computed, watch } from 'vue';
 import { throttle } from 'lodash';
 import axios from 'axios';
 import emitter from '@/event-bus';
+import { confirmAction, showToast, showAlert } from '@/utils/swal';
 
 const props = defineProps({
     has_cp: Boolean,
@@ -561,7 +562,9 @@ watch(() => sellForm.adena_distribution, async (val, oldVal) => {
 const copyInviteLink = () => {
     const link = `${window.location.origin}/register?invite=${props.cp.invite_code}`;
     navigator.clipboard.writeText(link).then(() => {
-        alert('¡Enlace de invitación copiado al portapapeles!');
+        showToast('¡Enlace de invitación copiado al portapapeles!');
+    }).catch(() => {
+        showAlert('Error', 'No se pudo copiar el enlace. Cópialo manualmente.', 'error');
     });
 };
 
@@ -777,9 +780,10 @@ watch(stockSearch, throttle(async (val) => {
                                 </div>
                                 <div class="ml-4 min-w-0 flex-1">
                                     <div class="flex items-center gap-2 min-w-0">
-                                        <span class="font-black uppercase tracking-tight text-gray-900 dark:text-white truncate">{{ member.name }}</span>
+                                        <span class="font-black uppercase tracking-tight text-gray-900 dark:text-white truncate" :class="{ 'line-through text-gray-400 dark:text-gray-600': member.membership_status === 'banned' }">{{ member.name }}</span>
                                         <span v-if="member.id === cp.leader_id" class="text-[8px] bg-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">Leader</span>
                                         <span v-if="member.membership_status === 'pending'" class="text-[8px] bg-yellow-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-gray-900">Pendiente</span>
+                                        <span v-if="member.membership_status === 'banned'" class="text-[8px] bg-red-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">Excluido/Retirado</span>
                                     </div>
                                     <div class="flex items-center mt-1">
                                         <div class="h-1.5 flex-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden mr-3">

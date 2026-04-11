@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
             $translations = [];
         }
         $authUser = $request->user();
+        $isBanned = $authUser && (($authUser->membership_status ?? 'approved') === 'banned');
 
         return [
             ...parent::share($request),
@@ -46,14 +47,14 @@ class HandleInertiaRequests extends Middleware
                 'user' => $authUser ? clone $authUser->load('role', 'cp') : null,
             ],
             'cpMembers' => fn () => $authUser && $authUser->cp_id
-                ? User::where('cp_id', $authUser->cp_id)->orderBy('name')->get(['id', 'name'])
+                ? ($isBanned ? [] : User::where('cp_id', $authUser->cp_id)->where('membership_status', '!=', 'banned')->orderBy('name')->get(['id', 'name']))
                 : [],
             'alerts' => fn () => $authUser ? [
-                'unreadCount' => (int) DB::table('audit_alerts')
+                'unreadCount' => $isBanned ? 0 : (int) DB::table('audit_alerts')
                     ->where('recipient_user_id', $authUser->id)
                     ->whereNull('read_at')
                     ->count(),
-                'items' => DB::table('audit_alerts')
+                'items' => $isBanned ? [] : DB::table('audit_alerts')
                     ->select(['id', 'summary', 'entity_type', 'entity_id', 'action', 'read_at', 'created_at'])
                     ->where('recipient_user_id', $authUser->id)
                     ->orderByDesc('created_at')

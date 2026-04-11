@@ -4,6 +4,7 @@ namespace App\Contexts\Loot\Domain\Services;
 
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Party\Domain\Models\PointsLog;
+use App\Contexts\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class LootDistributionService
@@ -20,8 +21,19 @@ class LootDistributionService
             return;
         }
 
-        DB::transaction(function () use ($report, $memberIds, $pointsPerMember) {
-            foreach ($memberIds as $memberId) {
+        // Filter out banned members
+        $validMemberIds = User::where('cp_id', $report->cp_id)
+            ->where('membership_status', '!=', 'banned')
+            ->whereIn('id', $memberIds)
+            ->pluck('id')
+            ->all();
+
+        if (empty($validMemberIds)) {
+            return;
+        }
+
+        DB::transaction(function () use ($report, $validMemberIds, $pointsPerMember) {
+            foreach ($validMemberIds as $memberId) {
                 PointsLog::create([
                     'cp_id' => $report->cp_id,
                     'user_id' => $memberId,
@@ -34,7 +46,7 @@ class LootDistributionService
             // Update report with final distribution details
             $report->update([
                 'status' => 'confirmed',
-                'recipient_ids' => $memberIds,
+                'recipient_ids' => $validMemberIds,
                 'points_per_member' => $pointsPerMember,
             ]);
         });

@@ -290,4 +290,66 @@ class UserManagementController extends Controller
             'audits' => $audits,
         ]);
     }
+
+    public function banMember(Request $request, User $user)
+    {
+        $currentUser = $request->user();
+        $isAdmin = $currentUser->role->name === 'admin';
+        $isFounder = $currentUser->cp_id && $currentUser->cp && $currentUser->id === $currentUser->cp->leader_id;
+        $isCoLeader = ! $isFounder && $currentUser->role->name === 'cp_leader';
+
+        if (! $isAdmin && ! $isFounder && ! $isCoLeader) {
+            abort(403, 'No tienes permiso para gestionar usuarios.');
+        }
+
+        if (! $isAdmin && $user->cp_id !== $currentUser->cp_id) {
+            abort(403, 'No puedes gestionar usuarios ajenos a tu CP.');
+        }
+
+        if ((int) $currentUser->id === (int) $user->id) {
+            return back()->with('error', 'No puedes banearte a ti mismo.');
+        }
+
+        $user->update(['membership_status' => 'banned']);
+
+        AuditLog::create([
+            'entity_type' => 'User',
+            'entity_id' => $user->id,
+            'user_id' => $currentUser->id,
+            'action' => 'USER_BANNED',
+            'old_values' => ['membership_status' => 'approved'],
+            'new_values' => ['membership_status' => 'banned'],
+        ]);
+
+        return back()->with('success', 'Miembro excluido/retirado correctamente.');
+    }
+
+    public function unbanMember(Request $request, User $user)
+    {
+        $currentUser = $request->user();
+        $isAdmin = $currentUser->role->name === 'admin';
+        $isFounder = $currentUser->cp_id && $currentUser->cp && $currentUser->id === $currentUser->cp->leader_id;
+        $isCoLeader = ! $isFounder && $currentUser->role->name === 'cp_leader';
+
+        if (! $isAdmin && ! $isFounder && ! $isCoLeader) {
+            abort(403, 'No tienes permiso para gestionar usuarios.');
+        }
+
+        if (! $isAdmin && $user->cp_id !== $currentUser->cp_id) {
+            abort(403, 'No puedes gestionar usuarios ajenos a tu CP.');
+        }
+
+        $user->update(['membership_status' => 'approved']);
+
+        AuditLog::create([
+            'entity_type' => 'User',
+            'entity_id' => $user->id,
+            'user_id' => $currentUser->id,
+            'action' => 'USER_UNBANNED',
+            'old_values' => ['membership_status' => 'banned'],
+            'new_values' => ['membership_status' => 'approved'],
+        ]);
+
+        return back()->with('success', 'Miembro reactivado correctamente.');
+    }
 }

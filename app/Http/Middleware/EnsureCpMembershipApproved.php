@@ -15,24 +15,41 @@ class EnsureCpMembershipApproved
             return $next($request);
         }
 
-        if (($user->membership_status ?? 'approved') !== 'pending') {
+        $status = $user->membership_status ?? 'approved';
+
+        if ($status === 'pending') {
+            $message = 'Tu cuenta está pendiente de aprobación por el líder del CP.';
+            $allowedRouteNames = [
+                'dashboard',
+                'profile.edit',
+                'profile.update',
+                'profile.destroy',
+                'logout',
+                'itemsdb.index',
+                'verification.notice',
+                'verification.verify',
+                'verification.send',
+                'password.confirm',
+                'password.update',
+            ];
+            $redirectRouteName = 'dashboard';
+        } elseif ($status === 'banned') {
+            $message = 'Tu cuenta ha sido excluida del CP.';
+            $allowedRouteNames = [
+                'excluded',
+                'logout',
+                'verification.notice',
+                'verification.verify',
+                'verification.send',
+                'password.confirm',
+                'password.update',
+            ];
+            $redirectRouteName = 'excluded';
+        } else {
             return $next($request);
         }
 
         $routeName = $request->route()?->getName();
-        $allowedRouteNames = [
-            'dashboard',
-            'profile.edit',
-            'profile.update',
-            'profile.destroy',
-            'logout',
-            'itemsdb.index',
-            'verification.notice',
-            'verification.verify',
-            'verification.send',
-            'password.confirm',
-            'password.update',
-        ];
 
         if ($routeName && in_array($routeName, $allowedRouteNames, true)) {
             return $next($request);
@@ -40,12 +57,12 @@ class EnsureCpMembershipApproved
 
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
-                'message' => 'Tu cuenta está pendiente de aprobación por el líder del CP.',
+                'message' => $message,
             ], 403);
         }
 
         return redirect()
-            ->route('dashboard')
-            ->with('error', 'Tu cuenta está pendiente de aprobación por el líder del CP.');
+            ->route($redirectRouteName)
+            ->with('error', $message);
     }
 }

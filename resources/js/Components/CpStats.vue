@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs';
 import emitter from '../event-bus';
+import { showToast, showAlert } from '@/utils/swal';
 import {
   Chart as ChartJS,
   Title,
@@ -50,16 +51,31 @@ const currentCp = computed(() => props.selectedCp || currentUser.value.cp);
 
 const copyInviteLink = () => {
     if (!currentCp.value?.invite_code) {
-        alert('No hay un código de invitación disponible.');
+        showAlert('Error', 'No hay un código de invitación disponible.', 'error');
         return;
     }
     const link = `${window.location.origin}/register?invite=${currentCp.value.invite_code}`;
-    navigator.clipboard.writeText(link).then(() => {
-        alert('¡Enlace de invitación copiado al portapapeles!');
-    }).catch(err => {
-        console.error('Error al copiar:', err);
-        alert('No se pudo copiar el enlace automáticamente. Por favor, cópialo manualmente.');
-    });
+    
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link).then(() => {
+            showToast('¡Enlace de invitación copiado al portapapeles!');
+        }).catch(() => {
+            showAlert('Atención', 'No se pudo copiar el enlace automáticamente. Por favor, cópialo manualmente.', 'warning');
+        });
+    } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = link;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast('¡Enlace de invitación copiado al portapapeles!');
+        } catch (err) {
+            showAlert('Atención', 'No se pudo copiar el enlace automáticamente. Por favor, cópialo manualmente.', 'warning');
+        }
+        document.body.removeChild(textArea);
+    }
 };
 
 const openLootModal = () => {
@@ -225,15 +241,15 @@ const ringDash = (percent) => {
                         Sin miembros para mostrar
                     </div>
                     <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        <div v-for="m in partyMembers.slice(0, 12)" :key="m.id" class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white/70 hover:bg-white dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/30 transition">
-                            <div class="relative w-11 h-11 rounded-full bg-gradient-to-tr from-purple-600/40 to-blue-600/40 border border-purple-500/30 flex items-center justify-center text-xs font-black tracking-widest text-white">
+                        <div v-for="m in partyMembers.slice(0, 12)" :key="m.id" class="flex items-center gap-3 p-3 rounded-lg border transition" :class="m.membership_status === 'banned' ? 'border-red-500/30 bg-red-500/5 hover:bg-red-500/10' : 'border-gray-200 bg-white/70 hover:bg-white dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/30'">
+                            <div class="relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-black tracking-widest text-white border" :class="m.membership_status === 'banned' ? 'bg-gradient-to-tr from-red-600/40 to-orange-600/40 border-red-500/30' : 'bg-gradient-to-tr from-purple-600/40 to-blue-600/40 border-purple-500/30'">
                                 {{ initialsFromName(m.name) }}
-                                <div class="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border bg-white text-gray-900 border-gray-200 dark:bg-black/70 dark:text-gray-200 dark:border-white/10">
-                                    Idle
+                                <div class="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border" :class="m.membership_status === 'banned' ? 'bg-red-600 text-white border-red-500' : 'bg-white text-gray-900 border-gray-200 dark:bg-black/70 dark:text-gray-200 dark:border-white/10'">
+                                    {{ m.membership_status === 'banned' ? 'Excluido' : 'Idle' }}
                                 </div>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
+                                <div class="text-[11px] font-black text-gray-900 dark:text-white truncate" :class="{'line-through text-red-500 dark:text-red-400': m.membership_status === 'banned'}">{{ m.name }}</div>
                                 <div class="text-[9px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-500 truncate">{{ m.role?.name || 'member' }}</div>
                                 <div class="mt-2 space-y-1">
                                     <div class="h-1.5 rounded-full bg-black/5 dark:bg-white/5 overflow-hidden">

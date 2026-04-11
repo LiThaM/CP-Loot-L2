@@ -24,8 +24,8 @@ class DatabaseSeeder extends Seeder
         if ($adminRole && ! User::where('email', 'admin@l2.com')->exists()) {
             User::create([
                 'name' => 'Super Admin',
-                'email' => 'admin@l2.com',
-                'password' => bcrypt('password'),
+                'email' => 'alejandrocastronantes@gmail.com',
+                'password' => bcrypt('iChip2021'),
                 'role_id' => $adminRole->id,
             ]);
         }

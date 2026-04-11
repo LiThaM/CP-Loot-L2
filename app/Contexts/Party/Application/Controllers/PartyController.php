@@ -228,6 +228,8 @@ class PartyController extends Controller
         return back()->with('success', 'Miembro aprobado.');
     }
 
+
+
     public function myWarehouse(Request $request)
     {
         $user = $request->user();
@@ -700,11 +702,15 @@ class PartyController extends Controller
         $ids = [];
         if ($report && is_array($report->recipient_ids) && count($report->recipient_ids) > 0) {
             $ids = User::where('cp_id', $cpId)
+                ->where('membership_status', '!=', 'banned')
                 ->whereIn('id', $report->recipient_ids)
                 ->pluck('id')
                 ->all();
         } else {
-            $ids = User::where('cp_id', $cpId)->pluck('id')->all();
+            $ids = User::where('cp_id', $cpId)
+                ->where('membership_status', '!=', 'banned')
+                ->pluck('id')
+                ->all();
         }
 
         return response()->json([

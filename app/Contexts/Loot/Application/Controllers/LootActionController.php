@@ -44,6 +44,7 @@ class LootActionController extends Controller
             $recipientIds = null;
             if (is_array($request->recipient_ids) && count($request->recipient_ids) > 0) {
                 $recipientIds = User::where('cp_id', $user->cp_id)
+                    ->where('membership_status', '!=', 'banned')
                     ->whereIn('id', $request->recipient_ids)
                     ->pluck('id')
                     ->all();

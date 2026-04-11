@@ -46,10 +46,26 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::get('/excluded', function (Request $request) {
+        $user = $request->user();
+        $cp = $user?->cp;
+        $leader = $cp?->leader;
+
+        return Inertia::render('Excluded', [
+            'cpName' => $cp?->name,
+            'leader' => $leader ? [
+                'name' => $leader->name,
+                'email' => $leader->email,
+            ] : null,
+        ]);
+    })->name('excluded');
+
     // Phase 3 & 4 Routes
     Route::get('/party', [PartyController::class, 'index'])->name('party.index');
     Route::get('/warehouse-cp', [PartyController::class, 'index'])->name('party.warehouse_cp')->defaults('tab', 'warehouse_cp');
     Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
+    Route::patch('/system/users/{user}/ban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'banMember'])->name('system.users.ban');
+    Route::patch('/system/users/{user}/unban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'unbanMember'])->name('system.users.unban');
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/admin/cp', [ConstPartyController::class, 'store'])->name('admin.cp.store');
@@ -66,7 +82,7 @@ Route::middleware('auth')->group(function () {
 
         $stats = [
             'total_cps' => 1,
-            'total_members' => User::where('cp_id', $cpId)->count(),
+            'total_members' => User::where('cp_id', $cpId)->where('membership_status', '!=', 'banned')->count(),
             'total_reports' => LootReport::where('cp_id', $cpId)->count(),
             'pending_reports' => LootReport::where('cp_id', $cpId)->where('status', 'pending')->count(),
             'total_points_cp' => PointsLog::where('cp_id', $cpId)->sum('points'),

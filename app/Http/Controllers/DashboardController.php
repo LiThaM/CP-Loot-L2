@@ -34,7 +34,7 @@ class DashboardController extends Controller
 
         if ($role === 'admin') {
             $stats['total_cps'] = ConstParty::count();
-            $stats['total_members'] = User::count();
+            $stats['total_members'] = User::where('membership_status', '!=', 'banned')->count();
             $stats['total_reports'] = LootReport::where('status', 'confirmed')->count();
             $stats['total_items'] = Item::count();
             $stats['total_points_global'] = PointsLog::sum('points');
@@ -62,7 +62,9 @@ class DashboardController extends Controller
         } else {
             // Member/Leader quick stats
             $stats['total_members'] = User::where('cp_id', $user->cp_id)
+                ->where('membership_status', '!=', 'banned')
                 ->count();
+
 
             $stats['total_reports'] = LootReport::where('cp_id', $user->cp_id)->count();
             $stats['pending_reports'] = LootReport::where('cp_id', $user->cp_id)
@@ -185,7 +187,7 @@ class DashboardController extends Controller
 
             $members = User::query()
                 ->where('cp_id', $user->cp_id)
-                ->select(['id', 'name', 'role_id', 'cp_id'])
+                ->select(['id', 'name', 'role_id', 'cp_id', 'membership_status'])
                 ->with(['role:id,name'])
                 ->orderBy('name')
                 ->get();

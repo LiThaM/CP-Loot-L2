@@ -3,6 +3,7 @@ import MainLayout from '@/Layouts/MainLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
+import { confirmAction } from '@/utils/swal';
 
 const props = defineProps({
     has_cp: Boolean,
@@ -87,8 +88,8 @@ const submitResolve = () => {
     });
 };
 
-const rejectReport = (report) => {
-    if (confirm('¿Estás seguro de rechazar este reporte de sesión? El reporte quedará guardado como RECHAZADO para el historial.')) {
+const rejectReport = async (report) => {
+    if (await confirmAction('¿Rechazar reporte?', '¿Estás seguro de rechazar este reporte de sesión? El reporte quedará guardado como RECHAZADO para el historial.', 'Rechazar', 'Cancelar')) {
         router.post(route('loot.report.resolve', { report: report.id }), {
             status: 'rejected'
         });

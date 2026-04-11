@@ -53,6 +53,8 @@ const editForm = useForm({
     cp_id: '',
 });
 
+import { confirmAction } from '@/utils/swal';
+
 const openEditModal = (user) => {
     selectedUser.value = user;
     editForm.role_id = user.role_id;
@@ -66,9 +68,21 @@ const submitEdit = () => {
     });
 };
 
-const deleteUser = (user) => {
-    if (confirm(`¿Estás seguro de eliminar a ${user.name}? Se perderán todos sus registros.`)) {
+const deleteUser = async (user) => {
+    if (await confirmAction('¿Eliminar usuario?', `¿Estás seguro de eliminar a ${user.name}? Se perderán todos sus registros.`, 'Eliminar', 'Cancelar')) {
         router.delete(route('system.users.destroy', user.id));
+    }
+};
+
+const banUser = async (user) => {
+    if (await confirmAction('¿Excluir/Banear usuario?', `¿Estás seguro de excluir/banear a ${user.name}? No aparecerá en los listados de loot ni conteos.`, 'Excluir', 'Cancelar')) {
+        router.patch(route('system.users.ban', user.id));
+    }
+};
+
+const unbanUser = async (user) => {
+    if (await confirmAction('¿Reactivar usuario?', `¿Estás seguro de reactivar a ${user.name}?`, 'Reactivar', 'Cancelar')) {
+        router.patch(route('system.users.unban', user.id));
     }
 };
 
@@ -220,15 +234,18 @@ const toggleUserLogs = async (user) => {
                     </thead>
                     <tbody class="divide-y divide-gray-200/70 dark:divide-gray-800/50">
                         <template v-for="user in filteredUsers" :key="user.id">
-                            <tr class="hover:bg-purple-500/5 dark:hover:bg-purple-950/10 transition group cursor-pointer" @click="toggleUserLogs(user)">
+                            <tr class="transition group cursor-pointer" :class="user.membership_status === 'banned' ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-purple-500/5 dark:hover:bg-purple-950/10'" @click="toggleUserLogs(user)">
                                 <td class="p-5">
                                 <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-xs font-black mr-3 border border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-black mr-3 border" :class="user.membership_status === 'banned' ? 'bg-red-100 border-red-200 text-red-800 dark:bg-red-900 dark:border-red-800 dark:text-white' : 'bg-gray-100 border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-white'">
                                         {{ user.name.charAt(0) }}
                                     </div>
                                     <div>
-                                        <div class="text-sm font-black text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300 transition">{{ user.name }}</div>
-                                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold">{{ user.email }}</div>
+                                        <div class="text-sm font-black transition" :class="user.membership_status === 'banned' ? 'text-red-600 dark:text-red-400 line-through' : 'text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300'">{{ user.name }}</div>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold">{{ user.email }}</div>
+                                            <span v-if="user.membership_status === 'banned'" class="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-100 text-red-700 border border-red-200 rounded-md dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">Excluido</span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -269,6 +286,22 @@ const toggleUserLogs = async (user) => {
                                             title="Eliminar Usuario"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
+                                        </button>
+                                        <button
+                                            v-if="user.membership_status === 'banned'"
+                                            @click.stop="unbanUser(user)"
+                                            class="p-2 bg-gray-100 hover:bg-green-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                                            title="Reactivar Usuario"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        </button>
+                                        <button
+                                            v-else
+                                            @click.stop="banUser(user)"
+                                            class="p-2 bg-gray-100 hover:bg-red-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                                            title="Excluir/Banear Usuario"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                                         </button>
                                     </template>
                                 </div>
