@@ -32,7 +32,7 @@ const submit = () => {
 
     <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-200" style="font-family: 'Inter', sans-serif;">
         <div class="mb-8 text-center">
-            <h1 class="text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400" style="font-family: 'Cinzel', serif;">L2 LOOT MANAGER</h1>
+            <h1 class="text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400" style="font-family: 'Cinzel', serif;">AdenaLedger</h1>
             <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm uppercase tracking-wider">Identificarse</p>
         </div>
 

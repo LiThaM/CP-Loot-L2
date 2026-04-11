@@ -749,7 +749,7 @@ watch(stockSearch, throttle(async (val) => {
                 <!-- Tabs -->
                 <div class="flex border-t border-gray-200 mt-8 pt-4 gap-8 dark:border-gray-800">
                     <button @click="activeTab = 'members'" :class="activeTab === 'members' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Miembros</button>
-                    <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Warehouse CP</button>
+                    <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">CP Vault</button>
                     <button @click="activeTab = 'crafting'" :class="activeTab === 'crafting' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Crafting</button>
                     <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Ajustes de Puntos</button>
                 </div>
@@ -940,7 +940,7 @@ watch(stockSearch, throttle(async (val) => {
                 <div class="l2-panel p-6 rounded-3xl border-gray-800">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Warehouse CP</h3>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">CP Vault</h3>
                             <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Items confirmados de la CP</p>
                         </div>
                         <button v-if="canManageWarehouse" @click="openAddStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest transition">
@@ -1013,7 +1013,7 @@ watch(stockSearch, throttle(async (val) => {
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Crafting</h3>
-                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Recetas priorizadas por el líder y materiales faltantes según el Warehouse CP</p>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Recetas priorizadas por el líder y materiales faltantes según el CP Vault</p>
                         </div>
 
                         <div v-if="isLeader" class="flex flex-col sm:flex-row gap-3 sm:items-center">

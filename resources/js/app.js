@@ -9,7 +9,7 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import translationPlugin from './Plugins/translation';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'AdenaLedger';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

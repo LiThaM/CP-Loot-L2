@@ -21,6 +21,33 @@ const userMenuOpen = ref(false);
 const toast = ref({ open: false, tone: 'success', title: '', message: '', kind: 'action' });
 let toastTimer = null;
 
+const showSupportModal = ref(false);
+const showCpRequestModal = ref(false);
+const showDonationModal = ref(false);
+
+const donationWallet = '0x0D5cf74c1487a0B3867930E884daa44f5019a40E';
+
+const copyDonationWallet = async () => {
+    await navigator.clipboard.writeText(donationWallet);
+    showToast({ tone: 'success', title: 'Donaciones', message: 'Cartera copiada al portapapeles.' });
+};
+
+const supportForm = useForm({
+    subject: '',
+    message: '',
+    email: '',
+    name: '',
+});
+
+const cpRequestForm = useForm({
+    cp_name: '',
+    server: '',
+    chronicle: 'IL',
+    leader_name: '',
+    contact_email: '',
+    message: '',
+});
+
 const normalizeFlashMessage = (val, fallback) => {
     if (!val) return null;
     if (typeof val === 'string') return val;
@@ -39,6 +66,34 @@ const showToast = ({ tone = 'success', title = '', message = '', kind = 'action'
     toastTimer = window.setTimeout(() => {
         toast.value = { ...toast.value, open: false };
     }, 3200);
+};
+
+const submitSupport = () => {
+    supportForm.post(route('support.contact'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showSupportModal.value = false;
+            supportForm.reset();
+            showToast({ tone: 'success', title: 'Soporte', message: 'Mensaje enviado a soporte.' });
+        },
+        onError: () => {
+            showToast({ tone: 'error', title: 'Soporte', message: 'Revisa los campos e inténtalo de nuevo.' });
+        },
+    });
+};
+
+const submitCpRequest = () => {
+    cpRequestForm.post(route('cp.requests.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCpRequestModal.value = false;
+            cpRequestForm.reset();
+            showToast({ tone: 'success', title: 'Solicitud CP', message: 'Solicitud enviada. Te contactaremos con el link de invitación.' });
+        },
+        onError: () => {
+            showToast({ tone: 'error', title: 'Solicitud CP', message: 'Revisa los campos e inténtalo de nuevo.' });
+        },
+    });
 };
 
 // Loot Session Modal Logic
@@ -283,7 +338,7 @@ watch(() => alerts.value.items, (items) => {
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <Link href="/">
-                            <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 tracking-wider font-cinzel">L2 CP MANAGER</span>
+                            <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 tracking-wider font-cinzel">AdenaLedger</span>
                         </Link>
                     </div>
                     
@@ -297,7 +352,7 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">Inici</Link>
                             <Link :href="route('loot.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('loot.index')}">Loot</Link>
                             <Link :href="route('party.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.index')}">Party</Link>
-                            <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">Warehouse CP</Link>
+                            <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">CP Vault</Link>
                             <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">Warehouse</Link>
                             <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">ITEMS DB</Link>
                             <Link v-if="canAuditCp" :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">Miembros</Link>
@@ -361,6 +416,191 @@ watch(() => alerts.value.items, (items) => {
         <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <slot />
         </main>
+
+        <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 lg:pb-10">
+            <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50 backdrop-blur p-6 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <div class="min-w-0">
+                    <div class="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">
+                        © {{ new Date().getFullYear() }} AdenaLedger
+                    </div>
+                    <div class="mt-1 text-[11px] text-gray-600 dark:text-gray-500 tracking-wide">
+                        100% gratuito. Si te ayuda, se aceptan donaciones para cerveza. Soporte: <a class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" href="mailto:support@adenaledger.com">support@adenaledger.com</a>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-900 hover:bg-purple-50 transition dark:bg-gray-900/60 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800/80"
+                        @click="showCpRequestModal = true"
+                    >
+                        Solicitar alta CP
+                    </button>
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-900 hover:bg-purple-50 transition dark:bg-gray-900/60 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800/80"
+                        @click="showSupportModal = true"
+                    >
+                        Soporte
+                    </button>
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl bg-gray-900 text-white font-black tracking-widest uppercase shadow-lg border border-purple-900/35 hover:border-purple-400/60 transition text-[10px] dark:bg-black/50"
+                        @click="showDonationModal = true"
+                    >
+                        Donaciones
+                    </button>
+                </div>
+            </div>
+        </footer>
+
+        <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
+                <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">Soporte</h3>
+                    <button @click="showSupportModal = false" class="text-white/50 hover:text-white transition" type="button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                    <div v-if="Object.keys(supportForm.errors).length > 0" class="p-4 bg-red-950/20 border border-red-900/50 rounded-xl">
+                        <ul class="list-disc list-inside text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                            <li v-for="(error, field) in supportForm.errors" :key="field">{{ error }}</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Asunto</label>
+                        <input v-model="supportForm.subject" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Mensaje</label>
+                        <textarea v-model="supportForm.message" rows="5" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Tu email (opcional)</label>
+                            <input v-model="supportForm.email" type="email" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Tu nombre (opcional)</label>
+                            <input v-model="supportForm.name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex gap-3">
+                        <button @click="showSupportModal = false" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition" type="button">
+                            Cerrar
+                        </button>
+                        <button @click="submitSupport" :disabled="supportForm.processing" class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale" type="button">
+                            Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showCpRequestModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
+                <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">Solicitud de Alta CP</h3>
+                    <button @click="showCpRequestModal = false" class="text-white/50 hover:text-white transition" type="button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                    <div v-if="Object.keys(cpRequestForm.errors).length > 0" class="p-4 bg-red-950/20 border border-red-900/50 rounded-xl">
+                        <ul class="list-disc list-inside text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                            <li v-for="(error, field) in cpRequestForm.errors" :key="field">{{ error }}</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Nombre de la CP</label>
+                        <input v-model="cpRequestForm.cp_name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Servidor (opcional)</label>
+                            <input v-model="cpRequestForm.server" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Crónica</label>
+                            <select v-model="cpRequestForm.chronicle" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                                <option value="C1">C1</option>
+                                <option value="C2">C2</option>
+                                <option value="C3">C3</option>
+                                <option value="C4">C4</option>
+                                <option value="C5">C5</option>
+                                <option value="IL">IL</option>
+                                <option value="HB">HB</option>
+                                <option value="Classic">Classic</option>
+                                <option value="LU4">LU4</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Líder (opcional)</label>
+                            <input v-model="cpRequestForm.leader_name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Email de contacto (opcional)</label>
+                            <input v-model="cpRequestForm.contact_email" type="email" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Mensaje (opcional)</label>
+                        <textarea v-model="cpRequestForm.message" rows="4" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"></textarea>
+                    </div>
+
+                    <div class="pt-2 flex gap-3">
+                        <button @click="showCpRequestModal = false" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition" type="button">
+                            Cerrar
+                        </button>
+                        <button @click="submitCpRequest" :disabled="cpRequestForm.processing" class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale" type="button">
+                            Enviar solicitud
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showDonationModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <div class="l2-panel w-full max-w-lg rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
+                <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">Donaciones</h3>
+                    <button @click="showDonationModal = false" class="text-white/50 hover:text-white transition" type="button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div class="text-sm text-gray-700 dark:text-gray-300">
+                        AdenaLedger es 100% gratuito. Si te ayuda, se aceptan donaciones para cerveza.
+                    </div>
+
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/40 p-4">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                            Cartera
+                        </div>
+                        <div class="mt-2 font-mono text-xs break-all text-gray-900 dark:text-gray-100">
+                            {{ donationWallet }}
+                        </div>
+                        <div class="mt-4 flex gap-3">
+                            <button type="button" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition" @click="showDonationModal = false">
+                                Cerrar
+                            </button>
+                            <button type="button" class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-purple-950/50" @click="copyDonationWallet">
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Mobile/Main Navigation (Lineage 2 Style) -->
         <div class="fixed bottom-0 w-full bg-white/90 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 flex justify-around p-2 z-50 shadow-2xl lg:hidden">

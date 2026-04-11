@@ -11,12 +11,12 @@ class TranslationSeeder extends Seeder
     {
         $translations = [
             // Welcome Page
-            ['key' => 'welcome.title', 'value' => 'L2 LOOT MANAGER'],
-            ['key' => 'welcome.subtitle', 'value' => 'Domina. Divide. Conquista.'],
-            ['key' => 'welcome.stats.items', 'value' => '+10K'],
-            ['key' => 'welcome.stats.items_label', 'value' => 'Items L2 DB'],
+            ['key' => 'welcome.title', 'value' => 'AdenaLedger'],
+            ['key' => 'welcome.subtitle', 'value' => 'Loot, Adena y Warehouse con transparencia total.'],
+            ['key' => 'welcome.stats.items', 'value' => 'LU4'],
+            ['key' => 'welcome.stats.items_label', 'value' => 'Base de datos de items'],
             ['key' => 'welcome.stats.transparency', 'value' => '100%'],
-            ['key' => 'welcome.stats.transparency_label', 'value' => 'Transparencia'],
+            ['key' => 'welcome.stats.transparency_label', 'value' => 'Trazabilidad'],
             ['key' => 'welcome.btn.dashboard', 'value' => 'Ir al Dashboard'],
             ['key' => 'welcome.btn.login', 'value' => 'Identificarse'],
             ['key' => 'welcome.btn.register', 'value' => 'Tengo Invitación'],

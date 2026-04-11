@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import { Line } from 'vue-chartjs';
+import { confirmAction, showToast as swalToast } from '../utils/swal';
 import {
   Chart as ChartJS,
   Title,
@@ -28,7 +29,8 @@ ChartJS.register(
 const props = defineProps({
     stats: Object,
     cps: Array,
-    chartData: Object
+    chartData: Object,
+    cpRequests: Array,
 });
 
 const themeIsDark = ref(false);
@@ -76,16 +78,18 @@ const chartOptions = computed(() => ({
 
 const getChronicleColor = (chronicle) => {
     const map = {
+        'C1': 'text-sky-700 dark:text-sky-400',
+        'C2': 'text-sky-700 dark:text-sky-400',
+        'C3': 'text-sky-700 dark:text-sky-400',
         'IL': 'text-purple-700 dark:text-purple-400',
-        'Interlude': 'text-purple-700 dark:text-purple-400',
         'C4': 'text-blue-700 dark:text-blue-400',
         'C5': 'text-orange-700 dark:text-orange-400',
+        'HB': 'text-emerald-700 dark:text-emerald-400',
+        'LU4': 'text-fuchsia-700 dark:text-fuchsia-400',
         'Classic': 'text-gray-700 dark:text-gray-400',
     };
     return map[chronicle] || 'text-gray-700 dark:text-gray-500';
 };
-
-import { useForm } from '@inertiajs/vue3';
 
 const showCreateModal = ref(false);
 const cpForm = useForm({
@@ -99,6 +103,22 @@ const submitCp = () => {
         onSuccess: () => {
             // Success logic is handled by flash in template
         }
+    });
+};
+
+const approveRequest = async (req) => {
+    const ok = await confirmAction('Aprobar solicitud', `Crear CP "${req.cp_name}" y generar link de invitación?`, 'Crear CP', 'Cancelar');
+    if (!ok) return;
+    router.post(route('admin.cp-requests.approve', req.id), {}, {
+        onSuccess: () => swalToast('CP creada desde solicitud', 'success'),
+    });
+};
+
+const rejectRequest = async (req) => {
+    const ok = await confirmAction('Rechazar solicitud', `Rechazar solicitud de "${req.cp_name}"?`, 'Rechazar', 'Cancelar');
+    if (!ok) return;
+    router.post(route('admin.cp-requests.reject', req.id), {}, {
+        onSuccess: () => swalToast('Solicitud rechazada', 'success'),
     });
 };
 </script>
@@ -152,10 +172,54 @@ const submitCp = () => {
             </div>
 
             <div class="flex flex-col gap-6">
+                <div v-if="$page.props.flash.success && $page.props.flash.success.link" class="p-4 bg-green-500/10 border border-green-500/30 rounded-2xl text-center space-y-2">
+                    <div class="text-[11px] text-green-500 font-black uppercase tracking-widest">Link de invitación</div>
+                    <input @click="$event.target.select()" :value="$page.props.flash.success.link" readonly class="w-full bg-white border-gray-200 text-[10px] text-gray-900 rounded-lg p-2 text-center dark:bg-black/50 dark:border-gray-700 dark:text-gray-300" />
+                </div>
+
                 <!-- Create CP Trigger -->
                 <button @click="showCreateModal = true" class="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs text-white shadow-lg shadow-purple-950/20 hover:scale-[1.02] active:scale-95 transition-all">
                     + Crear Nueva CP
                 </button>
+
+                <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col">
+                    <div class="mb-4 flex items-end justify-between gap-4">
+                        <div>
+                            <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">Solicitudes Alta CP</h3>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Entrada directa (sin invitación previa)</p>
+                        </div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ (cpRequests || []).length }}</div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                        <div v-if="!(cpRequests || []).length" class="text-xs text-gray-500">No hay solicitudes pendientes.</div>
+                        <div v-for="req in (cpRequests || [])" :key="req.id" class="p-4 bg-white/70 border border-gray-200 rounded-2xl dark:bg-gray-900/50 dark:border-gray-800">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white truncate">{{ req.cp_name }}</div>
+                                    <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                        <span v-if="req.server">{{ req.server }}</span>
+                                        <span v-if="req.server && req.chronicle"> · </span>
+                                        <span v-if="req.chronicle" :class="getChronicleColor(req.chronicle)">{{ req.chronicle }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click="rejectRequest(req)" class="px-3 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition dark:bg-gray-800 dark:hover:bg-gray-700">
+                                        Rechazar
+                                    </button>
+                                    <button @click="approveRequest(req)" class="px-3 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-purple-500 hover:to-blue-500 transition shadow-lg shadow-purple-950/20">
+                                        Crear CP
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="req.leader_name || req.contact_email" class="mt-3 text-[10px] text-gray-500">
+                                <span v-if="req.leader_name" class="font-bold">{{ req.leader_name }}</span>
+                                <span v-if="req.leader_name && req.contact_email"> · </span>
+                                <a v-if="req.contact_email" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${req.contact_email}`">{{ req.contact_email }}</a>
+                            </div>
+                            <div v-if="req.message" class="mt-3 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-line">{{ req.message }}</div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- CP List -->
                 <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col">
@@ -210,9 +274,14 @@ const submitCp = () => {
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Crónica</label>
                             <select v-model="cpForm.chronicle" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-400">
+                                <option value="C1">Chronicle 1 (C1)</option>
+                                <option value="C2">Chronicle 2 (C2)</option>
+                                <option value="C3">Chronicle 3 (C3)</option>
                                 <option value="C4">Chronicle 4 (C4)</option>
                                 <option value="C5">Chronicle 5 (C5)</option>
                                 <option value="IL">Interlude (IL)</option>
+                                <option value="HB">Hellbound (HB)</option>
+                                <option value="LU4">LU4</option>
                                 <option value="Classic">Classic</option>
                             </select>
                         </div>

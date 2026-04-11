@@ -279,7 +279,7 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
 
                     <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Warehouse CP</span>
+                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">CP Vault</span>
                             <span class="font-black text-gray-900 dark:text-white" v-tooltip="formatAdenaFull(stats.warehouse_adena || 0)">{{ formatAdenaShort(stats.warehouse_adena || 0) }}</span>
                         </div>
                         <div class="flex items-center justify-between text-xs">

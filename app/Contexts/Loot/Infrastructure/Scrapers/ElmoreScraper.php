@@ -38,7 +38,7 @@ class ElmoreScraper
             'timeout' => 10,
             'connect_timeout' => 5,
             'headers' => [
-                'User-Agent' => 'L2-CP-Loot-Manager/1.0',
+                'User-Agent' => 'AdenaLedger/1.0',
                 'Accept' => 'application/json',
             ],
         ]);

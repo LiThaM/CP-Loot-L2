@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "adenaledger/adenaledger",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "AdenaLedger - loot, adena, and warehouse ledger for Lineage II CPs.",
+    "keywords": ["laravel", "inertia", "vue", "lineage2", "loot", "adena", "ledger", "cp"],
     "license": "MIT",
     "require": {
         "php": "^8.3",

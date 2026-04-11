@@ -7,6 +7,7 @@ use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Contexts\Party\Domain\Models\CpRequest;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class DashboardController extends Controller
         $chartData = null;
         $members = [];
         $cpInsights = null;
+        $cpRequests = [];
 
         if ($role === 'admin') {
             $stats['total_cps'] = ConstParty::count();
@@ -59,6 +61,22 @@ class DashboardController extends Controller
                     ],
                 ],
             ];
+
+            $cpRequests = CpRequest::query()
+                ->where('status', 'pending')
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get([
+                    'id',
+                    'cp_name',
+                    'server',
+                    'chronicle',
+                    'leader_name',
+                    'contact_email',
+                    'message',
+                    'status',
+                    'created_at',
+                ]);
         } else {
             // Member/Leader quick stats
             $stats['total_members'] = User::where('cp_id', $user->cp_id)
@@ -321,6 +339,7 @@ class DashboardController extends Controller
             'chartData' => $chartData,
             'members' => $members,
             'cpInsights' => $cpInsights,
+            'cpRequests' => $cpRequests,
         ]);
     }
 }

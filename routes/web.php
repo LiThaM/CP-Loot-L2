@@ -15,10 +15,19 @@ Route::get('/', function () {
 });
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SupportController;
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::post('/support/contact', [SupportController::class, 'contact'])
+    ->middleware('throttle:10,1')
+    ->name('support.contact');
+
+Route::post('/cp-requests', [SupportController::class, 'cpRequest'])
+    ->middleware('throttle:6,1')
+    ->name('cp.requests.store');
 
 use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Loot\Application\Controllers\AdenaActionController;
@@ -69,6 +78,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/admin/cp', [ConstPartyController::class, 'store'])->name('admin.cp.store');
+    Route::post('/admin/cp-requests/{cpRequest}/approve', [SupportController::class, 'approveCpRequest'])->name('admin.cp-requests.approve');
+    Route::post('/admin/cp-requests/{cpRequest}/reject', [SupportController::class, 'rejectCpRequest'])->name('admin.cp-requests.reject');
 
     // System Translations (Admin Only)
     Route::get('/system/translations', [TranslationController::class, 'index'])->name('system.translations.index');
