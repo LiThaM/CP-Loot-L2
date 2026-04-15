@@ -1,7 +1,7 @@
 <script setup>
 import MainLayout from '@/Layouts/MainLayout.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
-import { Head, useForm, router, usePage } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
 import { confirmAction } from '@/utils/swal';
@@ -322,6 +322,16 @@ const getReportAdenaSplit = (report) => {
         return { mode, total, perMember, remainderToCp, recipients };
     }
     return { mode: 'cp', total, perMember: 0, remainderToCp: total, recipients };
+};
+
+const getReportAdenaPerMember = (report) => {
+    const split = getReportAdenaSplit(report);
+    return split && split.mode === 'attendees' ? split.perMember : 0;
+};
+
+const getReportAdenaRemainderToCp = (report) => {
+    const split = getReportAdenaSplit(report);
+    return split && split.mode === 'attendees' ? split.remainderToCp : 0;
 };
 
 const filteredPendingLoot = computed(() => {
@@ -649,7 +659,10 @@ onMounted(async () => {
                                 <div v-if="!report.recipients || report.recipients.length === 0" class="text-xs text-gray-600 italic">{{ $t('loot.no_attendees') }}</div>
                                 <div v-else v-for="u in report.recipients" :key="u.id" class="flex items-center justify-between bg-white/70 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-800 rounded-xl p-2">
                                     <span class="text-xs font-bold text-gray-900 dark:text-gray-200 truncate">{{ u.name }}</span>
-                                    <span v-if="reportHasPoints(report)" class="text-xs font-black text-emerald-700 dark:text-green-500">{{ report.points_per_member || 0 }} {{ $t('loot.pts') }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span v-if="reportHasPoints(report)" class="text-xs font-black text-emerald-700 dark:text-green-500">{{ report.points_per_member || 0 }} {{ $t('loot.pts') }}</span>
+                                        <span v-if="getReportAdenaPerMember(report) > 0" class="text-xs font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(getReportAdenaPerMember(report)) }}</span>
+                                    </div>
                                 </div>
                                 <div v-if="getReportAdenaSplit(report) && getReportAdenaSplit(report).mode === 'attendees'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
                                     <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
@@ -659,14 +672,8 @@ onMounted(async () => {
                                         {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(getReportAdenaSplit(report).total) }}</span>
                                         • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(getReportAdenaSplit(report).perMember) }}</span>
                                     </div>
-                                    <div class="mt-2 space-y-1">
-                                        <div v-for="u in getReportAdenaSplit(report).recipients" :key="`adena-${report.id}-${u.id}`" class="flex items-center justify-between text-xs">
-                                            <span class="text-gray-800 dark:text-gray-200 font-bold truncate">{{ u.name }}</span>
-                                            <span class="font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(getReportAdenaSplit(report).perMember) }}</span>
-                                        </div>
-                                    </div>
                                     <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                                        {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(getReportAdenaSplit(report).remainderToCp) }) }}
+                                        {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(getReportAdenaRemainderToCp(report)) }) }}
                                     </div>
                                 </div>
                                 <div v-else-if="getReportAdenaSplit(report) && getReportAdenaSplit(report).mode === 'cp'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
@@ -793,6 +800,12 @@ onMounted(async () => {
                                     {{ resolveForm.recipient_ids.includes(member.id) ? '✓' : '+' }}
                                 </div>
                                 <span class="text-xs font-bold uppercase tracking-tight truncate">{{ member.name }}</span>
+                                <span
+                                    v-if="resolveAdenaSplitPreview && resolveAdenaSplitPreview.mode === 'attendees' && resolveForm.recipient_ids.includes(member.id) && resolveAdenaSplitPreview.perMember > 0"
+                                    class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-300"
+                                >
+                                    +{{ formatAdenaShort(resolveAdenaSplitPreview.perMember) }}
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -815,12 +828,6 @@ onMounted(async () => {
                             <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
                                 {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(resolveAdenaSplitPreview.total) }}</span>
                                 • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(resolveAdenaSplitPreview.perMember) }}</span>
-                            </div>
-                            <div class="mt-2 space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                                <div v-for="m in resolveSelectedMembers" :key="`resolve-adena-${m.id}`" class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</span>
-                                    <span class="font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(resolveAdenaSplitPreview.perMember) }}</span>
-                                </div>
                             </div>
                             <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
                                 {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(resolveAdenaSplitPreview.remainderToCp) }) }}

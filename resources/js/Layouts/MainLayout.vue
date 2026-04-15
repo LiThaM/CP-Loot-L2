@@ -865,6 +865,12 @@ watch(() => alerts.value.items, (items) => {
                                     {{ lootForm.recipient_ids.includes(member.id) ? '✓' : '+' }}
                                 </div>
                                 <span class="text-xs font-bold uppercase tracking-tight truncate">{{ member.name }}</span>
+                                <span
+                                    v-if="lootAdenaSplitPreview && lootAdenaSplitPreview.mode === 'attendees' && lootForm.recipient_ids.includes(member.id) && lootAdenaSplitPreview.perMember > 0"
+                                    class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300"
+                                >
+                                    +{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -887,12 +893,6 @@ watch(() => alerts.value.items, (items) => {
                             <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
                                 {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(lootAdenaSplitPreview.total) }}</span>
                                 • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}</span>
-                            </div>
-                            <div class="mt-2 space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                                <div v-for="m in lootSelectedMembers" :key="`loot-adena-${m.id}`" class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</span>
-                                    <span class="font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}</span>
-                                </div>
                             </div>
                             <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
                                 {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(lootAdenaSplitPreview.remainderToCp) }) }}
