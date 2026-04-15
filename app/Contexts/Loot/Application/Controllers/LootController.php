@@ -32,14 +32,38 @@ class LootController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Load History (Recent Confirmed/Rejected Reports)
-        $history = LootReport::with(['entries.item', 'requestedBy'])
+        $historySearch = trim((string) $request->query('history_search', ''));
+        $historySort = strtolower((string) $request->query('history_sort', 'newest'));
+        $historyPerPage = max(5, min(50, (int) $request->query('history_per_page', 10)));
+        $historyPage = max(1, (int) $request->query('history_page', 1));
+        $historyDir = $historySort === 'oldest' ? 'asc' : 'desc';
+
+        $historyQuery = LootReport::with(['entries.item', 'requestedBy'])
             ->where('cp_id', $user->cp_id)
-            ->whereIn('status', ['confirmed', 'rejected'])
-            ->orderBy('updated_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($report) {
+            ->whereIn('status', ['confirmed', 'rejected']);
+
+        if ($historySearch !== '') {
+            $numericId = ctype_digit($historySearch) ? (int) $historySearch : null;
+            $historyQuery->where(function ($q) use ($historySearch, $numericId) {
+                if ($numericId) {
+                    $q->orWhere('loot_reports.id', $numericId);
+                }
+                $q->orWhereHas('requestedBy', function ($q2) use ($historySearch) {
+                    $q2->where('name', 'like', '%'.$historySearch.'%');
+                });
+                $q->orWhereHas('entries.item', function ($q3) use ($historySearch) {
+                    $q3->where('items.name', 'like', '%'.$historySearch.'%');
+                });
+            });
+        }
+
+        // Load History (Confirmed/Rejected Reports) with pagination
+        $historyPaginator = $historyQuery
+            ->orderBy('updated_at', $historyDir)
+            ->paginate($historyPerPage, ['*'], 'history_page', $historyPage);
+
+        $historyPaginator->setCollection(
+            $historyPaginator->getCollection()->map(function ($report) {
                 $ids = is_array($report->recipient_ids) ? $report->recipient_ids : [];
                 $report->recipients = $ids ? User::whereIn('id', $ids)->get(['id', 'name']) : collect();
 
@@ -83,10 +107,13 @@ class LootController extends Controller
                 }
 
                 return $report;
-            });
+            })
+        );
+
+        $history = $historyPaginator->items();
 
         $focusReportId = (int) $request->query('report', 0);
-        if ($focusReportId > 0 && ! $history->contains(fn ($r) => $r->id === $focusReportId)) {
+        if ($focusReportId > 0 && ! collect($history)->contains(fn ($r) => (int) $r->id === $focusReportId)) {
             $focusReport = LootReport::with(['entries.item', 'requestedBy'])
                 ->where('cp_id', $user->cp_id)
                 ->whereIn('status', ['confirmed', 'rejected'])
@@ -136,7 +163,7 @@ class LootController extends Controller
                     }
                 }
 
-                $history = collect([$focusReport])->concat($history)->values();
+                $history = collect([$focusReport])->concat(collect($history))->unique('id')->values()->all();
             }
         }
 
@@ -156,6 +183,12 @@ class LootController extends Controller
             'has_cp' => true,
             'pendingLoot' => $pendingLoot,
             'history' => $history,
+            'historyPagination' => [
+                'page' => $historyPaginator->currentPage(),
+                'per_page' => $historyPaginator->perPage(),
+                'total' => $historyPaginator->total(),
+                'has_more' => $historyPaginator->hasMorePages(),
+            ],
             'wishlist' => $wishlist,
             'members' => $members,
             'eventConfigs' => $eventConfigs,

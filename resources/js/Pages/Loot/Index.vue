@@ -19,6 +19,7 @@ const props = defineProps({
     has_cp: Boolean,
     pendingLoot: Array,
     history: Array,
+    historyPagination: Object,
     wishlist: Array,
     members: Array,
     eventConfigs: Array,
@@ -30,6 +31,69 @@ const vaultSearch = ref('');
 const vaultCategory = ref('all');
 const vaultSort = ref('newest');
 const visibleEntriesByReportId = ref({});
+const historyItems = ref(Array.isArray(props.history) ? props.history : []);
+const historyPagination = ref(props.historyPagination || {
+    page: 1,
+    per_page: 10,
+    total: historyItems.value.length,
+    has_more: false,
+});
+const isLoadingMoreHistory = ref(false);
+
+const mergeUniqueById = (rows) => {
+    const seen = new Set();
+    const out = [];
+    for (const r of rows || []) {
+        const id = r?.id;
+        if (id == null) continue;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push(r);
+    }
+    return out;
+};
+
+const loadMoreHistoryLabel = computed(() => (isLoadingMoreHistory.value ? t('common.loading') : t('common.load_more')));
+
+const fetchHistoryPage = (pageNum, { append = false } = {}) => {
+    if (!props.has_cp) return;
+    isLoadingMoreHistory.value = true;
+
+    const currentParams = new URLSearchParams(window.location.search || '');
+    const reportParam = currentParams.get('report');
+
+    router.get(route('loot.index'), {
+        ...(reportParam ? { report: reportParam } : {}),
+        history_page: pageNum,
+        history_per_page: historyPagination.value?.per_page || 10,
+        history_search: vaultSearch.value || '',
+        history_sort: vaultSort.value || 'newest',
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['history', 'historyPagination'],
+        replace: !append,
+        onSuccess: () => {
+            const newRows = Array.isArray(page.props.history) ? page.props.history : [];
+            const newPag = page.props.historyPagination || {};
+            historyPagination.value = {
+                ...historyPagination.value,
+                ...newPag,
+            };
+            historyItems.value = append ? mergeUniqueById([...historyItems.value, ...newRows]) : newRows;
+        },
+        onFinish: () => {
+            isLoadingMoreHistory.value = false;
+        },
+    });
+};
+
+const loadMoreHistory = () => {
+    if (isLoadingMoreHistory.value) return;
+    if (!historyPagination.value?.has_more) return;
+    const next = Number(historyPagination.value?.page || 1) + 1;
+    fetchHistoryPage(next, { append: true });
+};
 
 const getVisibleLimit = (reportId, baseLimit) => {
     const key = String(reportId);
@@ -91,6 +155,11 @@ watch(() => resolveForm.event_type, (type) => {
 
 watch([vaultSearch, vaultCategory, vaultSort, activeTab], () => {
     visibleEntriesByReportId.value = {};
+});
+
+watch([vaultSearch, vaultSort, activeTab], () => {
+    if (activeTab.value !== 'history') return;
+    fetchHistoryPage(1, { append: false });
 });
 
 const openResolveModal = (report) => {
@@ -343,8 +412,8 @@ const filteredPendingLoot = computed(() => {
 });
 
 const filteredHistory = computed(() => {
-    const sorted = sortReports(props.history || []);
-    const searchLower = vaultSearch.value.toLowerCase().trim();
+    const sorted = sortReports(historyItems.value || []);
+    const searchLower = '';
     const selectedCategory = vaultCategory.value;
     if (!searchLower && selectedCategory === 'all') return sorted;
     return sorted.filter((report) => getReportFilteredEntries(report).length > 0);
@@ -692,6 +761,16 @@ onMounted(async () => {
                         </div>
                     </div>
                 </div>
+
+                <LoadMoreSection
+                    v-if="historyPagination?.has_more"
+                    :show-remaining="false"
+                    :remaining-count="0"
+                    :remaining-label="$t('common.more')"
+                    :can-load-more="historyPagination?.has_more && !isLoadingMoreHistory"
+                    :load-more-label="loadMoreHistoryLabel"
+                    @load-more="loadMoreHistory"
+                />
             </div>
 
             <!-- Wishlist Tab -->
