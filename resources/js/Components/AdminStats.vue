@@ -31,6 +31,7 @@ const props = defineProps({
     cps: Array,
     chartData: Object,
     cpRequests: Array,
+    supportTickets: Array,
 });
 
 const page = usePage();
@@ -242,6 +243,32 @@ const rejectRequest = async (req) => {
                                 <a v-if="req.contact_email" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${req.contact_email}`">{{ req.contact_email }}</a>
                             </div>
                             <div v-if="req.message" class="mt-3 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-line">{{ req.message }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Support Tickets -->
+                <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col">
+                    <div class="mb-4 flex items-end justify-between gap-4">
+                        <div>
+                            <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">Soporte</h3>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Tickets Abiertos</p>
+                        </div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ (supportTickets || []).length }}</div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                        <div v-if="!(supportTickets || []).length" class="text-xs text-gray-500">Ningún ticket nuevo.</div>
+                        <div v-for="tck in (supportTickets || [])" :key="tck.id" class="p-4 bg-white/70 border border-red-500/30 rounded-2xl dark:bg-gray-900/50 dark:border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+                            <div class="min-w-0">
+                                <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white truncate">{{ tck.subject }}</div>
+                                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                    <span v-if="tck.name">{{ tck.name }}</span>
+                                    <span v-if="tck.name && tck.email"> · </span>
+                                    <a v-if="tck.email" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${tck.email}`">{{ tck.email }}</a>
+                                </div>
+                            </div>
+                            <div v-if="tck.message" class="mt-3 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-line">{{ tck.message }}</div>
+                            <div class="mt-2 text-[9px] text-gray-400 uppercase tracking-widest text-right">{{ new Date(tck.created_at).toLocaleDateString() }}</div>
                         </div>
                     </div>
                 </div>

@@ -8,6 +8,8 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import translationPlugin from './Plugins/translation';
+import Particles from "vue3-particles";
+import { MotionPlugin } from '@vueuse/motion';
 
 const appName = import.meta.env.VITE_APP_NAME || 'AdenaLedger';
 
@@ -24,6 +26,8 @@ createInertiaApp({
             .use(ZiggyVue)
             .use(FloatingVue)
             .use(translationPlugin)
+            .use(Particles)
+            .use(MotionPlugin)
             .mount(el);
     },
     progress: {

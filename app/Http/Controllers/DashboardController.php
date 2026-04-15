@@ -33,6 +33,7 @@ class DashboardController extends Controller
         $members = [];
         $cpInsights = null;
         $cpRequests = [];
+        $supportTickets = [];
 
         if ($role === 'admin') {
             $stats['total_cps'] = ConstParty::count();
@@ -61,6 +62,11 @@ class DashboardController extends Controller
                     ],
                 ],
             ];
+
+            $supportTickets = \App\Models\SupportTicket::query()
+                ->where('status', 'open')
+                ->orderByDesc('created_at')
+                ->get();
 
             $cpRequests = CpRequest::query()
                 ->where('status', 'pending')
@@ -340,6 +346,7 @@ class DashboardController extends Controller
             'members' => $members,
             'cpInsights' => $cpInsights,
             'cpRequests' => $cpRequests,
+            'supportTickets' => $supportTickets,
         ]);
     }
 }

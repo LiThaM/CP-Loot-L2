@@ -3,6 +3,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { computed, ref } from 'vue';
 import Swal from 'sweetalert2';
+import { loadFull } from "tsparticles";
 
 defineProps({
     canLogin: {
@@ -41,7 +42,7 @@ const copyWallet = () => {
         icon: 'success',
         timer: 2000,
         showConfirmButton: false,
-        background: '#1f2937',
+        background: '#111827',
         color: '#f3f4f6',
     });
 };
@@ -63,7 +64,7 @@ const submitSupport = () => {
                 title: t('swal.sent.title'),
                 text: t('swal.sent.support'),
                 icon: 'success',
-                background: '#1f2937',
+                background: '#111827',
                 color: '#f3f4f6',
             });
         },
@@ -72,7 +73,7 @@ const submitSupport = () => {
                 title: t('swal.error.title'),
                 text: t('swal.error.form'),
                 icon: 'error',
-                background: '#1f2937',
+                background: '#111827',
                 color: '#f3f4f6',
             });
         },
@@ -91,14 +92,27 @@ const cpRequestForm = useForm({
 const submitCpRequest = () => {
     cpRequestForm.post(route('cp.requests.store'), {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (page) => {
             showCpRequestModal.value = false;
             cpRequestForm.reset();
+            
+            const flashSuccess = page.props.flash?.success;
+            if (flashSuccess && typeof flashSuccess === 'object' && flashSuccess.link) {
+                 Swal.fire({
+                    title: '¡CP Registrada!',
+                    html: `Tu CP ha sido creada correctamente.<br><br>Pasa este link a tus miembros y entra tú para reclamar el puesto de Líder:<br><br><div class="p-3 mt-2 bg-black/60 text-yellow-400 font-mono tracking-widest text-xs rounded border border-yellow-500/30 select-all mb-2">${flashSuccess.link}</div>`,
+                    icon: 'success',
+                    background: '#111827',
+                    color: '#f3f4f6',
+                 });
+                 return;
+            }
+
             Swal.fire({
                 title: t('swal.sent.title'),
                 text: t('swal.sent.cp_request'),
                 icon: 'success',
-                background: '#1f2937',
+                background: '#111827',
                 color: '#f3f4f6',
             });
         },
@@ -107,7 +121,7 @@ const submitCpRequest = () => {
                 title: t('swal.error.title'),
                 text: t('swal.error.form'),
                 icon: 'error',
-                background: '#1f2937',
+                background: '#111827',
                 color: '#f3f4f6',
             });
         },
@@ -117,61 +131,126 @@ const submitCpRequest = () => {
 const setLocale = (locale) => {
     router.post(route('locale.set'), { locale }, { preserveScroll: true });
 };
+
+// Particles init
+const particlesInit = async (engine) => {
+    await loadFull(engine);
+};
+
+const particlesOptions = {
+    background: { color: { value: "transparent" } },
+    fpsLimit: 60,
+    interactivity: {
+        events: {
+            onHover: { enable: true, mode: "bubble" },
+            resize: true,
+        },
+        modes: {
+            bubble: { distance: 100, size: 4, duration: 2, opacity: 0.8 },
+        },
+    },
+    particles: {
+        color: { value: ["#fbbf24", "#f59e0b", "#d97706"] },
+        links: { enable: false },
+        move: { direction: "top", enable: true, random: true, speed: 1.5, straight: false, outModes: { default: "out" } },
+        number: { density: { enable: true, area: 800 }, value: 70 },
+        opacity: { value: { min: 0.1, max: 0.7 }, animation: { enable: true, speed: 1, minimumValue: 0.1 } },
+        shape: { type: "circle" },
+        size: { value: { min: 1, max: 4 } }
+    },
+    detectRetina: true
+};
+
+// 3D Tilt State
+const chestWrapper = ref(null);
+const tiltStyle = ref({});
+
+const handleMouseMove = (e) => {
+    if (!chestWrapper.value) return;
+    const { left, top, width, height } = chestWrapper.value.getBoundingClientRect();
+    const x = (e.clientX - left) / width - 0.5;
+    const y = (e.clientY - top) / height - 0.5;
+    
+    // Calculate rotation limits
+    tiltStyle.value = {
+        transform: `perspective(1000px) rotateY(${x * 30}deg) rotateX(${-y * 30}deg) scale3d(1.05, 1.05, 1.05)`,
+        transition: 'transform 0.1s ease-out'
+    };
+};
+
+const handleMouseLeave = () => {
+    tiltStyle.value = {
+        transform: `perspective(1000px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)`,
+        transition: 'transform 0.5s ease-out'
+    };
+};
 </script>
 
 <template>
     <Head :title="appName" />
-    <div class="min-h-screen bg-gray-100 text-gray-900 font-sans selection:bg-purple-200 selection:text-gray-900 dark:bg-gray-950 dark:text-gray-200 dark:selection:bg-purple-900 dark:selection:text-white relative overflow-hidden">
-        <div class="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500/18 via-gray-100 to-gray-100 dark:from-purple-900/28 dark:via-gray-950 dark:to-gray-950"></div>
-        <div class="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full blur-3xl bg-purple-500/15 dark:bg-purple-500/10"></div>
-        <div class="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full blur-3xl bg-blue-500/15 dark:bg-blue-500/10"></div>
+    <div class="min-h-screen bg-gray-950 text-gray-200 font-sans selection:bg-yellow-500/30 selection:text-yellow-100 relative overflow-hidden">
+        
+        <!-- Cinematic Full-screen Background -->
+        <div class="fixed inset-0 z-0 pointer-events-none opacity-60">
+            <!-- Fade outs to make the content readable over the image -->
+            <div class="absolute inset-0 bg-gradient-to-b from-gray-950/40 via-transparent to-gray-950 z-20"></div>
+            <!-- The highly detailed generated image -->
+            <img src="/images/bg_cinematic.png" alt="Lineage 2 Epic Background" class="w-full h-full object-cover object-top mix-blend-screen mix-blend-mode-plus-lighter" />
+        </div>
 
-        <div class="relative z-10">
-            <header class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-                <div class="flex items-center justify-between">
-                    <Link href="/" class="flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-2xl bg-white/60 dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-800/70 shadow-sm flex items-center justify-center">
-                            <ApplicationLogo class="w-7 h-7" />
+        <!-- Ambient Globs -->
+        <div class="fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent pointer-events-none"></div>
+
+        <!-- Particles Layer -->
+        <vue-particles id="tsparticles" :particlesInit="particlesInit" :options="particlesOptions" class="fixed inset-0 z-1 pointer-events-none mix-blend-screen" />
+
+        <div class="relative z-10 flex flex-col min-h-screen">
+            <!-- Header -->
+            <header class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" v-motion-fade>
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <Link href="/" class="flex items-center gap-3 group">
+                        <div class="w-12 h-12 rounded-xl bg-gray-950/80 border border-white/10 shadow-lg shadow-black/50 flex items-center justify-center overflow-hidden backdrop-blur-md">
+                            <ApplicationLogo class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
                         <div class="leading-tight">
-                            <div class="text-lg font-black tracking-widest font-cinzel text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+                            <div class="text-xl sm:text-2xl font-black tracking-widest font-cinzel text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-purple-500 drop-shadow-sm">
                                 {{ appName }}
                             </div>
-                            <div class="text-[10px] uppercase tracking-widest text-gray-600 dark:text-gray-500">
+                            <div class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 font-semibold drop-shadow-md">
                                 {{ $t('app.tagline') }}
                             </div>
                         </div>
                     </Link>
 
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center rounded-xl border border-gray-200/80 dark:border-gray-800/70 bg-white/60 dark:bg-gray-900/50 overflow-hidden">
-                            <button type="button" class="px-3 py-2 text-[10px] font-black uppercase tracking-widest transition" :class="appLocale === 'es' ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'" @click="setLocale('es')">
-                                {{ $t('lang.es') }}
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center rounded-lg border border-white/10 bg-gray-950/80 backdrop-blur-md p-1.5 shadow-inner gap-1">
+                            <button type="button" class="px-2 py-1 text-base sm:text-lg rounded-md transition-all duration-300" :class="appLocale === 'es' ? 'bg-purple-600 shadow-[0_0_10px_rgba(147,51,234,0.5)]' : 'opacity-50 hover:opacity-100'" @click="setLocale('es')" title="Español">
+                                🇪🇸
                             </button>
-                            <button type="button" class="px-3 py-2 text-[10px] font-black uppercase tracking-widest transition" :class="appLocale === 'en' ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'" @click="setLocale('en')">
-                                {{ $t('lang.en') }}
+                            <button type="button" class="px-2 py-1 text-base sm:text-lg rounded-md transition-all duration-300" :class="appLocale === 'en' ? 'bg-purple-600 shadow-[0_0_10px_rgba(147,51,234,0.5)]' : 'opacity-50 hover:opacity-100'" @click="setLocale('en')" title="English">
+                                🇬🇧
                             </button>
                         </div>
 
-                        <div v-if="canLogin" class="flex items-center gap-3">
+                        <div v-if="canLogin" class="hidden sm:flex items-center gap-3">
                             <Link
                                 v-if="$page.props.auth.user"
                                 :href="route('dashboard')"
-                                class="px-5 py-2 rounded-xl l2-button text-white font-black tracking-widest uppercase shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-sm"
+                                class="px-6 py-2.5 rounded-lg btn-gaming text-white font-black tracking-widest uppercase shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all text-sm backdrop-blur-sm"
                             >
                                 {{ $t('welcome.hero.cta.dashboard') }}
                             </Link>
                             <template v-else>
                                 <Link
                                     :href="route('login')"
-                                    class="px-5 py-2 rounded-xl l2-button-dark text-white font-black tracking-widest uppercase shadow-lg border border-purple-900/35 hover:border-purple-400/60 transition text-sm"
+                                    class="px-6 py-2.5 rounded-lg bg-gray-900/80 border border-white/10 text-gray-200 font-black tracking-widest uppercase hover:bg-gray-800 hover:text-white hover:border-white/30 transition-all text-sm backdrop-blur-md shadow-lg"
                                 >
                                     {{ $t('welcome.hero.cta.login') }}
                                 </Link>
                                 <Link
                                     v-if="canRegister"
                                     :href="route('register')"
-                                    class="hidden sm:inline-flex px-5 py-2 rounded-xl l2-button text-white font-black tracking-widest uppercase shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-sm"
+                                    class="px-6 py-2.5 rounded-lg btn-gaming text-white font-black tracking-widest uppercase shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all text-sm backdrop-blur-sm"
                                 >
                                     {{ $t('welcome.hero.cta.register') }}
                                 </Link>
@@ -181,349 +260,231 @@ const setLocale = (locale) => {
                 </div>
             </header>
 
-            <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-16">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-                    <div class="lg:col-span-7">
-                        <h1 class="text-5xl md:text-6xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-300" style="font-family: 'Cinzel', serif;">
+            <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 w-full flex flex-col gap-24">
+                
+                <!-- Hero Section pure text overlay -->
+                <section class="relative min-h-[75vh] flex flex-col justify-center items-center text-center w-full">
+                    
+                    <div class="relative z-30 max-w-5xl mx-auto w-full flex flex-col justify-center items-center" v-motion :initial="{ opacity: 0, scale: 0.95, y: 30 }" :enter="{ opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 50, damping: 20, delay: 200 } }">
+                        
+                        <div class="inline-flex items-center justify-center mx-auto gap-2 px-4 py-2 rounded-full bg-black/60 border border-purple-500/50 text-purple-200 text-xs font-black uppercase tracking-widest mb-6 shadow-[0_0_20px_rgba(168,85,247,0.3)] backdrop-blur-xl">
+                            <span class="w-3 h-3 rounded-full bg-purple-400 animate-pulse shadow-[0_0_10px_rgba(192,132,252,0.8)]"></span>
+                            Premium Lineage 2 Tool
+                        </div>
+                        
+                        <h1 class="text-5xl sm:text-7xl lg:text-[6rem] xl:text-[7rem] font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-gray-500 font-cinzel leading-[1.05] drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)]">
                             {{ $t('welcome.hero.title', { appName }) }}
                         </h1>
-                        <p class="mt-5 text-gray-700 dark:text-gray-300 text-base md:text-lg tracking-wide max-w-2xl">
+                        
+                        <p class="mt-8 text-slate-300 text-lg sm:text-xl md:text-2xl tracking-wide max-w-2xl mx-auto leading-relaxed drop-shadow-[0_2px_5px_rgba(0,0,0,1)] font-medium">
                             {{ $t('welcome.hero.subtitle') }}
                         </p>
 
-                        <div class="mt-6 flex flex-wrap gap-2">
-                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">{{ $t('welcome.hero.chips.audit') }}</span>
-                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">{{ $t('welcome.hero.chips.adena') }}</span>
-                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">{{ $t('welcome.hero.chips.vault') }}</span>
-                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">{{ $t('welcome.hero.chips.items') }}</span>
+                        <div class="mt-10 flex flex-wrap justify-center gap-3 backdrop-blur-lg bg-black/40 p-3 rounded-2xl border border-white/10 shadow-2xl">
+                            <span class="gaming-chip border-purple-500/50 text-purple-200">{{ $t('welcome.hero.chips.audit') }}</span>
+                            <span class="gaming-chip border-yellow-500/50 text-yellow-200">{{ $t('welcome.hero.chips.adena') }}</span>
+                            <span class="gaming-chip border-blue-500/50 text-blue-200">{{ $t('welcome.hero.chips.vault') }}</span>
+                            <span class="gaming-chip border-emerald-500/50 text-emerald-200">{{ $t('welcome.hero.chips.items') }}</span>
                         </div>
 
-                        <div v-if="canLogin" class="mt-10 flex flex-col sm:flex-row gap-4">
-                            <Link
-                                v-if="$page.props.auth.user"
-                                :href="route('dashboard')"
-                                class="px-8 py-3 l2-button text-white font-black tracking-widest uppercase rounded-xl shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-base"
-                            >
-                                {{ $t('welcome.hero.cta.dashboard') }}
+                        <div v-if="canLogin" class="mt-16 flex flex-col sm:flex-row justify-center items-center gap-6 w-full max-w-xl mx-auto">
+                            <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="btn-gaming-large text-center flex-1 whitespace-nowrap min-w-[200px]">
+                                <span class="relative z-10">{{ $t('welcome.hero.cta.dashboard') }}</span>
                             </Link>
                             <template v-else>
-                                <Link
-                                    :href="route('login')"
-                                    class="px-8 py-3 l2-button-dark text-white font-black tracking-widest uppercase rounded-xl shadow-lg border border-purple-900/35 hover:border-purple-400/60 transition text-base"
-                                >
-                                    {{ $t('welcome.hero.cta.login') }}
+                                <Link :href="route('register')" class="items-center justify-center btn-gaming-large text-center flex-1 whitespace-nowrap min-w-[220px]">
+                                    <span class="relative z-10">{{ $t('welcome.hero.cta.register') }}</span>
                                 </Link>
-                                <Link
-                                    v-if="canRegister"
-                                    :href="route('register')"
-                                    class="px-8 py-3 l2-button text-white font-black tracking-widest uppercase rounded-xl shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-base"
-                                >
-                                    {{ $t('welcome.hero.cta.register') }}
-                                </Link>
+                                <a href="#features" class="items-center justify-center px-8 py-[18px] rounded-xl bg-black/60 border border-white/20 text-white fill-white font-black tracking-widest uppercase hover:bg-black/80 hover:border-white/40 transition-all backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-center flex-1 whitespace-nowrap min-w-[220px]">
+                                    Learn More
+                                </a>
                             </template>
                         </div>
                     </div>
-                    <div class="lg:col-span-5 w-full">
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">
-                                {{ $t('welcome.section.cp_cta.kicker') }}
-                            </div>
-                            <div class="mt-2 text-xl font-black tracking-widest text-gray-900 dark:text-white font-cinzel">
-                                {{ $t('welcome.section.cp_cta.title') }}
-                            </div>
-                            <div class="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                                {{ $t('welcome.section.cp_cta.text') }}
-                            </div>
+                </section>
 
-                            <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <button type="button" class="px-5 py-3 rounded-2xl l2-button text-white font-black tracking-widest uppercase shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-[10px]" @click="showCpRequestModal = true">
-                                    {{ $t('welcome.section.cp_cta.btn') }}
-                                </button>
-                                <button type="button" class="px-5 py-3 rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-800/70 text-[10px] font-black uppercase tracking-widest text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 transition" @click="showSupportModal = true">
-                                    {{ $t('welcome.section.cp_cta.btn_alt') }}
-                                </button>
-                                <button type="button" class="sm:col-span-2 px-5 py-3 rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-800/70 text-[10px] font-black uppercase tracking-widest text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 transition" @click="showDonationModal = true">
-                                    {{ $t('welcome.section.how_it_works.btn_donate') }}
-                                </button>
-                            </div>
-
-                            <div class="mt-6 rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/60 dark:bg-gray-900/40 p-4">
-                                <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">
-                                    {{ $t('welcome.section.chronicles.kicker') }}
-                                </div>
-                                <div class="mt-2 text-sm font-black tracking-widest text-gray-900 dark:text-white">
-                                    {{ $t('welcome.section.chronicles.title') }}
-                                </div>
-                            </div>
-                        </div>
+                <!-- Features Grid -->
+                <section id="features" class="scroll-mt-24 pt-12">
+                    <div class="text-center mb-16" v-motion-slide-visible-bottom>
+                        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-600 font-cinzel inline-block">
+                            System Features
+                        </h2>
+                        <div class="h-1 w-24 bg-gradient-to-r from-purple-600 to-yellow-500 mx-auto mt-6 rounded-full shadow-[0_0_10px_#9333ea]"></div>
                     </div>
-                </div>
-
-                <section class="mt-12">
-                    <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-8">
-                        <div class="flex items-start justify-between gap-6 flex-col lg:flex-row">
-                            <div class="min-w-0">
-                                <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">
-                                    {{ $t('welcome.section.cp_cta.kicker') }}
-                                </div>
-                                <h2 class="mt-2 text-2xl md:text-3xl font-black tracking-widest text-gray-900 dark:text-white font-cinzel">
-                                    {{ $t('welcome.section.cp_cta.title') }}
-                                </h2>
-                                <p class="mt-4 text-sm md:text-base text-gray-700 dark:text-gray-300 max-w-3xl">
-                                    {{ $t('welcome.section.cp_cta.text') }}
-                                </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="100">
+                            <div class="w-14 h-14 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-6 text-yellow-400 group-hover:scale-110 group-hover:bg-yellow-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </div>
-                            <div class="flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    class="px-6 py-3 rounded-2xl l2-button text-white font-black tracking-widest uppercase shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-xs"
-                                    @click="showCpRequestModal = true"
-                                >
-                                    {{ $t('welcome.section.cp_cta.btn') }}
-                                </button>
-                                <button
-                                    type="button"
-                                    class="px-6 py-3 rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-800/70 text-[10px] font-black uppercase tracking-widest text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 transition"
-                                    @click="showSupportModal = true"
-                                >
-                                    {{ $t('welcome.section.cp_cta.btn_alt') }}
-                                </button>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.adena.kicker') }}</div>
+                            <div class="text-2xl font-black tracking-widest text-white mb-3">{{ $t('welcome.features.adena.title') }}</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">{{ $t('welcome.features.adena.text') }}</div>
+                        </div>
+                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="200">
+                            <div class="w-14 h-14 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                             </div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.loot.kicker') }}</div>
+                            <div class="text-2xl font-black tracking-widest text-white mb-3">{{ $t('welcome.features.loot.title') }}</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">{{ $t('welcome.features.loot.text') }}</div>
+                        </div>
+                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="300">
+                            <div class="w-14 h-14 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6 text-blue-400 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.warehouse.kicker') }}</div>
+                            <div class="text-2xl font-black tracking-widest text-white mb-3">{{ $t('welcome.features.warehouse.title') }}</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">{{ $t('welcome.features.warehouse.text') }}</div>
+                        </div>
+                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="400">
+                            <div class="w-14 h-14 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            </div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.crafting.kicker') }}</div>
+                            <div class="text-2xl font-black tracking-widest text-white mb-3">{{ $t('welcome.features.crafting.title') }}</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">{{ $t('welcome.features.crafting.text') }}</div>
+                        </div>
+                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="500">
+                            <div class="w-14 h-14 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6 text-red-400 group-hover:scale-110 group-hover:bg-red-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            </div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.roles.kicker') }}</div>
+                            <div class="text-2xl font-black tracking-widest text-white mb-3">{{ $t('welcome.features.roles.title') }}</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">{{ $t('welcome.features.roles.text') }}</div>
+                        </div>
+                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="600">
+                            <div class="w-14 h-14 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-green-400 group-hover:scale-110 group-hover:bg-green-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.audit.kicker') }}</div>
+                            <div class="text-2xl font-black tracking-widest text-white mb-3">{{ $t('welcome.features.audit.title') }}</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">{{ $t('welcome.features.audit.text') }}</div>
                         </div>
                     </div>
                 </section>
 
-                <section class="mt-14">
-                    <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-8">
-                        <div class="flex items-start justify-between gap-6 flex-col lg:flex-row">
-                            <div class="min-w-0">
-                                <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">
-                                    {{ $t('welcome.section.about.kicker', { appName }) }}
-                                </div>
-                                <h2 class="mt-2 text-2xl md:text-3xl font-black tracking-widest text-gray-900 dark:text-white font-cinzel">
-                                    {{ $t('welcome.section.about.title') }}
-                                </h2>
-                                <p class="mt-4 text-sm md:text-base text-gray-700 dark:text-gray-300 max-w-3xl">
-                                    {{ $t('welcome.section.about.text') }}
-                                </p>
-                            </div>
-                            <div class="w-full lg:w-[360px] grid grid-cols-2 gap-3">
-                                <div class="rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 p-4">
-                                    <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.section.about.card.free.kicker') }}</div>
-                                    <div class="mt-1 text-lg font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.section.about.card.free.value') }}</div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 p-4">
-                                    <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.section.about.card.support.kicker') }}</div>
-                                    <div class="mt-1 text-xs font-mono break-all text-gray-900 dark:text-white">{{ supportEmail }}</div>
-                                </div>
-                                <div class="col-span-2 rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 p-4">
-                                    <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.section.about.card.donations.kicker') }}</div>
-                                    <div class="mt-2 text-xs font-mono break-all text-gray-900 dark:text-white">{{ donationWallet }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="mt-10">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.features.loot.kicker') }}</div>
-                            <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.features.loot.title') }}</div>
-                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.features.loot.text') }}</div>
-                        </div>
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.features.adena.kicker') }}</div>
-                            <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.features.adena.title') }}</div>
-                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.features.adena.text') }}</div>
-                        </div>
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.features.warehouse.kicker') }}</div>
-                            <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.features.warehouse.title') }}</div>
-                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.features.warehouse.text') }}</div>
-                        </div>
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.features.crafting.kicker') }}</div>
-                            <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.features.crafting.title') }}</div>
-                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.features.crafting.text') }}</div>
-                        </div>
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.features.roles.kicker') }}</div>
-                            <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.features.roles.title') }}</div>
-                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.features.roles.text') }}</div>
-                        </div>
-                        <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-6">
-                            <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">{{ $t('welcome.features.audit.kicker') }}</div>
-                            <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.features.audit.title') }}</div>
-                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.features.audit.text') }}</div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="mt-10">
-                    <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-8">
-                        <div class="flex items-start justify-between gap-6 flex-col lg:flex-row">
-                            <div class="min-w-0">
-                                <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">
-                                    {{ $t('welcome.section.chronicles.kicker') }}
-                                </div>
-                                <div class="mt-2 text-xl font-black tracking-widest text-gray-900 dark:text-white">
-                                    {{ $t('welcome.section.chronicles.title') }}
-                                </div>
-                                <div class="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                                    {{ $t('welcome.section.chronicles.text') }}
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">C1</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">C2</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">C3</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">C4</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">C5</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">IL</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">HB</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">Classic</span>
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-gray-900/60 border border-gray-200/80 dark:border-gray-800/70 text-gray-700 dark:text-gray-300">LU4</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="mt-10">
-                    <div class="rounded-3xl border border-gray-200/80 dark:border-gray-800/70 bg-white/70 dark:bg-gray-900/40 backdrop-blur p-8">
-                        <div class="flex items-start justify-between gap-6 flex-col lg:flex-row">
-                            <div class="min-w-0">
-                                <div class="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Steps / How it works -->
+                    <section class="glass-card p-8 sm:p-12 relative overflow-hidden" v-motion-slide-visible-bottom>
+                        <div class="absolute -right-20 -top-20 w-64 h-64 bg-purple-600/10 rounded-full blur-[60px]"></div>
+                        <div class="relative z-10 flex flex-col gap-6">
+                            <div>
+                                <div class="text-xs font-black uppercase tracking-widest text-purple-400 mb-2">
                                     {{ $t('welcome.section.how_it_works.kicker') }}
                                 </div>
-                                <div class="mt-2 text-2xl font-black tracking-widest text-gray-900 dark:text-white">
+                                <h2 class="text-3xl md:text-4xl font-black tracking-widest text-white font-cinzel drop-shadow-md">
                                     {{ $t('welcome.section.how_it_works.title') }}
-                                </div>
-                                <div class="mt-3 text-sm text-gray-700 dark:text-gray-300 max-w-3xl">
+                                </h2>
+                                <p class="mt-4 text-sm text-gray-300 leading-relaxed max-w-sm">
                                     {{ $t('welcome.section.how_it_works.text') }}
+                                </p>
+                            </div>
+                            
+                            <div class="flex flex-col gap-4 mt-4">
+                                <div class="p-5 bg-black/30 border border-white/5 rounded-2xl hover:bg-white/5 transition-colors group">
+                                    <span class="text-4xl font-black font-cinzel text-white/5 float-right group-hover:text-purple-500/20 transition-colors">01</span>
+                                    <div class="text-lg font-black tracking-widest text-yellow-500">{{ $t('welcome.section.how_it_works.steps.1.title') }}</div>
+                                    <div class="mt-1 text-sm text-gray-400">{{ $t('welcome.section.how_it_works.steps.1.text') }}</div>
+                                </div>
+                                <div class="p-5 bg-black/30 border border-white/5 rounded-2xl hover:bg-white/5 transition-colors group">
+                                    <span class="text-4xl font-black font-cinzel text-white/5 float-right group-hover:text-purple-500/20 transition-colors">02</span>
+                                    <div class="text-lg font-black tracking-widest text-yellow-500">{{ $t('welcome.section.how_it_works.steps.2.title') }}</div>
+                                    <div class="mt-1 text-sm text-gray-400">{{ $t('welcome.section.how_it_works.steps.2.text') }}</div>
+                                </div>
+                                <div class="p-5 bg-black/30 border border-white/5 rounded-2xl hover:bg-white/5 transition-colors group">
+                                    <span class="text-4xl font-black font-cinzel text-white/5 float-right group-hover:text-purple-500/20 transition-colors">03</span>
+                                    <div class="text-lg font-black tracking-widest text-yellow-500">{{ $t('welcome.section.how_it_works.steps.3.title') }}</div>
+                                    <div class="mt-1 text-sm text-gray-400">{{ $t('welcome.section.how_it_works.steps.3.text') }}</div>
                                 </div>
                             </div>
-                            <div class="flex flex-wrap gap-2">
-                                <button type="button" class="px-6 py-3 rounded-2xl l2-button text-white font-black tracking-widest uppercase shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-xs" @click="showDonationModal = true">
-                                    {{ $t('welcome.section.how_it_works.btn_donate') }}
+                        </div>
+                    </section>
+
+                    <!-- Join CP -->
+                    <section class="glass-card p-8 sm:p-12 relative overflow-hidden flex flex-col justify-center border-yellow-500/20 shadow-[0_0_30px_rgba(234,179,8,0.05)]" v-motion-slide-visible-bottom :delay="200">
+                        <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-yellow-500/10 rounded-full blur-[80px]"></div>
+                        <div class="relative z-10 text-center flex flex-col items-center">
+                            <div class="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mb-6 shadow-inner border border-yellow-500/30">
+                                <svg class="w-10 h-10 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
+                            </div>
+                            <div class="text-xs font-black uppercase tracking-widest text-purple-400 mb-2">
+                                {{ $t('welcome.section.cp_cta.kicker') }}
+                            </div>
+                            <h3 class="text-3xl font-black tracking-widest text-white font-cinzel mb-4 drop-shadow-md">
+                                {{ $t('welcome.section.cp_cta.title') }}
+                            </h3>
+                            <p class="text-base text-gray-300 mb-10 leading-relaxed max-w-sm">
+                                {{ $t('welcome.section.cp_cta.text') }}
+                            </p>
+
+                            <div class="w-full max-w-sm flex flex-col gap-4">
+                                <button type="button" class="btn-gaming-large w-full text-sm py-4" @click="showCpRequestModal = true">
+                                    {{ $t('welcome.section.cp_cta.btn') }}
                                 </button>
-                                <button type="button" class="px-6 py-3 rounded-2xl bg-white/70 dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-800/70 text-[10px] font-black uppercase tracking-widest text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 transition" @click="showSupportModal = true">
-                                    {{ $t('welcome.section.how_it_works.btn_support') }}
-                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button type="button" class="ghost-btn py-3 text-xs" @click="showSupportModal = true">
+                                        {{ $t('welcome.section.cp_cta.btn_alt') }}
+                                    </button>
+                                    <button type="button" class="ghost-btn py-3 text-xs" @click="showDonationModal = true">
+                                        {{ $t('welcome.section.how_it_works.btn_donate') }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    </section>
+                </div>
+            </main>
 
-                        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div class="rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/60 dark:bg-gray-900/40 p-5">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">01</div>
-                                <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.section.how_it_works.steps.1.title') }}</div>
-                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.section.how_it_works.steps.1.text') }}</div>
-                            </div>
-                            <div class="rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/60 dark:bg-gray-900/40 p-5">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">02</div>
-                                <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.section.how_it_works.steps.2.title') }}</div>
-                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.section.how_it_works.steps.2.text') }}</div>
-                            </div>
-                            <div class="rounded-2xl border border-gray-200/80 dark:border-gray-800/70 bg-white/60 dark:bg-gray-900/40 p-5">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">03</div>
-                                <div class="mt-2 font-black tracking-widest text-gray-900 dark:text-white">{{ $t('welcome.section.how_it_works.steps.3.title') }}</div>
-                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('welcome.section.how_it_works.steps.3.text') }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <footer class="mt-16 pt-10 border-t border-gray-200/80 dark:border-gray-800/70 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                        <div class="text-xs text-gray-600 dark:text-gray-500 uppercase tracking-widest">
+            <!-- Footer -->
+            <footer class="border-t border-white/10 bg-black/40 backdrop-blur-md mt-auto relative z-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div class="flex items-center gap-3">
+                        <ApplicationLogo class="w-8 h-8 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
+                        <div class="text-xs text-gray-500 font-semibold tracking-widest uppercase">
                             {{ $t('footer.copyright', { year: new Date().getFullYear(), appName }) }}
                         </div>
-                        <div class="text-[11px] text-gray-600 dark:text-gray-500 tracking-wide">
-                            {{ $t('footer.free') }}
-                            ·
-                            {{ $t('footer.donations_label') }}
-                            <button type="button" class="font-mono underline hover:text-purple-700 dark:hover:text-purple-300 transition" @click="showDonationModal = true">{{ donationWallet }}</button>
-                            ·
-                            {{ $t('footer.support_label') }}
-                            <a class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${supportEmail}`">{{ supportEmail }}</a>
-                        </div>
                     </div>
-                </footer>
-            </main>
+                    <div class="text-[11px] text-gray-500 tracking-wide font-medium flex flex-wrap justify-center gap-x-2 gap-y-1 items-center">
+                        <span class="px-2 py-1 bg-white/5 rounded">{{ $t('footer.free') }}</span>
+                        <span class="text-gray-600">•</span>
+                        <span>{{ $t('footer.donations_label') }}</span>
+                        <button type="button" class="text-yellow-500 hover:text-yellow-400 transition font-mono" @click="showDonationModal = true">{{ donationWallet.substring(0, 8) }}...</button>
+                        <span class="text-gray-600">•</span>
+                        <span>{{ $t('footer.support_label') }}</span>
+                        <a class="text-purple-400 hover:text-purple-300 transition" :href="`mailto:${supportEmail}`">{{ supportEmail }}</a>
+                    </div>
+                </div>
+            </footer>
         </div>
-    </div>
-
-    <div v-if="showSupportModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="w-full max-w-lg rounded-2xl border border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-2xl">
-            <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center">
-                <h3 class="font-cinzel text-lg text-white tracking-widest">{{ $t('welcome.modal.support.title') }}</h3>
-                <button type="button" class="text-white/70 hover:text-white transition" @click="showSupportModal = false">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-
-            <div class="p-6 space-y-4">
-                <div v-if="Object.keys(supportForm.errors).length" class="p-3 rounded-xl border border-red-500/25 bg-red-950/10 text-red-700 dark:text-red-200 text-sm">
-                    <div v-for="(err, key) in supportForm.errors" :key="key">{{ err }}</div>
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.support.subject') }}</label>
-                    <input v-model="supportForm.subject" type="text" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.support.message') }}</label>
-                    <textarea v-model="supportForm.message" rows="5" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"></textarea>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.support.email', { optional: $t('common.optional') }) }}</label>
-                        <input v-model="supportForm.email" type="email" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.support.name', { optional: $t('common.optional') }) }}</label>
-                        <input v-model="supportForm.name" type="text" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
-                    </div>
-                </div>
-
-                <div class="pt-2 flex gap-3">
-                    <button type="button" class="flex-1 py-3 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition" @click="showSupportModal = false">
-                        {{ $t('common.close') }}
-                    </button>
-                    <button type="button" class="flex-[2] py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-purple-500 hover:to-blue-500 transition disabled:opacity-40 disabled:grayscale" :disabled="supportForm.processing" @click="submitSupport">
-                        {{ $t('common.send') }}
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    </div><!-- End Main Wrapper -->
 
     <!-- Modal CP Request -->
-    <div v-if="showCpRequestModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="w-full max-w-lg rounded-2xl border border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-2xl">
-            <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center">
-                <h3 class="font-cinzel text-lg text-white tracking-widest">{{ $t('welcome.modal.cp_request.title') }}</h3>
-                <button type="button" class="text-white/70 hover:text-white transition" @click="showCpRequestModal = false">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+    <div v-if="showCpRequestModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity">
+        <div class="w-full max-w-lg rounded-2xl border border-purple-500/30 bg-gray-900 shadow-[0_0_50px_rgba(168,85,247,0.15)] overflow-hidden flex flex-col max-h-[90vh]" v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1 }">
+            <div class="bg-gradient-to-r from-purple-900/80 to-gray-900 p-5 flex justify-between items-center border-b border-purple-500/20">
+                <h3 class="font-cinzel text-xl text-yellow-500 tracking-widest drop-shadow-md">{{ $t('welcome.modal.cp_request.title') }}</h3>
+                <button type="button" class="text-gray-400 hover:text-white transition" @click="showCpRequestModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div class="p-6 space-y-4">
-                <div v-if="Object.keys(cpRequestForm.errors).length" class="p-3 rounded-xl border border-red-500/25 bg-red-950/10 text-red-700 dark:text-red-200 text-sm">
+            <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <div v-if="Object.keys(cpRequestForm.errors).length" class="p-3 rounded-lg border border-red-500/50 bg-red-900/20 text-red-400 text-sm">
                     <div v-for="(err, key) in cpRequestForm.errors" :key="key">{{ err }}</div>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.cp_request.cp_name') }}</label>
-                    <input v-model="cpRequestForm.cp_name" type="text" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.cp_request.cp_name') }}</label>
+                    <input v-model="cpRequestForm.cp_name" type="text" class="form-input-gaming">
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.cp_request.server', { optional: $t('common.optional') }) }}</label>
-                        <input v-model="cpRequestForm.server" type="text" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.cp_request.server', { optional: $t('common.optional') }) }}</label>
+                        <input v-model="cpRequestForm.server" type="text" class="form-input-gaming">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.cp_request.chronicle') }}</label>
-                        <select v-model="cpRequestForm.chronicle" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.cp_request.chronicle') }}</label>
+                        <select v-model="cpRequestForm.chronicle" class="form-input-gaming appearance-none">
                             <option value="C1">C1</option>
                             <option value="C2">C2</option>
                             <option value="C3">C3</option>
@@ -536,26 +497,26 @@ const setLocale = (locale) => {
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.cp_request.leader', { optional: $t('common.optional') }) }}</label>
-                        <input v-model="cpRequestForm.leader_name" type="text" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.cp_request.leader', { optional: $t('common.optional') }) }}</label>
+                        <input v-model="cpRequestForm.leader_name" type="text" class="form-input-gaming">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.cp_request.email') }}</label>
-                        <input v-model="cpRequestForm.contact_email" type="email" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.cp_request.email') }}</label>
+                        <input v-model="cpRequestForm.contact_email" type="email" class="form-input-gaming">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('welcome.modal.cp_request.message', { optional: $t('common.optional') }) }}</label>
-                    <textarea v-model="cpRequestForm.message" rows="4" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"></textarea>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.cp_request.message', { optional: $t('common.optional') }) }}</label>
+                    <textarea v-model="cpRequestForm.message" rows="4" class="form-input-gaming resize-none"></textarea>
                 </div>
 
-                <div class="pt-2 flex gap-3">
-                    <button type="button" class="flex-1 py-3 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition" @click="showCpRequestModal = false">
+                <div class="pt-4 flex gap-3">
+                    <button type="button" class="ghost-btn py-3 px-6" @click="showCpRequestModal = false">
                         {{ $t('common.close') }}
                     </button>
-                    <button type="button" class="flex-[2] py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-purple-500 hover:to-blue-500 transition disabled:opacity-40 disabled:grayscale" :disabled="cpRequestForm.processing" @click="submitCpRequest">
+                    <button type="button" class="btn-gaming flex-1 py-3" :disabled="cpRequestForm.processing" @click="submitCpRequest">
                         {{ $t('common.send') }}
                     </button>
                 </div>
@@ -563,30 +524,76 @@ const setLocale = (locale) => {
         </div>
     </div>
 
-    <!-- Modal Donaciones (Cripto) -->
-    <div v-if="showDonationModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="w-full max-w-lg rounded-2xl border border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-2xl">
-            <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center">
-                <h3 class="font-cinzel text-lg text-white tracking-widest">{{ $t('welcome.modal.donation.title') }}</h3>
-                <button type="button" class="text-white/70 hover:text-white transition" @click="showDonationModal = false">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+    <!-- Modal Support -->
+    <div v-if="showSupportModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity">
+        <div class="w-full max-w-lg rounded-2xl border border-purple-500/30 bg-gray-900 shadow-[0_0_50px_rgba(168,85,247,0.15)] overflow-hidden flex flex-col max-h-[90vh]" v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1 }">
+            <div class="bg-gradient-to-r from-purple-900/80 to-gray-900 p-5 flex justify-between items-center border-b border-purple-500/20">
+                <h3 class="font-cinzel text-xl text-yellow-500 tracking-widest drop-shadow-md">{{ $t('welcome.modal.support.title') }}</h3>
+                <button type="button" class="text-gray-400 hover:text-white transition" @click="showSupportModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div class="p-6 space-y-4 text-center">
-                <p class="text-gray-700 dark:text-gray-300 text-sm">
+
+            <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <div v-if="Object.keys(supportForm.errors).length" class="p-3 rounded-lg border border-red-500/50 bg-red-900/20 text-red-400 text-sm">
+                    <div v-for="(err, key) in supportForm.errors" :key="key">{{ err }}</div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.support.subject') }}</label>
+                    <input v-model="supportForm.subject" type="text" class="form-input-gaming">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.support.message') }}</label>
+                    <textarea v-model="supportForm.message" rows="5" class="form-input-gaming resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.support.email', { optional: $t('common.optional') }) }}</label>
+                        <input v-model="supportForm.email" type="email" class="form-input-gaming">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-purple-400 mb-2">{{ $t('welcome.modal.support.name', { optional: $t('common.optional') }) }}</label>
+                        <input v-model="supportForm.name" type="text" class="form-input-gaming">
+                    </div>
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="button" class="ghost-btn py-3 px-6" @click="showSupportModal = false">
+                        {{ $t('common.close') }}
+                    </button>
+                    <button type="button" class="btn-gaming flex-1 py-3" :disabled="supportForm.processing" @click="submitSupport">
+                        {{ $t('common.send') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Donations -->
+    <div v-if="showDonationModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity">
+        <div class="w-full max-w-md rounded-2xl border border-yellow-500/30 bg-gray-900 shadow-[0_0_50px_rgba(234,179,8,0.15)] overflow-hidden flex flex-col" v-motion :initial="{ opacity: 0, scale: 0.9 }" :enter="{ opacity: 1, scale: 1 }">
+            <div class="bg-gradient-to-r from-yellow-900/60 to-gray-900 p-5 flex justify-between items-center border-b border-yellow-500/20">
+                <h3 class="font-cinzel text-xl text-yellow-500 tracking-widest drop-shadow-md">{{ $t('welcome.modal.donation.title') }}</h3>
+                <button type="button" class="text-gray-400 hover:text-white transition" @click="showDonationModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-6 text-center">
+                <p class="text-gray-300 text-sm leading-relaxed">
                     {{ $t('welcome.modal.donation.text', { appName }) }}
                 </p>
-                <div class="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center gap-3">
-                    <span class="text-sm font-mono text-purple-600 dark:text-purple-400 font-bold break-all">{{ donationWallet }}</span>
+                <div class="p-5 bg-black/40 rounded-xl border border-white/5 flex flex-col items-center gap-4 shadow-inner">
+                    <span class="text-xs font-mono text-yellow-400 break-all select-all">{{ donationWallet }}</span>
                     <button 
                         @click="copyWallet"
-                        class="px-5 py-2 rounded-xl l2-button text-white font-black tracking-widest uppercase shadow-lg border border-blue-500/25 hover:border-blue-300/60 transition text-xs"
+                        class="btn-gaming px-6 py-2 text-xs w-full sm:w-auto"
                     >
                         {{ $t('welcome.modal.donation.btn_copy') }}
                     </button>
                 </div>
                 <div class="pt-2">
-                    <button type="button" class="w-full py-3 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition" @click="showDonationModal = false">
+                    <button type="button" class="ghost-btn w-full py-3 text-xs" @click="showDonationModal = false">
                         {{ $t('common.close') }}
                     </button>
                 </div>
@@ -602,19 +609,71 @@ const setLocale = (locale) => {
     font-family: 'Cinzel', serif;
 }
 
-.l2-button {
-    background: linear-gradient(to right, #6d28d9, #2563eb);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+/* Animations */
+@keyframes levitate {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
 }
-.l2-button:hover {
-    background: linear-gradient(to right, #7c3aed, #3b82f6);
+.chest-levitate img {
+    animation: levitate 5s ease-in-out infinite;
 }
 
-.l2-button-dark {
-    background: #111827;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+/* Base Inputs */
+.form-input-gaming {
+    @apply w-full bg-black/40 border border-white/10 text-gray-100 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all p-3 text-sm placeholder-gray-600;
 }
-.l2-button-dark:hover {
-    background: #1f2937;
+
+/* Glass Cards */
+.glass-card {
+    @apply bg-gray-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-[0_4px_30px_rgba(0,0,0,0.5)];
 }
-</style>
+
+/* Badges & Chips */
+.gaming-chip {
+    @apply px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-default;
+}
+.chronicle-badge {
+    @apply px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-purple-900/40 border border-purple-500/20 text-purple-300;
+}
+
+/* Feature Cards logic */
+.feature-card {
+    @apply hover:border-purple-500/40 hover:shadow-[0_10px_40px_rgba(168,85,247,0.15)] transition-all duration-300 p-8 sm:p-10;
+}
+
+/* Buttons */
+.btn-gaming {
+    @apply relative overflow-hidden bg-gradient-to-r from-purple-700 to-indigo-600 text-white font-black tracking-widest uppercase rounded-lg border border-purple-500/30 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 disabled:grayscale transition-all;
+}
+.btn-gaming::before {
+    content: '';
+    @apply absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-45deg] transition-all duration-700;
+}
+.btn-gaming:hover::before {
+    @apply left-[150%];
+}
+
+.btn-gaming-large {
+    @apply btn-gaming px-8 py-5 text-base rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.4)];
+}
+
+.ghost-btn {
+    @apply bg-white/5 border border-white/10 text-gray-300 font-black tracking-widest uppercase rounded-lg hover:bg-white/10 hover:text-white transition-all;
+}
+
+/* Scrollbar specific handling for modals */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2); 
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.4); 
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(168, 85, 247, 0.6); 
+}
+</style>yle>

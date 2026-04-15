@@ -22,30 +22,34 @@ class SupportController extends Controller
         ]);
 
         $authUser = $request->user();
-        $supportEmail = (string) env('SUPPORT_EMAIL', 'support@adenaledger.com');
 
-        $body = collect([
+        $metadata = [
             'type' => 'support',
-            'subject' => $data['subject'],
-            'message' => $data['message'],
-            'name' => $data['name'] ?? null,
-            'email' => $data['email'] ?? null,
             'user_id' => $authUser?->id,
             'user_name' => $authUser?->name,
             'cp_id' => $authUser?->cp_id,
             'role' => $authUser?->role?->name,
             'url' => $request->headers->get('referer'),
             'ip' => $request->ip(),
-        ])->filter(fn ($v) => $v !== null)->map(fn ($v, $k) => $k.': '.$v)->implode("\n");
+        ];
 
-        Mail::raw($body, function ($mail) use ($supportEmail, $data) {
-            $mail->to($supportEmail)->subject('[AdenaLedger] Soporte: '.$data['subject']);
-            if (! empty($data['email'])) {
-                $mail->replyTo($data['email']);
-            }
-        });
+        try {
+            \App\Models\SupportTicket::create([
+                'user_id' => $authUser?->id,
+                'subject' => $data['subject'],
+                'message' => $data['message'],
+                'name' => $data['name'] ?? ($authUser?->name ?? null),
+                'email' => $data['email'] ?? ($authUser?->email ?? null),
+                'metadata' => $metadata,
+                'status' => 'open',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Support ticket create failed: '.$e->getMessage());
 
-        return back()->with('success', 'Mensaje enviado a soporte.');
+            return back()->with('error', 'No se pudo enviar el mensaje. Inténtalo más tarde.');
+        }
+
+        return back()->with('success', 'Mensaje enviado. Lo revisaremos pronto.');
     }
 
     public function cpRequest(Request $request): RedirectResponse
@@ -59,58 +63,39 @@ class SupportController extends Controller
             'message' => 'nullable|string|max:5000',
         ]);
 
-        $cpRequest = null;
-        $createFailed = false;
-        $createError = null;
+        $inviteCode = Str::random(12);
+
+        $cp = ConstParty::create([
+            'leader_id' => null, // First member to register with the code usually claims it
+            'name' => $data['cp_name'],
+            'server' => $data['server'] ?? null,
+            'chronicle' => $data['chronicle'] ?? 'IL',
+            'invite_code' => $inviteCode,
+        ]);
 
         try {
-            $cpRequest = CpRequest::create([
+            CpRequest::create([
                 'cp_name' => $data['cp_name'],
                 'server' => $data['server'] ?? null,
                 'chronicle' => $data['chronicle'] ?? null,
                 'leader_name' => $data['leader_name'] ?? null,
                 'contact_email' => $data['contact_email'] ?? null,
                 'message' => $data['message'] ?? null,
-                'status' => 'pending',
+                'status' => 'approved',
+                'approved_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            $createFailed = true;
-            $createError = $e->getMessage();
+            \Illuminate\Support\Facades\Log::error('CP Request audit log failed: ' . $e->getMessage());
         }
 
-        $supportEmail = (string) env('SUPPORT_EMAIL', 'support@adenaledger.com');
-        $body = collect([
-            'type' => 'cp_request',
-            'db_create' => $createFailed ? 'failed' : 'ok',
-            'db_error' => $createFailed ? $createError : null,
-            'request_id' => $cpRequest?->id,
-            'cp_name' => $cpRequest?->cp_name ?? $data['cp_name'],
-            'server' => $cpRequest?->server ?? ($data['server'] ?? null),
-            'chronicle' => $cpRequest?->chronicle ?? ($data['chronicle'] ?? null),
-            'leader_name' => $cpRequest?->leader_name ?? ($data['leader_name'] ?? null),
-            'contact_email' => $cpRequest?->contact_email ?? $data['contact_email'],
-            'message' => $cpRequest?->message ?? ($data['message'] ?? null),
-            'url' => $request->headers->get('referer'),
-            'ip' => $request->ip(),
-        ])->filter(fn ($v) => $v !== null)->map(fn ($v, $k) => $k.': '.$v)->implode("\n");
+        $magicLink = route('register', ['invite' => $inviteCode]);
 
-        Mail::raw($body, function ($mail) use ($supportEmail, $cpRequest, $data, $createFailed) {
-            $subject = $cpRequest
-                ? '[AdenaLedger] Solicitud alta CP #'.$cpRequest->id
-                : '[AdenaLedger] Solicitud alta CP (sin guardar en BD)';
-            if ($createFailed) {
-                $subject .= ' [DB ERROR]';
-            }
-
-            $mail->to($supportEmail)->subject($subject);
-            $mail->replyTo($data['contact_email']);
-        });
-
-        if ($createFailed) {
-            return back()->with('error', 'No se pudo registrar la solicitud. Se ha notificado a soporte.');
-        }
-
-        return back()->with('success', 'Solicitud enviada. Te contactaremos con el link de invitación.');
+        return back()->with('success', [
+            'message' => 'CP Creada exitosamente',
+            'link' => $magicLink,
+            'invite_code' => $inviteCode,
+            'cp_name' => $cp->name,
+        ]);
     }
 
     public function approveCpRequest(Request $request, CpRequest $cpRequest): RedirectResponse
