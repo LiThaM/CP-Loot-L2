@@ -96,29 +96,79 @@ const unbanUser = async (user) => {
 };
 
 const formatNumber = (val) => {
-    return new Intl.NumberFormat(localeTag.value).format(val || 0);
+    try {
+        if (typeof val === 'bigint') {
+            return new Intl.NumberFormat(localeTag.value).format(val);
+        }
+
+        const n = Number(val ?? 0);
+        return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? n : 0);
+    } catch {
+        return String(val ?? 0);
+    }
+};
+
+const toBigInt = (val) => {
+    if (typeof val === 'bigint') return val;
+    if (typeof val === 'number') {
+        if (!Number.isFinite(val)) return 0n;
+        return BigInt(Math.trunc(val));
+    }
+    const raw = String(val ?? '').trim();
+    if (!raw) return 0n;
+    const normalized = raw.replace(/,/g, '');
+    try {
+        return BigInt(normalized);
+    } catch {
+        const n = Number(normalized);
+        if (!Number.isFinite(n)) return 0n;
+        return BigInt(Math.trunc(n));
+    }
+};
+
+const formatBigInt = (val) => {
+    const n = toBigInt(val);
+    try {
+        return new Intl.NumberFormat(localeTag.value).format(n);
+    } catch {
+        const s = (n < 0n ? -n : n).toString();
+        const grouped = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return n < 0n ? `-${grouped}` : grouped;
+    }
+};
+
+const isNegative = (val) => toBigInt(val) < 0n;
+const absBigInt = (val) => {
+    const n = toBigInt(val);
+    return n < 0n ? -n : n;
 };
 
 const formatAdenaShort = (val) => {
-    const n = Number(val ?? 0);
-    if (!Number.isFinite(n)) return '0';
-    const sign = n < 0 ? '-' : '';
-    const abs = Math.abs(n);
+    const n = toBigInt(val);
+    const sign = n < 0n ? '-' : '';
+    const abs = n < 0n ? -n : n;
 
-    if (abs >= 1_000_000) {
-        const m = abs / 1_000_000;
-        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1)));
+    if (abs >= 1_000_000n) {
+        const scaled = (abs * 10n) / 1_000_000n;
+        const whole = scaled / 10n;
+        const dec = scaled % 10n;
+        const str = dec === 0n ? whole.toString() : `${whole.toString()}.${dec.toString()}`;
         return `${sign}${str}kk`;
     }
 
-    if (abs >= 1_000) {
-        const k = abs / 1_000;
-        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1)));
+    if (abs >= 1_000n) {
+        const scaled = (abs * 10n) / 1_000n;
+        const whole = scaled / 10n;
+        const dec = scaled % 10n;
+        const str = dec === 0n ? whole.toString() : `${whole.toString()}.${dec.toString()}`;
         return `${sign}${str}k`;
     }
 
-    return `${sign}${Math.trunc(abs)}`;
+    return `${sign}${abs.toString()}`;
 };
+
+const totalAdena = computed(() => props.users.reduce((acc, u) => acc + toBigInt(u.total_adena), 0n));
+const totalPoints = computed(() => props.users.reduce((acc, u) => acc + toBigInt(u.total_points), 0n));
 
 const formatDateTime = (val) => {
     if (!val) return '';
@@ -143,8 +193,8 @@ const formatAuditSummary = (a) => {
     }
     if (a.action === 'USER_DELETED') return t('system.users.audit.user_deleted');
     if (a.action === 'ADENA_ADJUSTED') {
-        const amount = Number(a.new_values?.amount ?? 0);
-        const amountLabel = `${amount < 0 ? '-' : '+'}${formatNumber(Math.abs(amount))}`;
+        const amount = toBigInt(a.new_values?.amount ?? 0);
+        const amountLabel = `${amount < 0n ? '-' : '+'}${formatBigInt(amount < 0n ? -amount : amount)}`;
         const desc = String(a.new_values?.description ?? '').trim();
         return desc ? t('system.users.audit.adena_adjusted_with_desc', { amount: amountLabel, description: desc }) : t('system.users.audit.adena_adjusted', { amount: amountLabel });
     }
@@ -222,11 +272,11 @@ const toggleUserLogs = async (user) => {
                 </div>
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.users.total_adena') }}</div>
-                    <div class="text-3xl font-cinzel text-purple-700 dark:text-purple-300" v-tooltip="formatNumber(users.reduce((acc, u) => acc + (u.total_adena || 0), 0))">{{ formatAdenaShort(users.reduce((acc, u) => acc + (u.total_adena || 0), 0)) }}</div>
+                    <div class="text-3xl font-cinzel text-purple-700 dark:text-purple-300" v-tooltip="formatBigInt(totalAdena)">{{ formatAdenaShort(totalAdena) }}</div>
                 </div>
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.users.total_points') }}</div>
-                    <div class="text-3xl font-cinzel text-blue-700 dark:text-blue-300">{{ formatNumber(users.reduce((acc, u) => acc + (u.total_points || 0), 0)) }}</div>
+                    <div class="text-3xl font-cinzel text-blue-700 dark:text-blue-300">{{ formatBigInt(totalPoints) }}</div>
                 </div>
             </div>
 
@@ -266,10 +316,10 @@ const toggleUserLogs = async (user) => {
                                 </div>
                             </td>
                             <td class="p-5 text-right">
-                                <span class="text-sm font-black text-purple-700 dark:text-purple-300 font-cinzel" v-tooltip="formatNumber(user.total_adena)">{{ formatAdenaShort(user.total_adena) }}</span>
+                                <span class="text-sm font-black text-purple-700 dark:text-purple-300 font-cinzel" v-tooltip="formatBigInt(user.total_adena)">{{ formatAdenaShort(user.total_adena) }}</span>
                             </td>
                             <td class="p-5 text-right">
-                                <span class="text-sm font-black text-blue-700 dark:text-blue-300 font-cinzel">{{ formatNumber(user.total_points) }}</span>
+                                <span class="text-sm font-black text-blue-700 dark:text-blue-300 font-cinzel">{{ formatBigInt(user.total_points) }}</span>
                             </td>
                             <td class="p-5 text-center">
                                 <div class="flex justify-center gap-2" v-if="isAdmin || isLeader">
@@ -346,8 +396,8 @@ const toggleUserLogs = async (user) => {
                                                 <div class="flex items-center gap-4 shrink-0">
                                                     <div class="text-right">
                                                         <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.adena') }}</div>
-                                                        <div class="text-sm font-black font-cinzel" :class="log.adena < 0 ? 'text-red-500' : 'text-green-400'" v-tooltip="`${log.adena < 0 ? '-' : '+'}${formatNumber(Math.abs(log.adena))}`">
-                                                            {{ log.adena < 0 ? '-' : '+' }}{{ formatAdenaShort(Math.abs(log.adena)) }}
+                                                        <div class="text-sm font-black font-cinzel" :class="isNegative(log.adena) ? 'text-red-500' : 'text-green-400'" v-tooltip="`${isNegative(log.adena) ? '-' : '+'}${formatBigInt(absBigInt(log.adena))}`">
+                                                            {{ isNegative(log.adena) ? '-' : '+' }}{{ formatAdenaShort(absBigInt(log.adena)) }}
                                                         </div>
                                                     </div>
                                                     <Link v-if="log.report_id" :href="route('loot.index') + '?report=' + log.report_id" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-purple-700 dark:text-gray-400 dark:hover:text-purple-300 transition">

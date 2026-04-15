@@ -116,6 +116,54 @@ class TranslationSeeder extends Seeder
 
                 ['key' => 'admin.toast.cp_created', 'value' => 'CP creada. Link de invitación disponible.'],
                 ['key' => 'admin.toast.cp_create_error', 'value' => 'No se pudo crear la CP. Revisa los campos.'],
+                ['key' => 'admin.activity.title', 'value' => 'Actividad Global'],
+                ['key' => 'admin.activity.subtitle', 'value' => 'Últimos 7 días'],
+                ['key' => 'admin.cp_requests.title', 'value' => 'Solicitudes de CP'],
+                ['key' => 'admin.cp_requests.subtitle', 'value' => 'Pendientes de aprobación'],
+                ['key' => 'admin.cp_requests.none', 'value' => 'Sin solicitudes pendientes.'],
+                ['key' => 'admin.cps.title', 'value' => 'CPs registradas'],
+                ['key' => 'admin.create_modal.title', 'value' => 'Crear CP'],
+                ['key' => 'admin.invite_link.title', 'value' => 'Link de invitación'],
+                ['key' => 'admin.items.title', 'value' => 'Base de ítems'],
+                ['key' => 'admin.items.total', 'value' => 'Total de ítems'],
+                ['key' => 'admin.dashboard.total_cps', 'value' => 'Total de CPs'],
+                ['key' => 'admin.dashboard.total_items', 'value' => 'Total de ítems registrados'],
+                ['key' => 'admin.kpis.total_cps', 'value' => 'Total de CPs'],
+                ['key' => 'admin.kpis.total_cps_hint', 'value' => 'CPs registradas en el sistema'],
+                ['key' => 'admin.kpis.total_members', 'value' => 'Total de miembros'],
+                ['key' => 'admin.kpis.total_members_hint', 'value' => 'Miembros activos registrados'],
+                ['key' => 'admin.kpis.total_points', 'value' => 'Puntos globales'],
+                ['key' => 'admin.kpis.total_points_hint', 'value' => 'Puntos acumulados'],
+                ['key' => 'admin.kpis.total_reports', 'value' => 'Total de reportes'],
+                ['key' => 'admin.kpis.total_reports_hint', 'value' => 'Sesiones de loot reportadas'],
+                ['key' => 'alerts.title', 'value' => 'Alertas'],
+                ['key' => 'cp.activity.title', 'value' => 'Actividad de la CP'],
+                ['key' => 'cp.adena_pending.title', 'value' => 'Adena pendiente'],
+                ['key' => 'cp.adena_pending.subtitle', 'value' => 'Miembros con deuda'],
+                ['key' => 'cp.latest_items.title', 'value' => 'Últimos ítems'],
+                ['key' => 'cp.metrics.title', 'value' => 'Métricas de la CP'],
+                ['key' => 'cp.tasks.title', 'value' => 'Tareas'],
+                ['key' => 'cp.tasks.subtitle', 'value' => 'Estado semanal'],
+                ['key' => 'cp.tasks.bosses', 'value' => 'Jefes'],
+                ['key' => 'loot.modal.title', 'value' => 'Reportar loot'],
+                ['key' => 'loot.modal.item_search_placeholder', 'value' => 'Buscar ítem...'],
+                ['key' => 'loot.title', 'value' => 'Loot'],
+                ['key' => 'loot.report_session', 'value' => 'Reportar sesión'],
+                ['key' => 'member.actions.report_session', 'value' => 'Reportar sesión'],
+                ['key' => 'member.cp_activity.title', 'value' => 'Actividad de la CP'],
+                ['key' => 'member.cp_latest_drops.title', 'value' => 'Últimos drops de la CP'],
+                ['key' => 'member.latest_items.title', 'value' => 'Mis últimos ítems'],
+                ['key' => 'member.latest_items.subtitle', 'value' => 'Asignaciones recientes'],
+                ['key' => 'member.summary.title', 'value' => 'Resumen personal'],
+                ['key' => 'member.title', 'value' => 'Mi Panel'],
+                ['key' => 'member.week.title', 'value' => 'Ranking semanal'],
+                ['key' => 'member.week.subtitle', 'value' => 'Top de la CP'],
+                ['key' => 'modal.cp_request.title', 'value' => 'Registrar CP'],
+                ['key' => 'modal.donations.title', 'value' => 'Donaciones'],
+                ['key' => 'modal.support.title', 'value' => 'Soporte'],
+                ['key' => 'profile.info.title', 'value' => 'Información del perfil'],
+                ['key' => 'profile.password.title', 'value' => 'Actualizar contraseña'],
+                ['key' => 'craft.title', 'value' => 'Crafteo'],
 
                 ['key' => 'common.actions', 'value' => 'Acciones'],
                 ['key' => 'common.add', 'value' => 'Añadir'],
@@ -137,7 +185,7 @@ class TranslationSeeder extends Seeder
                 ['key' => 'common.image', 'value' => 'Imagen'],
                 ['key' => 'common.image_captured', 'value' => 'Imagen Capturada'],
                 ['key' => 'common.item', 'value' => 'Ítem'],
-                ['key' => 'common.items', 'value' => 'Items'],
+                ['key' => 'common.items', 'value' => 'Ítems'],
                 ['key' => 'common.loading', 'value' => 'Cargando...'],
                 ['key' => 'common.member', 'value' => 'Miembro'],
                 ['key' => 'common.missing', 'value' => 'Faltante'],
@@ -429,6 +477,54 @@ class TranslationSeeder extends Seeder
 
                 ['key' => 'admin.toast.cp_created', 'value' => 'CP created. Invitation link available.'],
                 ['key' => 'admin.toast.cp_create_error', 'value' => 'Could not create CP. Check the fields.'],
+                ['key' => 'admin.activity.title', 'value' => 'Global Activity'],
+                ['key' => 'admin.activity.subtitle', 'value' => 'Last 7 days'],
+                ['key' => 'admin.cp_requests.title', 'value' => 'CP Requests'],
+                ['key' => 'admin.cp_requests.subtitle', 'value' => 'Pending approval'],
+                ['key' => 'admin.cp_requests.none', 'value' => 'No pending requests.'],
+                ['key' => 'admin.cps.title', 'value' => 'Registered CPs'],
+                ['key' => 'admin.create_modal.title', 'value' => 'Create CP'],
+                ['key' => 'admin.invite_link.title', 'value' => 'Invite Link'],
+                ['key' => 'admin.items.title', 'value' => 'Item Database'],
+                ['key' => 'admin.items.total', 'value' => 'Total items'],
+                ['key' => 'admin.dashboard.total_cps', 'value' => 'Total CPs'],
+                ['key' => 'admin.dashboard.total_items', 'value' => 'Total registered items'],
+                ['key' => 'admin.kpis.total_cps', 'value' => 'Total CPs'],
+                ['key' => 'admin.kpis.total_cps_hint', 'value' => 'CPs registered in the system'],
+                ['key' => 'admin.kpis.total_members', 'value' => 'Total members'],
+                ['key' => 'admin.kpis.total_members_hint', 'value' => 'Active registered members'],
+                ['key' => 'admin.kpis.total_points', 'value' => 'Global points'],
+                ['key' => 'admin.kpis.total_points_hint', 'value' => 'Accumulated points'],
+                ['key' => 'admin.kpis.total_reports', 'value' => 'Total reports'],
+                ['key' => 'admin.kpis.total_reports_hint', 'value' => 'Reported loot sessions'],
+                ['key' => 'alerts.title', 'value' => 'Alerts'],
+                ['key' => 'cp.activity.title', 'value' => 'CP Activity'],
+                ['key' => 'cp.adena_pending.title', 'value' => 'Pending Adena'],
+                ['key' => 'cp.adena_pending.subtitle', 'value' => 'Members with debt'],
+                ['key' => 'cp.latest_items.title', 'value' => 'Latest items'],
+                ['key' => 'cp.metrics.title', 'value' => 'CP Metrics'],
+                ['key' => 'cp.tasks.title', 'value' => 'Tasks'],
+                ['key' => 'cp.tasks.subtitle', 'value' => 'Weekly status'],
+                ['key' => 'cp.tasks.bosses', 'value' => 'Bosses'],
+                ['key' => 'loot.modal.title', 'value' => 'Report loot'],
+                ['key' => 'loot.modal.item_search_placeholder', 'value' => 'Search item...'],
+                ['key' => 'loot.title', 'value' => 'Loot'],
+                ['key' => 'loot.report_session', 'value' => 'Report session'],
+                ['key' => 'member.actions.report_session', 'value' => 'Report session'],
+                ['key' => 'member.cp_activity.title', 'value' => 'CP Activity'],
+                ['key' => 'member.cp_latest_drops.title', 'value' => 'Latest CP drops'],
+                ['key' => 'member.latest_items.title', 'value' => 'My latest items'],
+                ['key' => 'member.latest_items.subtitle', 'value' => 'Recent assignments'],
+                ['key' => 'member.summary.title', 'value' => 'Personal summary'],
+                ['key' => 'member.title', 'value' => 'My Dashboard'],
+                ['key' => 'member.week.title', 'value' => 'Weekly ranking'],
+                ['key' => 'member.week.subtitle', 'value' => 'CP top'],
+                ['key' => 'modal.cp_request.title', 'value' => 'Register CP'],
+                ['key' => 'modal.donations.title', 'value' => 'Donations'],
+                ['key' => 'modal.support.title', 'value' => 'Support'],
+                ['key' => 'profile.info.title', 'value' => 'Profile information'],
+                ['key' => 'profile.password.title', 'value' => 'Update password'],
+                ['key' => 'craft.title', 'value' => 'Crafting'],
 
                 ['key' => 'common.actions', 'value' => 'Actions'],
                 ['key' => 'common.add', 'value' => 'Add'],
@@ -656,19 +752,88 @@ class TranslationSeeder extends Seeder
             }
         }
 
+        Translation::whereRaw('RIGHT(`key`, 1) = "." OR `key` LIKE "%..%"')->delete();
+
         $frontendKeys = $this->discoverFrontendTranslationKeys();
+        $dbKeys = Translation::query()->distinct()->pluck('key')->map(fn ($k) => (string) $k)->all();
+        $keysToEnsure = array_values(array_unique(array_merge($frontendKeys, $dbKeys)));
+        $keysToEnsure = array_values(array_filter($keysToEnsure, fn ($k) => $k !== '' && ! str_ends_with($k, '.') && ! str_contains($k, '..')));
+        sort($keysToEnsure);
+
+        $existing = Translation::whereIn('language', ['es', 'en'])
+            ->whereIn('key', $keysToEnsure)
+            ->get(['language', 'key', 'value'])
+            ->keyBy(fn ($row) => $row->language . '|' . $row->key);
+
         foreach (['es', 'en'] as $language) {
-            foreach ($frontendKeys as $key) {
+            foreach ($keysToEnsure as $key) {
                 if (isset($curatedKeys[$language][$key])) {
                     continue;
                 }
 
-                Translation::firstOrCreate(
-                    ['key' => $key, 'language' => $language],
-                    ['value' => $language === 'es' ? $this->generateSpanishValue($key) : $this->generateEnglishValue($key)]
-                );
+                $generatedValue = $language === 'es' ? $this->generateSpanishValue($key) : $this->generateEnglishValue($key);
+                $row = $existing->get($language . '|' . $key);
+                $enRow = $existing->get('en|' . $key);
+
+                if (! $row) {
+                    Translation::create([
+                        'language' => $language,
+                        'key' => $key,
+                        'value' => $generatedValue,
+                    ]);
+                    continue;
+                }
+
+                $shouldUpdate = $this->shouldAutoUpdateValue((string) $row->value, $key, $language);
+                if ($language === 'es' && ! $this->shouldKeepSameAcrossLanguages($key) && $enRow && trim((string) $row->value) === trim((string) $enRow->value)) {
+                    $shouldUpdate = true;
+                }
+
+                if ($shouldUpdate) {
+                    Translation::where('language', $language)->where('key', $key)->update(['value' => $generatedValue]);
+                }
             }
         }
+    }
+
+    private function shouldAutoUpdateValue(string $existingValue, string $key, string $language): bool
+    {
+        $trimmed = trim($existingValue);
+
+        if ($trimmed === '') {
+            return true;
+        }
+
+        if ($trimmed === $key) {
+            return true;
+        }
+
+        if ($language === 'es' && $trimmed === $this->generateEnglishValue($key)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function shouldKeepSameAcrossLanguages(string $key): bool
+    {
+        if (str_starts_with($key, 'chronicles.')) {
+            return true;
+        }
+
+        return in_array($key, [
+            'app.name',
+            'app.tagline',
+            'common.adena',
+            'common.cp',
+            'common.id',
+            'common.na',
+            'common.no',
+            'common.ok',
+            'common.pts',
+            'lang.en',
+            'lang.es',
+        ], true);
     }
 
     private function discoverFrontendTranslationKeys(): array
@@ -698,6 +863,9 @@ class TranslationSeeder extends Seeder
 
             if (preg_match_all('/\$t\(\s*[\'"]([A-Za-z0-9_.-]+)[\'"]/', $content, $matches)) {
                 foreach ($matches[1] as $key) {
+                    if ($key === '' || str_ends_with($key, '.') || str_contains($key, '..')) {
+                        continue;
+                    }
                     $keys[$key] = true;
                 }
             }
@@ -798,6 +966,73 @@ class TranslationSeeder extends Seeder
             'auth.verify.description' => 'Gracias por registrarte. Antes de empezar, verifica tu email.',
             'auth.verify.resend' => 'Reenviar verificación',
             'auth.verify.sent' => 'Enlace de verificación enviado.',
+
+            'common.confirmed' => 'Confirmado',
+            'common.error_occurred' => 'Ha ocurrido un error.',
+            'common.errors' => 'Errores',
+            'common.idle' => 'Inactivo',
+            'common.no_data' => 'Sin datos.',
+            'common.no_data_yet' => 'Aún no hay datos.',
+            'common.no_recent_records' => 'Sin registros recientes.',
+            'common.saved' => 'Guardado',
+
+            'alerts.none' => 'Sin alertas.',
+            'alerts.mark_read' => 'Marcar como leído',
+            'alerts.mark_all' => 'Marcar todo',
+
+            'cp.activity.no_data' => 'Sin datos.',
+            'cp.live_status' => 'Estado',
+            'cp.metrics.adena_paid' => 'Adena pagada',
+            'cp.tasks.bosses' => 'Bosses',
+            'cp.tasks.dailies' => 'Diarias',
+            'cp.tasks.review_warehouse' => 'Revisar Warehouse',
+            'cp.week.top_activity' => 'Top actividad',
+
+            'craft.title' => 'Crafting',
+
+            'form.chronicle' => 'Crónica',
+            'form.contact_email_optional' => 'Email de contacto (opcional)',
+            'form.email_optional' => 'Email (opcional)',
+            'form.subject' => 'Asunto',
+
+            'loot.accept' => 'Aceptar',
+            'loot.accept_return' => 'Aceptar devolución',
+            'loot.action' => 'Acción',
+            'loot.adena_distribution' => 'Distribución de Adena',
+            'loot.attendees' => 'Asistentes',
+            'loot.distribution' => 'Distribución',
+            'loot.distribute_attendees' => 'Repartir a asistentes',
+            'loot.each_receives_total' => 'Cada uno recibe (total)',
+            'loot.evidence' => 'Prueba',
+            'loot.grade' => 'Grado',
+            'loot.items_acquired' => 'Items obtenidos',
+            'loot.modal.activity_type' => 'Tipo de actividad',
+            'loot.modal.item_search_placeholder' => 'Buscar item...',
+            'loot.modal.quantity' => 'Cantidad',
+            'loot.modal.upload_click' => 'Hacer clic para subir',
+            'loot.no_attendees' => 'Sin asistentes.',
+            'loot.no_capture' => 'Sin captura.',
+            'loot.no_cp_desc' => 'Necesitas estar asignado a una CP.',
+            'loot.no_results' => 'Sin resultados.',
+            'loot.no_screenshot' => 'Falta captura.',
+            'loot.note' => 'Nota',
+            'loot.origin' => 'Origen',
+            'loot.registered_by' => 'Registrado por',
+            'loot.reported_by' => 'Reportado por',
+            'loot.resolve_loot_session' => 'Resolver sesión de loot',
+            'loot.search_placeholder' => 'Buscar...',
+            'loot.session' => 'Sesión',
+            'loot.session_attendees' => 'Asistentes de la sesión',
+            'loot.sort.newest' => 'Más nuevos',
+            'loot.sort.oldest' => 'Más antiguos',
+            'loot.total' => 'Total',
+            'loot.type' => 'Tipo',
+
+            'member.last_7_days' => 'Últimos 7 días',
+            'member.party_status' => 'Estado de party',
+            'member.summary.items' => 'Items',
+            'member.summary.owed' => 'A deber',
+            'member.summary.paid' => 'Pagado',
         ];
 
         if (isset($special[$key])) {
@@ -806,63 +1041,140 @@ class TranslationSeeder extends Seeder
 
         $value = $this->generateEnglishValue($key);
 
-        $map = [
-            'Actions' => 'Acciones',
-            'Add' => 'Añadir',
-            'All' => 'Todo',
-            'Approve' => 'Aprobar',
-            'Cancel' => 'Cancelar',
-            'Close' => 'Cerrar',
-            'Confirm' => 'Confirmar',
-            'Copy' => 'Copiar',
-            'Create' => 'Crear',
-            'Delete' => 'Eliminar',
-            'Description' => 'Descripción',
-            'Edit' => 'Editar',
-            'Email' => 'Email',
-            'Error' => 'Error',
-            'Forgot' => 'Olvidé',
-            'History' => 'Histórico',
-            'Items' => 'Items',
-            'Item' => 'Ítem',
-            'Login' => 'Entrar',
-            'Logout' => 'Salir',
-            'Member' => 'Miembro',
-            'Members' => 'Miembros',
-            'Message' => 'Mensaje',
-            'More' => 'Más',
-            'Name' => 'Nombre',
-            'No' => 'No',
-            'Notes' => 'Notas',
-            'Ok' => 'OK',
-            'Open' => 'Abrir',
-            'Password' => 'Contraseña',
-            'Pending' => 'Pendiente',
-            'Points' => 'Puntos',
-            'Profile' => 'Perfil',
-            'Reject' => 'Rechazar',
-            'Register' => 'Registro',
-            'Report' => 'Reporte',
-            'Save' => 'Guardar',
-            'Send' => 'Enviar',
-            'Sending' => 'Enviando',
-            'Sessions' => 'Sesiones',
-            'Submit' => 'Enviar',
-            'Support' => 'Soporte',
-            'Title' => 'Título',
-            'Total' => 'Total',
-            'Update' => 'Actualizar',
-            'Verify' => 'Verificar',
-            'View' => 'Ver',
-            'Yes' => 'Sí',
+        $dictionary = [
+            'actions' => 'Acciones',
+            'add' => 'Añadir',
+            'admin' => 'Admin',
+            'all' => 'Todo',
+            'allow' => 'Permitir',
+            'approve' => 'Aprobar',
+            'audit' => 'Auditoría',
+            'balance' => 'Saldo',
+            'cancel' => 'Cancelar',
+            'close' => 'Cerrar',
+            'confirm' => 'Confirmar',
+            'confirm' => 'Confirmar',
+            'copy' => 'Copiar',
+            'create' => 'Crear',
+            'created' => 'Creado',
+            'dashboard' => 'Panel',
+            'delete' => 'Eliminar',
+            'details' => 'Detalle',
+            'description' => 'Descripción',
+            'edit' => 'Editar',
+            'email' => 'Email',
+            'error' => 'Error',
+            'excluded' => 'Excluido',
+            'event' => 'Evento',
+            'events' => 'Eventos',
+            'failed' => 'Fallido',
+            'forgot' => 'Olvidé',
+            'history' => 'Histórico',
+            'hint' => 'Info',
+            'home' => 'Inicio',
+            'image' => 'Imagen',
+            'invite' => 'Invitación',
+            'item' => 'Ítem',
+            'items' => 'Items',
+            'join' => 'Unirse',
+            'kpis' => 'KPIs',
+            'language' => 'Idioma',
+            'leader' => 'Líder',
+            'link' => 'Link',
+            'loading' => 'Cargando',
+            'login' => 'Entrar',
+            'logout' => 'Salir',
+            'loot' => 'Loot',
+            'member' => 'Miembro',
+            'members' => 'Miembros',
+            'manage' => 'Gestionar',
+            'mark' => 'Marcar',
+            'message' => 'Mensaje',
+            'more' => 'Más',
+            'name' => 'Nombre',
+            'new' => 'Nuevo',
+            'none' => 'Ninguno',
+            'notifications' => 'Notificaciones',
+            'no' => 'No',
+            'notes' => 'Notas',
+            'ok' => 'OK',
+            'open' => 'Abrir',
+            'password' => 'Contraseña',
+            'pending' => 'Pendiente',
+            'points' => 'Puntos',
+            'profile' => 'Perfil',
+            'read' => 'Leído',
+            'register' => 'Registro',
+            'reject' => 'Rechazar',
+            'report' => 'Reporte',
+            'reports' => 'Reportes',
+            'request' => 'Solicitud',
+            'requests' => 'Solicitudes',
+            'resend' => 'Reenviar',
+            'save' => 'Guardar',
+            'send' => 'Enviar',
+            'sending' => 'Enviando',
+            'server' => 'Servidor',
+            'sessions' => 'Sesiones',
+            'settings' => 'Configuración',
+            'subtitle' => 'Subtítulo',
+            'success' => 'Éxito',
+            'support' => 'Soporte',
+            'theme' => 'Tema',
+            'title' => 'Título',
+            'total' => 'Total',
+            'translations' => 'Traducciones',
+            'translation' => 'Traducción',
+            'update' => 'Actualizar',
+            'updated' => 'Actualizado',
+            'user' => 'Usuario',
+            'users' => 'Usuarios',
+            'verify' => 'Verificar',
+            'view' => 'Ver',
+            'warehouse' => 'Warehouse',
+            'vault' => 'Vault',
+            'yes' => 'Sí',
+            'to' => 'a',
+            'of' => 'de',
+            'and' => 'y',
+            'my' => 'mi',
+            'your' => 'tu',
         ];
 
-        foreach ($map as $from => $to) {
-            if ($value === $from) {
-                return $to;
-            }
+        $words = preg_split('/\s+/', trim($value)) ?: [];
+        if ($words === []) {
+            return $key;
         }
 
-        return $value;
+        $out = [];
+        foreach ($words as $index => $word) {
+            $clean = preg_replace('/[^\p{L}\p{N}]+/u', '', $word) ?? $word;
+            $lower = mb_strtolower($clean);
+
+            if ($lower === 'cp') {
+                $out[] = 'CP';
+                continue;
+            }
+
+            if ($lower === 'cps') {
+                $out[] = 'CPs';
+                continue;
+            }
+
+            if ($lower === 'adena') {
+                $out[] = 'Adena';
+                continue;
+            }
+
+            if (isset($dictionary[$lower])) {
+                $translated = $dictionary[$lower];
+                $out[] = $index === 0 ? $translated : $translated;
+                continue;
+            }
+
+            $out[] = $word;
+        }
+
+        return implode(' ', $out);
     }
 }
