@@ -454,11 +454,43 @@ const moveCpRecipe = (cpRecipeId, direction) => {
 // Warehouse assign modal
 const assignModalOpen = ref(false);
 const selectedItem = ref(null);
+const assignUseAdenaOffset = ref(false);
 const assignForm = useForm({
     item_id: null,
     user_id: null,
     amount: 1,
     image_proof: null,
+    adena_offset: 0,
+});
+
+const selectedAssignMember = computed(() => {
+    const id = assignForm.user_id;
+    if (!id) return null;
+    return (props.members || []).find((m) => m.id === id) || null;
+});
+const selectedAssignMemberOwed = computed(() => {
+    const n = Number(selectedAssignMember.value?.adena_owed ?? 0);
+    return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+});
+
+watch(() => assignForm.user_id, () => {
+    assignUseAdenaOffset.value = false;
+    assignForm.adena_offset = 0;
+});
+
+watch(assignUseAdenaOffset, (enabled) => {
+    if (!enabled) {
+        assignForm.adena_offset = 0;
+        return;
+    }
+    assignForm.adena_offset = selectedAssignMemberOwed.value;
+});
+
+watch(selectedAssignMemberOwed, (maxOwed) => {
+    if (!assignUseAdenaOffset.value) return;
+    const curr = Number(assignForm.adena_offset ?? 0);
+    const next = Number.isFinite(curr) ? Math.max(0, Math.trunc(curr)) : 0;
+    assignForm.adena_offset = Math.min(next, maxOwed);
 });
 
 const openAssign = (item) => {
@@ -467,6 +499,8 @@ const openAssign = (item) => {
     assignForm.amount = 1;
     assignForm.user_id = null;
     assignForm.image_proof = null;
+    assignUseAdenaOffset.value = false;
+    assignForm.adena_offset = 0;
     assignModalOpen.value = true;
 };
 
@@ -475,6 +509,9 @@ const onFileChange = (e) => {
 };
 
 const submitAssign = () => {
+    if (!assignUseAdenaOffset.value) {
+        assignForm.adena_offset = 0;
+    }
     assignForm.post(route('warehouse.assign'), {
         forceFormData: true,
         preserveScroll: true,
@@ -516,6 +553,13 @@ const sellPerMember = computed(() => {
     const c = sellSplitCount.value;
     if (c <= 0) return 0;
     return Math.floor(sellTotalAdena.value / c);
+});
+
+const sellRemainderToCp = computed(() => {
+    const total = sellTotalAdena.value;
+    const c = sellSplitCount.value;
+    if (c <= 0) return total;
+    return Math.max(0, total - (sellPerMember.value * c));
 });
 
 const openSell = (item) => {
@@ -1486,6 +1530,43 @@ watch(buySearch, throttle(async (val) => {
                     </div>
                 </div>
 
+                <div v-if="assignForm.user_id" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="min-w-0">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.assign_adena_offset_title') }}</div>
+                            <div class="text-xs text-gray-700 dark:text-gray-300 font-bold mt-1">
+                                {{ $t('party.assign_member_owed') }}:
+                                <span class="font-cinzel" v-tooltip="formatAdenaFull(selectedAssignMemberOwed)">{{ formatAdenaShort(selectedAssignMemberOwed) }}</span>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" v-model="assignUseAdenaOffset" :disabled="selectedAssignMemberOwed <= 0" />
+                            {{ $t('party.assign_adena_offset_toggle') }}
+                        </label>
+                    </div>
+
+                    <div v-if="assignUseAdenaOffset" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <div>
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.assign_adena_offset_amount') }}</div>
+                            <input
+                                type="number"
+                                v-model.number="assignForm.adena_offset"
+                                min="0"
+                                :max="selectedAssignMemberOwed"
+                                inputmode="numeric"
+                                class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-purple-600 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"
+                            >
+                        </div>
+                        <button
+                            type="button"
+                            class="h-10 px-4 rounded-xl bg-gray-900/80 text-white border border-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-900 dark:bg-gray-700/70 dark:border-gray-600"
+                            @click="assignForm.adena_offset = selectedAssignMemberOwed"
+                        >
+                            {{ $t('party.assign_adena_offset_max') }}
+                        </button>
+                    </div>
+                </div>
+
                 <div>
                     <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.trade_screenshot_required') }}</div>
                     <div class="flex items-center justify-center w-full">
@@ -1570,6 +1651,10 @@ watch(buySearch, throttle(async (val) => {
                         </label>
                     </div>
 
+                    <div v-if="sellForm.adena_distribution === 'cp'" class="mt-4 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                        {{ $t('party.cp_receives_adena', { amount: formatAdenaShort(sellTotalAdena) }) }}
+                    </div>
+
                     <div v-if="sellForm.adena_distribution === 'attendees'" class="mt-4 space-y-3">
                         <div class="flex items-center justify-between gap-3">
                             <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.split_members') }}</div>
@@ -1581,7 +1666,13 @@ watch(buySearch, throttle(async (val) => {
                             <label v-for="m in members" :key="m.id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
                                 <input type="checkbox" :value="m.id" v-model="sellForm.recipient_ids" class="text-emerald-500">
                                 <div class="text-sm text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</div>
+                                <div v-if="sellForm.recipient_ids.includes(m.id)" class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                    +{{ formatAdenaShort(sellPerMember) }}
+                                </div>
                             </label>
+                        </div>
+                        <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                            {{ $t('party.remainder_to_cp', { amount: formatAdenaShort(sellRemainderToCp) }) }}
                         </div>
                     </div>
                 </div>

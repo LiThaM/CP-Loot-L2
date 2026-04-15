@@ -47,7 +47,7 @@ class PartyController extends Controller
         $adenaPaidByUser = PointsLog::query()
             ->selectRaw('user_id, SUM(adena) as total')
             ->where('cp_id', $user->cp_id)
-            ->where('action_type', 'ADENA_PAYOUT')
+            ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
             ->whereIn('user_id', $memberIds)
             ->groupBy('user_id')
             ->pluck('total', 'user_id');
@@ -182,7 +182,7 @@ class PartyController extends Controller
             ->where('action_type', 'ADENA_GAIN')
             ->sum('adena');
         $cpAdenaPaid = abs((int) PointsLog::where('cp_id', $user->cp_id)
-            ->where('action_type', 'ADENA_PAYOUT')
+            ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
             ->sum('adena'));
         $cpAdenaOwed = max(0, $cpAdenaGained - $cpAdenaPaid);
 
@@ -244,7 +244,7 @@ class PartyController extends Controller
             ->sum('adena');
         $myAdenaPaid = abs((int) PointsLog::where('cp_id', $user->cp_id)
             ->where('user_id', $user->id)
-            ->where('action_type', 'ADENA_PAYOUT')
+            ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
             ->sum('adena'));
         $myAdenaOwed = max(0, $myAdenaGained - $myAdenaPaid);
 
@@ -322,7 +322,7 @@ class PartyController extends Controller
             ->sum('adena');
         $adenaPaid = abs((int) PointsLog::where('cp_id', $cpId)
             ->where('user_id', $user->id)
-            ->where('action_type', 'ADENA_PAYOUT')
+            ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
             ->sum('adena'));
 
         $assigned = LootEntry::query()
@@ -385,6 +385,7 @@ class PartyController extends Controller
             'amount' => 'required|integer|min:1',
             'user_id' => 'required|exists:users,id',
             'image_proof' => 'required|image|max:4096',
+            'adena_offset' => 'nullable|integer|min:0',
         ]);
 
         $current = $request->user();
@@ -405,6 +406,25 @@ class PartyController extends Controller
         $item = Item::findOrFail($request->item_id);
         if (strtolower($item->name) === 'adena') {
             return back()->withErrors(['item_id' => 'La Adena se gestiona como saldo, no como ítem del warehouse.']);
+        }
+
+        $adenaOffset = max(0, (int) $request->input('adena_offset', 0));
+        if ($adenaOffset > 0) {
+            $g = (int) PointsLog::where('cp_id', $cpId)
+                ->where('user_id', $targetUser->id)
+                ->where('action_type', 'ADENA_GAIN')
+                ->sum('adena');
+            $p = abs((int) PointsLog::where('cp_id', $cpId)
+                ->where('user_id', $targetUser->id)
+                ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
+                ->sum('adena'));
+            $owed = max(0, $g - $p);
+            if ($owed <= 0) {
+                return back()->withErrors(['adena_offset' => 'El miembro no tiene Adena pendiente.']);
+            }
+            if ($adenaOffset > $owed) {
+                return back()->withErrors(['adena_offset' => 'El descuento excede la Adena pendiente. Disponible: '.$owed]);
+            }
         }
 
         $incoming = LootEntry::query()
@@ -430,7 +450,7 @@ class PartyController extends Controller
             return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
         }
 
-        DB::transaction(function () use ($request, $cpId, $current, $targetUser) {
+        DB::transaction(function () use ($request, $cpId, $current, $targetUser, $adenaOffset) {
             $report = LootReport::create([
                 'cp_id' => $cpId,
                 'requested_by_id' => $current->id,
@@ -454,6 +474,16 @@ class PartyController extends Controller
             ]);
 
             $item = Item::find($request->item_id);
+            if ($adenaOffset > 0) {
+                PointsLog::create([
+                    'cp_id' => $cpId,
+                    'user_id' => $targetUser->id,
+                    'action_type' => 'ADENA_OFFSET',
+                    'points' => 0,
+                    'adena' => -$adenaOffset,
+                    'description' => 'Descuento de Adena por asignación ('.$item?->name.') - Reporte #'.$report->id,
+                ]);
+            }
             $audit = AuditLog::create([
                 'entity_type' => 'LootReport',
                 'entity_id' => $report->id,
@@ -465,6 +495,7 @@ class PartyController extends Controller
                     'item_name' => $item?->name,
                     'amount' => (int) $request->amount,
                     'awarded_to' => (int) $targetUser->id,
+                    'adena_offset' => (int) $adenaOffset,
                 ],
             ]);
             $recipients = collect([$current->id, $targetUser->id]);
@@ -474,7 +505,8 @@ class PartyController extends Controller
             }
             $recipients = $recipients->unique()->values();
             $amountLabel = 'x'.number_format((int) $request->amount, 0, ',', '.');
-            $summary = "{$current->name} asignó {$item?->name} {$amountLabel} a {$targetUser->name}";
+            $offsetLabel = $adenaOffset > 0 ? ' (-'.number_format($adenaOffset, 0, ',', '.').' adena)' : '';
+            $summary = "{$current->name} asignó {$item?->name} {$amountLabel} a {$targetUser->name}{$offsetLabel}";
             $now = now();
             $rows = $recipients->map(fn ($rid) => [
                 'audit_log_id' => $audit->id,

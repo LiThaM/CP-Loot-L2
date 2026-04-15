@@ -221,6 +221,36 @@ watch(itemSearch, throttle(async (val) => {
 }, 300));
 const hasAdena = computed(() => lootForm.items.some(i => String(i.name).toLowerCase() === 'adena'));
 
+const lootAdenaTotal = computed(() => {
+    return (lootForm.items || []).reduce((sum, i) => {
+        const name = String(i?.name || '').toLowerCase();
+        if (name !== 'adena') return sum;
+        const n = Number(i?.amount ?? 0);
+        return sum + (Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0);
+    }, 0);
+});
+
+const lootSelectedMembers = computed(() => {
+    const ids = Array.isArray(lootForm.recipient_ids) ? lootForm.recipient_ids : [];
+    if (ids.length === 0) return [];
+    const set = new Set(ids.map((id) => Number(id)));
+    return (cpMembers.value || []).filter((m) => set.has(Number(m.id)));
+});
+
+const lootAdenaSplitPreview = computed(() => {
+    const total = lootAdenaTotal.value;
+    if (total <= 0) return null;
+    const ids = Array.isArray(lootForm.recipient_ids) ? lootForm.recipient_ids : [];
+    const count = ids.length;
+    const mode = String(lootForm.adena_distribution || 'cp');
+    if (mode === 'attendees' && count > 0) {
+        const perMember = Math.floor(total / count);
+        const remainderToCp = Math.max(0, total - (perMember * count));
+        return { mode, total, perMember, remainderToCp };
+    }
+    return { mode: 'cp', total, perMember: 0, remainderToCp: total };
+});
+
 const isAdenaName = (val) => String(val ?? '').trim().toLowerCase() === 'adena';
 
 const formatNumber = (val) => {
@@ -808,6 +838,28 @@ watch(() => alerts.value.items, (items) => {
                                 <input type="radio" name="adenaDistribution" value="cp" v-model="lootForm.adena_distribution">
                                 <span class="text-xs font-bold uppercase tracking-widest">{{ $t('loot.modal.adena_cp') }}</span>
                             </label>
+                        </div>
+                        <div v-if="lootAdenaSplitPreview && lootAdenaSplitPreview.mode === 'attendees'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.adena_split_title') }}</div>
+                            <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(lootAdenaSplitPreview.total) }}</span>
+                                • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}</span>
+                            </div>
+                            <div class="mt-2 space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                <div v-for="m in lootSelectedMembers" :key="`loot-adena-${m.id}`" class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</span>
+                                    <span class="font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(lootAdenaSplitPreview.remainderToCp) }) }}
+                            </div>
+                        </div>
+                        <div v-else-if="lootAdenaSplitPreview && lootAdenaSplitPreview.mode === 'cp'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.adena_to_cp_title') }}</div>
+                            <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('loot.adena_to_cp_desc', { amount: formatAdenaShort(lootAdenaSplitPreview.total) }) }}
+                            </div>
                         </div>
                     </div>
 

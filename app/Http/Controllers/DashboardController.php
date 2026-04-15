@@ -161,7 +161,7 @@ class DashboardController extends Controller
                 ->sum('adena');
             $personalAdenaPaid = abs((int) PointsLog::where('cp_id', $user->cp_id)
                 ->where('user_id', $user->id)
-                ->where('action_type', 'ADENA_PAYOUT')
+                ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
                 ->sum('adena'));
             $stats['personal_adena_gained'] = $personalAdenaGained;
             $stats['personal_adena_paid'] = $personalAdenaPaid;
@@ -220,7 +220,7 @@ class DashboardController extends Controller
                 ->where('action_type', 'ADENA_GAIN')
                 ->sum('adena');
             $cpAdenaPaid = abs((int) PointsLog::where('cp_id', $user->cp_id)
-                ->where('action_type', 'ADENA_PAYOUT')
+                ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
                 ->sum('adena'));
             $cpAdenaOwed = max(0, $cpAdenaGained - $cpAdenaPaid);
 
@@ -287,7 +287,7 @@ class DashboardController extends Controller
             $adenaPaidByUser = PointsLog::query()
                 ->selectRaw('user_id, SUM(adena) as total')
                 ->where('cp_id', $user->cp_id)
-                ->where('action_type', 'ADENA_PAYOUT')
+                ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
                 ->whereIn('user_id', $memberIds)
                 ->groupBy('user_id')
                 ->pluck('total', 'user_id');

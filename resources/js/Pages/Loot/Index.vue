@@ -1,5 +1,6 @@
 <script setup>
 import MainLayout from '@/Layouts/MainLayout.vue';
+import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
@@ -28,6 +29,27 @@ const activeTab = ref('history');
 const vaultSearch = ref('');
 const vaultCategory = ref('all');
 const vaultSort = ref('newest');
+const visibleEntriesByReportId = ref({});
+
+const getVisibleLimit = (reportId, baseLimit) => {
+    const key = String(reportId);
+    const val = visibleEntriesByReportId.value[key];
+    const n = Number(val);
+    return Number.isFinite(n) && n > 0 ? n : baseLimit;
+};
+
+const canLoadMoreEntries = (report, baseLimit) => {
+    return getReportFilteredEntries(report).length > getVisibleLimit(report.id, baseLimit);
+};
+
+const loadMoreEntries = (reportId, baseLimit, step) => {
+    const key = String(reportId);
+    const current = getVisibleLimit(reportId, baseLimit);
+    visibleEntriesByReportId.value = {
+        ...visibleEntriesByReportId.value,
+        [key]: current + step,
+    };
+};
 
 // Resolution Logic
 const showResolveModal = ref(false);
@@ -67,6 +89,10 @@ watch(() => resolveForm.event_type, (type) => {
     resolveForm.points_per_member = config ? config.points : 0;
 });
 
+watch([vaultSearch, vaultCategory, vaultSort, activeTab], () => {
+    visibleEntriesByReportId.value = {};
+});
+
 const openResolveModal = (report) => {
     selectedReport.value = report;
     resolveForm.recipient_ids = Array.isArray(report.recipient_ids) ? [...report.recipient_ids] : [];
@@ -88,6 +114,36 @@ const openResolveModal = (report) => {
 };
 
 const hasAdenaResolve = computed(() => resolveForm.items.some(i => String(i.name || '').toLowerCase() === 'adena'));
+
+const resolveAdenaTotal = computed(() => {
+    return (resolveForm.items || []).reduce((sum, i) => {
+        const name = String(i?.name || '').toLowerCase();
+        if (name !== 'adena') return sum;
+        const n = Number(i?.amount ?? 0);
+        return sum + (Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0);
+    }, 0);
+});
+
+const resolveSelectedMembers = computed(() => {
+    const ids = Array.isArray(resolveForm.recipient_ids) ? resolveForm.recipient_ids : [];
+    if (ids.length === 0) return [];
+    const set = new Set(ids.map((id) => Number(id)));
+    return (props.members || []).filter((m) => set.has(Number(m.id)));
+});
+
+const resolveAdenaSplitPreview = computed(() => {
+    const total = resolveAdenaTotal.value;
+    if (total <= 0) return null;
+    const ids = Array.isArray(resolveForm.recipient_ids) ? resolveForm.recipient_ids : [];
+    const count = ids.length;
+    const mode = String(resolveForm.adena_distribution || 'cp');
+    if (mode === 'attendees' && count > 0) {
+        const perMember = Math.floor(total / count);
+        const remainderToCp = Math.max(0, total - (perMember * count));
+        return { mode, total, perMember, remainderToCp };
+    }
+    return { mode: 'cp', total, perMember: 0, remainderToCp: total };
+});
 
 const submitResolve = () => {
     resolveForm.post(route('loot.report.resolve', { report: selectedReport.value.id }), {
@@ -244,6 +300,30 @@ const sortReports = (reports) => {
     return items;
 };
 
+const getReportAdenaTotal = (report) => {
+    const entries = Array.isArray(report?.entries) ? report.entries : [];
+    return entries.reduce((sum, e) => {
+        const name = String(e?.item?.name || '').toLowerCase();
+        if (name !== 'adena') return sum;
+        const n = Number(e?.amount ?? 0);
+        return sum + (Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0);
+    }, 0);
+};
+
+const getReportAdenaSplit = (report) => {
+    const total = getReportAdenaTotal(report);
+    const recipients = Array.isArray(report?.recipients) ? report.recipients : [];
+    const count = recipients.length;
+    const mode = String(report?.adena_distribution || 'cp');
+    if (total <= 0) return null;
+    if (mode === 'attendees' && count > 0) {
+        const perMember = Math.floor(total / count);
+        const remainderToCp = Math.max(0, total - (perMember * count));
+        return { mode, total, perMember, remainderToCp, recipients };
+    }
+    return { mode: 'cp', total, perMember: 0, remainderToCp: total, recipients };
+};
+
 const filteredPendingLoot = computed(() => {
     const sorted = sortReports(props.pendingLoot || []);
     const searchLower = vaultSearch.value.toLowerCase().trim();
@@ -384,7 +464,7 @@ onMounted(async () => {
                             <div class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 border-b border-gray-200 pb-1 dark:border-gray-800">{{ $t('loot.items_acquired') }}</div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <div
-                                    v-for="entry in getReportFilteredEntries(report).slice(0, 12)"
+                                    v-for="entry in getReportFilteredEntries(report).slice(0, getVisibleLimit(report.id, 12))"
                                     :key="entry.id"
                                     class="flex items-center gap-2 bg-gray-100/50 dark:bg-black/20 border rounded-xl px-2 py-2 min-w-0"
                                     :class="getItemToneClass(entry.item)"
@@ -397,9 +477,14 @@ onMounted(async () => {
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="getReportFilteredEntries(report).length > 12" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest pt-1">
-                                +{{ getReportFilteredEntries(report).length - 12 }} {{ $t('common.more') }}
-                            </div>
+                            <LoadMoreSection
+                                :show-remaining="getReportFilteredEntries(report).length > getVisibleLimit(report.id, 12)"
+                                :remaining-count="getReportFilteredEntries(report).length - getVisibleLimit(report.id, 12)"
+                                :remaining-label="$t('common.more')"
+                                :can-load-more="canLoadMoreEntries(report, 12)"
+                                :load-more-label="$t('common.load_more')"
+                                @load-more="loadMoreEntries(report.id, 12, 12)"
+                            />
                         </div>
                     </div>
 
@@ -485,7 +570,7 @@ onMounted(async () => {
                         <div class="flex-1 w-full">
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <div
-                                    v-for="entry in getReportFilteredEntries(report).slice(0, 9)"
+                                    v-for="entry in getReportFilteredEntries(report).slice(0, getVisibleLimit(report.id, 9))"
                                     :key="entry.id"
                                     class="flex items-center gap-2 bg-gray-100/50 dark:bg-black/20 border rounded-xl px-2 py-2 min-w-0"
                                     :class="getItemToneClass(entry.item)"
@@ -498,9 +583,14 @@ onMounted(async () => {
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="getReportFilteredEntries(report).length > 9" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest pt-2">
-                                +{{ getReportFilteredEntries(report).length - 9 }} {{ $t('common.more') }}
-                            </div>
+                            <LoadMoreSection
+                                :show-remaining="getReportFilteredEntries(report).length > getVisibleLimit(report.id, 9)"
+                                :remaining-count="getReportFilteredEntries(report).length - getVisibleLimit(report.id, 9)"
+                                :remaining-label="$t('common.more')"
+                                :can-load-more="canLoadMoreEntries(report, 9)"
+                                :load-more-label="$t('common.load_more')"
+                                @load-more="loadMoreEntries(report.id, 9, 9)"
+                            />
                         </div>
 
                         <div class="flex items-center gap-4 w-full md:w-auto border-t md:border-t-0 md:border-l border-gray-200 pt-4 md:pt-0 md:pl-6 dark:border-gray-800">
@@ -560,6 +650,32 @@ onMounted(async () => {
                                 <div v-else v-for="u in report.recipients" :key="u.id" class="flex items-center justify-between bg-white/70 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-800 rounded-xl p-2">
                                     <span class="text-xs font-bold text-gray-900 dark:text-gray-200 truncate">{{ u.name }}</span>
                                     <span v-if="reportHasPoints(report)" class="text-xs font-black text-emerald-700 dark:text-green-500">{{ report.points_per_member || 0 }} {{ $t('loot.pts') }}</span>
+                                </div>
+                                <div v-if="getReportAdenaSplit(report) && getReportAdenaSplit(report).mode === 'attendees'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
+                                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
+                                        {{ $t('loot.adena_split_title') }}
+                                    </div>
+                                    <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                        {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(getReportAdenaSplit(report).total) }}</span>
+                                        • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(getReportAdenaSplit(report).perMember) }}</span>
+                                    </div>
+                                    <div class="mt-2 space-y-1">
+                                        <div v-for="u in getReportAdenaSplit(report).recipients" :key="`adena-${report.id}-${u.id}`" class="flex items-center justify-between text-xs">
+                                            <span class="text-gray-800 dark:text-gray-200 font-bold truncate">{{ u.name }}</span>
+                                            <span class="font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(getReportAdenaSplit(report).perMember) }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                        {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(getReportAdenaSplit(report).remainderToCp) }) }}
+                                    </div>
+                                </div>
+                                <div v-else-if="getReportAdenaSplit(report) && getReportAdenaSplit(report).mode === 'cp'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
+                                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
+                                        {{ $t('loot.adena_to_cp_title') }}
+                                    </div>
+                                    <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                        {{ $t('loot.adena_to_cp_desc', { amount: formatAdenaShort(getReportAdenaSplit(report).total) }) }}
+                                    </div>
                                 </div>
                                 <div v-if="reportHasPoints(report)" class="pt-2 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
                                     <span class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.total') }}</span>
@@ -693,6 +809,28 @@ onMounted(async () => {
                                 <input type="radio" name="resolveAdenaDistribution" value="cp" v-model="resolveForm.adena_distribution">
                                 <span class="text-[10px] font-black uppercase tracking-widest">{{ $t('loot.send_to_warehouse') }}</span>
                             </label>
+                        </div>
+                        <div v-if="resolveAdenaSplitPreview && resolveAdenaSplitPreview.mode === 'attendees'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.adena_split_title') }}</div>
+                            <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(resolveAdenaSplitPreview.total) }}</span>
+                                • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(resolveAdenaSplitPreview.perMember) }}</span>
+                            </div>
+                            <div class="mt-2 space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                <div v-for="m in resolveSelectedMembers" :key="`resolve-adena-${m.id}`" class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</span>
+                                    <span class="font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(resolveAdenaSplitPreview.perMember) }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(resolveAdenaSplitPreview.remainderToCp) }) }}
+                            </div>
+                        </div>
+                        <div v-else-if="resolveAdenaSplitPreview && resolveAdenaSplitPreview.mode === 'cp'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.adena_to_cp_title') }}</div>
+                            <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('loot.adena_to_cp_desc', { amount: formatAdenaShort(resolveAdenaSplitPreview.total) }) }}
+                            </div>
                         </div>
                     </div>
 
