@@ -13,7 +13,8 @@ class SyncTranslationKeysCommand extends Command
     protected $signature = 'translations:sync-keys
         {--dry-run : Solo muestra qué faltaría crear, sin escribir en DB}
         {--paths=* : Paths relativos a escanear (por defecto resources/js,resources/views,app)}
-        {--languages=en,es : Idiomas separados por coma}';
+        {--languages=en,es : Idiomas separados por coma}
+        {--apply-overrides : Aplica textos corregidos para keys conocidas (upsert en DB)}';
 
     protected $description = 'Escanea t()/\$t() en el código, detecta keys faltantes y las crea en translations.';
 
@@ -68,13 +69,21 @@ class SyncTranslationKeysCommand extends Command
         $this->line('Idiomas objetivo: '.$languages->join(', '));
         $this->line('Registros faltantes: '.count($missing));
 
-        if (count($missing) === 0) {
-            $this->info('No hay faltantes. DB ya está sincronizada para esos idiomas.');
-
-            return self::SUCCESS;
-        }
+        $applyOverrides = (bool) $this->option('apply-overrides');
+        $overrideRows = $applyOverrides ? $this->buildOverrideRows($languages) : [];
 
         if ($this->option('dry-run')) {
+            if ($applyOverrides && count($overrideRows) > 0) {
+                $this->line('Overrides a aplicar: '.count($overrideRows));
+                $this->table(
+                    ['language', 'key', 'value'],
+                    array_slice($overrideRows, 0, 30)
+                );
+                if (count($overrideRows) > 30) {
+                    $this->line('... (mostrando 30 de '.count($overrideRows).')');
+                }
+            }
+
             $this->table(
                 ['language', 'key', 'value'],
                 array_slice($missing, 0, 50)
@@ -83,6 +92,31 @@ class SyncTranslationKeysCommand extends Command
                 $this->line('... (mostrando 50 de '.count($missing).')');
             }
             $this->comment('Dry-run activo: no se insertó nada.');
+
+            return self::SUCCESS;
+        }
+
+        if ($applyOverrides && count($overrideRows) > 0) {
+            $now = now();
+            $payload = array_map(function (array $row) use ($now) {
+                return [
+                    'language' => $row['language'],
+                    'key' => $row['key'],
+                    'value' => $row['value'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }, $overrideRows);
+
+            foreach (array_chunk($payload, 500) as $chunk) {
+                Translation::query()->upsert($chunk, ['language', 'key'], ['value', 'updated_at']);
+            }
+
+            $this->info('Overrides aplicados: '.count($payload));
+        }
+
+        if (count($missing) === 0) {
+            $this->info('No hay faltantes. DB ya está sincronizada para esos idiomas.');
 
             return self::SUCCESS;
         }
@@ -289,5 +323,73 @@ class SyncTranslationKeysCommand extends Command
         }, $parts);
 
         return trim(implode(' ', $translated));
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function translationOverrides(): array
+    {
+        return [
+            'es' => [
+                'loot.adena_split_title' => 'Desglose de Adena',
+                'loot.adena_total' => 'Adena total',
+                'loot.adena_each' => 'Por miembro',
+                'loot.adena_remainder_to_cp' => 'Resto a la CP: {amount}',
+                'loot.adena_to_cp_title' => 'Adena para la CP',
+                'loot.adena_to_cp_desc' => 'Adena que entra al warehouse de la CP: {amount}',
+
+                'party.assign_adena_offset_title' => 'Cobro de Adena',
+                'party.assign_member_owed' => 'Adena pendiente',
+                'party.assign_adena_offset_toggle' => 'Cobrar de lo pendiente',
+                'party.assign_adena_offset_amount' => 'Adena a cobrar',
+                'party.assign_adena_offset_max' => 'Cobrar todo',
+
+                'party.no_split_desc' => 'No hay split: la Adena entra al warehouse de la CP.',
+                'party.cp_receives_adena' => 'Adena a la CP: {amount}',
+                'party.remainder_to_cp' => 'Resto a la CP: {amount}',
+            ],
+            'en' => [
+                'loot.adena_split_title' => 'Adena Breakdown',
+                'loot.adena_total' => 'Total Adena',
+                'loot.adena_each' => 'Per member',
+                'loot.adena_remainder_to_cp' => 'Remainder to CP: {amount}',
+                'loot.adena_to_cp_title' => 'Adena to CP',
+                'loot.adena_to_cp_desc' => 'Adena goes to the CP warehouse: {amount}',
+
+                'party.assign_adena_offset_title' => 'Adena charge',
+                'party.assign_member_owed' => 'Owed Adena',
+                'party.assign_adena_offset_toggle' => 'Charge owed',
+                'party.assign_adena_offset_amount' => 'Adena to charge',
+                'party.assign_adena_offset_max' => 'Charge all',
+
+                'party.no_split_desc' => 'No split: Adena goes to the CP warehouse.',
+                'party.cp_receives_adena' => 'Adena to CP: {amount}',
+                'party.remainder_to_cp' => 'Remainder to CP: {amount}',
+            ],
+        ];
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, string> $languages
+     * @return array<int, array{language:string,key:string,value:string}>
+     */
+    private function buildOverrideRows($languages): array
+    {
+        $all = $this->translationOverrides();
+        $rows = [];
+
+        foreach ($languages as $lang) {
+            $map = $all[$lang] ?? [];
+            foreach ($map as $key => $value) {
+                $rows[] = [
+                    'language' => $lang,
+                    'key' => $key,
+                    'value' => $value,
+                ];
+            }
+        }
+
+        return $rows;
     }
 }

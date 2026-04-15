@@ -427,30 +427,31 @@ class PartyController extends Controller
             }
         }
 
-        $incoming = LootEntry::query()
-            ->join('items', 'items.id', '=', 'loot_entries.item_id')
-            ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
-            ->where('loot_reports.cp_id', $cpId)
-            ->where('loot_reports.status', 'confirmed')
-            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
-            ->where('loot_entries.item_id', $request->item_id)
-            ->sum('loot_entries.amount');
+        try {
+            DB::transaction(function () use ($request, $cpId, $current, $targetUser, $adenaOffset, $item) {
+                Item::whereKey($item->id)->lockForUpdate()->first();
 
-        $outgoing = LootEntry::query()
-            ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
-            ->where('loot_reports.cp_id', $cpId)
-            ->where('loot_reports.status', 'confirmed')
-            ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
-            ->where('loot_entries.item_id', $request->item_id)
-            ->sum('loot_entries.amount');
+                $incoming = LootEntry::query()
+                    ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+                    ->where('loot_reports.cp_id', $cpId)
+                    ->where('loot_reports.status', 'confirmed')
+                    ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+                    ->where('loot_entries.item_id', $request->item_id)
+                    ->sum('loot_entries.amount');
 
-        $available = max(0, (int) $incoming - (int) $outgoing);
+                $outgoing = LootEntry::query()
+                    ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+                    ->where('loot_reports.cp_id', $cpId)
+                    ->where('loot_reports.status', 'confirmed')
+                    ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+                    ->where('loot_entries.item_id', $request->item_id)
+                    ->sum('loot_entries.amount');
 
-        if ($available < $request->amount) {
-            return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
-        }
+                $available = max(0, (int) $incoming - (int) $outgoing);
+                if ($available < (int) $request->amount) {
+                    throw new \RuntimeException('INSUFFICIENT_STOCK:'.$available);
+                }
 
-        DB::transaction(function () use ($request, $cpId, $current, $targetUser, $adenaOffset) {
             $report = LootReport::create([
                 'cp_id' => $cpId,
                 'requested_by_id' => $current->id,
@@ -521,7 +522,15 @@ class PartyController extends Controller
                 'updated_at' => $now,
             ])->all();
             DB::table('audit_alerts')->insert($rows);
-        });
+            });
+        } catch (\RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
+                $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
+
+                return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
+            }
+            throw $e;
+        }
 
         return back()->with('success', 'Ítem asignado y registrado con la captura.');
     }
@@ -557,7 +566,6 @@ class PartyController extends Controller
         }
 
         $incoming = LootEntry::query()
-            ->join('items', 'items.id', '=', 'loot_entries.item_id')
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
@@ -604,7 +612,31 @@ class PartyController extends Controller
             ->orderByDesc('loot_reports.id')
             ->first();
 
-        DB::transaction(function () use ($request, $cpId, $current, $item, $amount, $unitPrice, $totalAdena, $recipientIds, $sourceReport) {
+        try {
+            DB::transaction(function () use ($request, $cpId, $current, $item, $amount, $unitPrice, $totalAdena, $recipientIds, $sourceReport) {
+                Item::whereKey($item->id)->lockForUpdate()->first();
+
+                $incoming = LootEntry::query()
+                    ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+                    ->where('loot_reports.cp_id', $cpId)
+                    ->where('loot_reports.status', 'confirmed')
+                    ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+                    ->where('loot_entries.item_id', $item->id)
+                    ->sum('loot_entries.amount');
+
+                $outgoing = LootEntry::query()
+                    ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+                    ->where('loot_reports.cp_id', $cpId)
+                    ->where('loot_reports.status', 'confirmed')
+                    ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+                    ->where('loot_entries.item_id', $item->id)
+                    ->sum('loot_entries.amount');
+
+                $available = max(0, (int) $incoming - (int) $outgoing);
+                if ($available < (int) $amount) {
+                    throw new \RuntimeException('INSUFFICIENT_STOCK:'.$available);
+                }
+
             $report = LootReport::create([
                 'cp_id' => $cpId,
                 'requested_by_id' => $current->id,
@@ -699,7 +731,15 @@ class PartyController extends Controller
                 'updated_at' => $now,
             ])->all();
             DB::table('audit_alerts')->insert($rows);
-        });
+            });
+        } catch (\RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
+                $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
+
+                return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
+            }
+            throw $e;
+        }
 
         return back()->with('success', 'Venta registrada. Adena añadida al warehouse.');
     }

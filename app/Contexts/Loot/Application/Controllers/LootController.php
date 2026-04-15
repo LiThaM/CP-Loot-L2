@@ -10,6 +10,7 @@ use App\Contexts\Loot\Domain\Models\Wishlist;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class LootController extends Controller
@@ -70,23 +71,12 @@ class LootController extends Controller
                     });
 
                     if ($itemEntry) {
-                        $origin = LootReport::query()
-                            ->select('loot_reports.*')
-                            ->join('loot_entries', 'loot_entries.loot_report_id', '=', 'loot_reports.id')
-                            ->where('loot_reports.cp_id', $report->cp_id)
-                            ->where('loot_reports.status', 'confirmed')
-                            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'RETURN'])
-                            ->where('loot_entries.item_id', $itemEntry->item_id)
-                            ->orderByDesc('loot_reports.id')
-                            ->with('requestedBy:id,name')
-                            ->first();
-
-                        $report->origin = $origin ? [
-                            'id' => $origin->id,
-                            'event_type' => $origin->event_type,
-                            'created_at' => $origin->created_at,
-                            'requested_by' => $origin->requestedBy?->name,
-                        ] : null;
+                        $origin = $this->findWarehouseOriginForOutgoing(
+                            (int) $report->cp_id,
+                            (int) $itemEntry->item_id,
+                            (int) $report->id
+                        );
+                        $report->origin = $origin;
                     } else {
                         $report->origin = null;
                     }
@@ -135,23 +125,12 @@ class LootController extends Controller
                     });
 
                     if ($itemEntry) {
-                        $origin = LootReport::query()
-                            ->select('loot_reports.*')
-                            ->join('loot_entries', 'loot_entries.loot_report_id', '=', 'loot_reports.id')
-                            ->where('loot_reports.cp_id', $focusReport->cp_id)
-                            ->where('loot_reports.status', 'confirmed')
-                            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'RETURN'])
-                            ->where('loot_entries.item_id', $itemEntry->item_id)
-                            ->orderByDesc('loot_reports.id')
-                            ->with('requestedBy:id,name')
-                            ->first();
-
-                        $focusReport->origin = $origin ? [
-                            'id' => $origin->id,
-                            'event_type' => $origin->event_type,
-                            'created_at' => $origin->created_at,
-                            'requested_by' => $origin->requestedBy?->name,
-                        ] : null;
+                        $origin = $this->findWarehouseOriginForOutgoing(
+                            (int) $focusReport->cp_id,
+                            (int) $itemEntry->item_id,
+                            (int) $focusReport->id
+                        );
+                        $focusReport->origin = $origin;
                     } else {
                         $focusReport->origin = null;
                     }
@@ -182,5 +161,78 @@ class LootController extends Controller
             'eventConfigs' => $eventConfigs,
             'isLeader' => $user->cp->leader_id === $user->id,
         ]);
+    }
+
+    private function findWarehouseOriginForOutgoing(int $cpId, int $itemId, int $beforeReportId): ?array
+    {
+        $rows = LootReport::query()
+            ->select([
+                'loot_reports.id',
+                'loot_reports.event_type',
+                'loot_reports.created_at',
+                'loot_reports.requested_by_id',
+                DB::raw('SUM(loot_entries.amount) as item_amount'),
+            ])
+            ->join('loot_entries', 'loot_entries.loot_report_id', '=', 'loot_reports.id')
+            ->where('loot_reports.cp_id', $cpId)
+            ->where('loot_reports.status', 'confirmed')
+            ->where('loot_reports.id', '<', $beforeReportId)
+            ->where('loot_entries.item_id', $itemId)
+            ->groupBy('loot_reports.id', 'loot_reports.event_type', 'loot_reports.created_at', 'loot_reports.requested_by_id')
+            ->orderBy('loot_reports.id')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        $outgoingTypes = ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'];
+
+        $stack = [];
+        foreach ($rows as $row) {
+            $qty = max(0, (int) $row->item_amount);
+            if ($qty === 0) {
+                continue;
+            }
+
+            if (in_array((string) $row->event_type, $outgoingTypes, true)) {
+                $remaining = $qty;
+                while ($remaining > 0 && count($stack) > 0) {
+                    $idx = count($stack) - 1;
+                    $take = min($remaining, (int) $stack[$idx]['remaining']);
+                    $stack[$idx]['remaining'] = (int) $stack[$idx]['remaining'] - $take;
+                    $remaining -= $take;
+                    if ((int) $stack[$idx]['remaining'] <= 0) {
+                        array_pop($stack);
+                    }
+                }
+                continue;
+            }
+
+            $stack[] = [
+                'report_id' => (int) $row->id,
+                'event_type' => (string) $row->event_type,
+                'created_at' => $row->created_at,
+                'requested_by_id' => (int) $row->requested_by_id,
+                'remaining' => $qty,
+            ];
+        }
+
+        if (count($stack) === 0) {
+            return null;
+        }
+
+        $top = $stack[count($stack) - 1];
+        $requestedByName = null;
+        if ((int) $top['requested_by_id'] > 0) {
+            $requestedByName = User::where('id', (int) $top['requested_by_id'])->value('name');
+        }
+
+        return [
+            'id' => (int) $top['report_id'],
+            'event_type' => (string) $top['event_type'],
+            'created_at' => $top['created_at'],
+            'requested_by' => $requestedByName,
+        ];
     }
 }
