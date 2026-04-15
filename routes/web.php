@@ -94,6 +94,8 @@ Route::middleware('auth')->group(function () {
     // System Translations (Admin Only)
     Route::get('/system/translations', [TranslationController::class, 'index'])->name('system.translations.index');
     Route::post('/system/translations', [TranslationController::class, 'store'])->name('system.translations.store');
+    Route::put('/system/translations/key/{key}', [TranslationController::class, 'updateKey'])->name('system.translations.update_key');
+    Route::delete('/system/translations/key/{key}', [TranslationController::class, 'destroyKey'])->name('system.translations.destroy_key');
     Route::put('/system/translations/{translation}', [TranslationController::class, 'update'])->name('system.translations.update');
     Route::delete('/system/translations/{translation}', [TranslationController::class, 'destroy'])->name('system.translations.destroy');
 
