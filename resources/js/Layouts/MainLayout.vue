@@ -4,6 +4,7 @@ import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import { throttle } from 'lodash';
 import axios from 'axios';
 import emitter from '../event-bus';
+import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -120,6 +121,9 @@ const showLootModal = ref(false);
 const itemSearch = ref('');
 const searchResults = ref([]);
 const isSearching = ref(false);
+const itemSearchPage = ref(1);
+const itemSearchHasMore = ref(false);
+const itemSearchLoadingMore = ref(false);
 
 const lootForm = useForm({
     event_type: 'FARM', // Default
@@ -142,6 +146,9 @@ const openLootModal = () => {
     lootForm.reset();
     itemSearch.value = '';
     searchResults.value = [];
+    itemSearchPage.value = 1;
+    itemSearchHasMore.value = false;
+    itemSearchLoadingMore.value = false;
 };
 
 onMounted(() => {
@@ -179,6 +186,9 @@ const addToSession = (item) => {
     }
     searchResults.value = [];
     itemSearch.value = '';
+    itemSearchPage.value = 1;
+    itemSearchHasMore.value = false;
+    itemSearchLoadingMore.value = false;
 };
 
 const removeItem = (index) => {
@@ -206,18 +216,41 @@ const submitLoot = () => {
     });
 };
 
-watch(itemSearch, throttle(async (val) => {
-    if (!val || val.length < 3) {
+const normalizeItemSearchResponse = (data) => {
+    const items = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    const hasMore = Array.isArray(data) ? items.length >= 12 : Boolean(data?.pagination?.has_more);
+    return { items, hasMore };
+};
+
+const fetchItemSearch = async (query, { page = 1, append = false } = {}) => {
+    const q = String(query || '');
+    if (!q || q.length < 3) {
         searchResults.value = [];
+        itemSearchPage.value = 1;
+        itemSearchHasMore.value = false;
         return;
     }
-    isSearching.value = true;
+    if (!append) isSearching.value = true;
+    if (append) itemSearchLoadingMore.value = true;
     try {
-        const { data } = await axios.get(route('api.items.search'), { params: { q: val } });
-        searchResults.value = data;
+        const { data } = await axios.get(route('api.items.search'), { params: { q, page, per_page: 12 } });
+        const parsed = normalizeItemSearchResponse(data);
+        searchResults.value = append ? [...searchResults.value, ...parsed.items] : parsed.items;
+        itemSearchPage.value = page;
+        itemSearchHasMore.value = parsed.hasMore;
     } finally {
         isSearching.value = false;
+        itemSearchLoadingMore.value = false;
     }
+};
+
+const loadMoreItemSearch = async () => {
+    if (!itemSearchHasMore.value || itemSearchLoadingMore.value || isSearching.value) return;
+    await fetchItemSearch(itemSearch.value, { page: itemSearchPage.value + 1, append: true });
+};
+
+watch(itemSearch, throttle(async (val) => {
+    await fetchItemSearch(val, { page: 1, append: false });
 }, 300));
 const hasAdena = computed(() => lootForm.items.some(i => String(i.name).toLowerCase() === 'adena'));
 
@@ -757,18 +790,28 @@ watch(() => alerts.value.items, (items) => {
                         </div>
 
                         <!-- Results -->
-                        <div v-if="searchResults.length > 0" class="bg-white/90 border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
-                            <button 
-                                v-for="item in searchResults" 
-                                :key="item.id"
-                                @click="addToSession(item)"
-                                class="w-full flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-200 dark:border-gray-800 last:border-0 text-left transition"
-                            >
-                                <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
-                                <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700 bg-gray-200 dark:bg-gray-800/60"></div>
-                                <span class="font-bold text-sm text-gray-900 dark:text-gray-100">{{ item.name }}</span>
-                                <span class="ml-auto text-[10px] text-purple-700 dark:text-purple-300 font-bold px-2 py-0.5 bg-purple-500/10 dark:bg-purple-950/30 rounded-full">{{ item.grade }}</span>
-                            </button>
+                        <div v-if="searchResults.length > 0" class="bg-white/90 border border-gray-200 rounded-xl shadow-xl dark:bg-gray-900 dark:border-gray-800">
+                            <div class="max-h-48 overflow-y-auto">
+                                <button 
+                                    v-for="item in searchResults" 
+                                    :key="item.id"
+                                    @click="addToSession(item)"
+                                    class="w-full flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-200 dark:border-gray-800 last:border-0 text-left transition"
+                                >
+                                    <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
+                                    <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700 bg-gray-200 dark:bg-gray-800/60"></div>
+                                    <span class="font-bold text-sm text-gray-900 dark:text-gray-100">{{ item.name }}</span>
+                                    <span class="ml-auto text-[10px] text-purple-700 dark:text-purple-300 font-bold px-2 py-0.5 bg-purple-500/10 dark:bg-purple-950/30 rounded-full">{{ item.grade }}</span>
+                                </button>
+                            </div>
+                            <LoadMoreSection
+                                :can-load-more="itemSearchHasMore"
+                                :load-more-label="$t('common.load_more')"
+                                :show-remaining="false"
+                                :remaining-count="0"
+                                :remaining-label="$t('common.more')"
+                                @load-more="loadMoreItemSearch"
+                            />
                         </div>
 
                         <!-- Cart -->

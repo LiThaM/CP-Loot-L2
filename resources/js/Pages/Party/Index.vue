@@ -2,6 +2,7 @@
 import { Head, useForm, Link, router, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import Modal from '@/Components/Modal.vue';
+import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import { ref, computed, watch } from 'vue';
 import { throttle } from 'lodash';
 import axios from 'axios';
@@ -647,6 +648,9 @@ const addStockModalOpen = ref(false);
 const stockSearch = ref('');
 const stockSearchResults = ref([]);
 const stockIsSearching = ref(false);
+const stockSearchPage = ref(1);
+const stockSearchHasMore = ref(false);
+const stockSearchLoadingMore = ref(false);
 const stockForm = useForm({
     items: [],
     image_proof: null,
@@ -685,6 +689,9 @@ const openAddStock = () => {
     stockForm.image_proof = null;
     stockSearch.value = '';
     stockSearchResults.value = [];
+    stockSearchPage.value = 1;
+    stockSearchHasMore.value = false;
+    stockSearchLoadingMore.value = false;
     addStockModalOpen.value = true;
 };
 
@@ -720,7 +727,8 @@ const quickAddAdena = async () => {
     try {
         stockIsSearching.value = true;
         const { data } = await axios.get(route('api.items.search'), { params: { q: 'adena' } });
-        const found = Array.isArray(data) ? data.find(it => String(it.name).toLowerCase() === 'adena') : null;
+        const rows = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+        const found = rows.find(it => String(it.name).toLowerCase() === 'adena');
         if (found) {
             stockForm.items.push({
                 item_id: found.id,
@@ -734,24 +742,50 @@ const quickAddAdena = async () => {
     }
 };
 
-watch(stockSearch, throttle(async (val) => {
-    if (!val || val.length < 3) {
+const normalizeSearchResponse = (data) => {
+    const items = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    const hasMore = Array.isArray(data) ? items.length >= 12 : Boolean(data?.pagination?.has_more);
+    return { items, hasMore };
+};
+
+const fetchStockSearch = async (query, { page = 1, append = false } = {}) => {
+    const q = String(query || '');
+    if (!q || q.length < 3) {
         stockSearchResults.value = [];
+        stockSearchPage.value = 1;
+        stockSearchHasMore.value = false;
         return;
     }
-    stockIsSearching.value = true;
+    if (!append) stockIsSearching.value = true;
+    if (append) stockSearchLoadingMore.value = true;
     try {
-        const { data } = await axios.get(route('api.items.search'), { params: { q: val } });
-        stockSearchResults.value = data;
+        const { data } = await axios.get(route('api.items.search'), { params: { q, page, per_page: 12 } });
+        const parsed = normalizeSearchResponse(data);
+        stockSearchResults.value = append ? [...stockSearchResults.value, ...parsed.items] : parsed.items;
+        stockSearchPage.value = page;
+        stockSearchHasMore.value = parsed.hasMore;
     } finally {
         stockIsSearching.value = false;
+        stockSearchLoadingMore.value = false;
     }
+};
+
+const loadMoreStockSearch = async () => {
+    if (!stockSearchHasMore.value || stockSearchLoadingMore.value || stockIsSearching.value) return;
+    await fetchStockSearch(stockSearch.value, { page: stockSearchPage.value + 1, append: true });
+};
+
+watch(stockSearch, throttle(async (val) => {
+    await fetchStockSearch(val, { page: 1, append: false });
 }, 300));
 
 const buyStockModalOpen = ref(false);
 const buySearch = ref('');
 const buySearchResults = ref([]);
 const buyIsSearching = ref(false);
+const buySearchPage = ref(1);
+const buySearchHasMore = ref(false);
+const buySearchLoadingMore = ref(false);
 const buyForm = useForm({
     items: [],
     adena_spent: '',
@@ -792,6 +826,9 @@ const openBuyStock = () => {
     buyForm.image_proof = null;
     buySearch.value = '';
     buySearchResults.value = [];
+    buySearchPage.value = 1;
+    buySearchHasMore.value = false;
+    buySearchLoadingMore.value = false;
     buyStockModalOpen.value = true;
 };
 
@@ -820,18 +857,35 @@ const buyTotalUnits = computed(() => {
     }, 0);
 });
 
-watch(buySearch, throttle(async (val) => {
-    if (!val || val.length < 3) {
+const fetchBuySearch = async (query, { page = 1, append = false } = {}) => {
+    const q = String(query || '');
+    if (!q || q.length < 3) {
         buySearchResults.value = [];
+        buySearchPage.value = 1;
+        buySearchHasMore.value = false;
         return;
     }
-    buyIsSearching.value = true;
+    if (!append) buyIsSearching.value = true;
+    if (append) buySearchLoadingMore.value = true;
     try {
-        const { data } = await axios.get(route('api.items.search'), { params: { q: val } });
-        buySearchResults.value = data;
+        const { data } = await axios.get(route('api.items.search'), { params: { q, page, per_page: 12 } });
+        const parsed = normalizeSearchResponse(data);
+        buySearchResults.value = append ? [...buySearchResults.value, ...parsed.items] : parsed.items;
+        buySearchPage.value = page;
+        buySearchHasMore.value = parsed.hasMore;
     } finally {
         buyIsSearching.value = false;
+        buySearchLoadingMore.value = false;
     }
+};
+
+const loadMoreBuySearch = async () => {
+    if (!buySearchHasMore.value || buySearchLoadingMore.value || buyIsSearching.value) return;
+    await fetchBuySearch(buySearch.value, { page: buySearchPage.value + 1, append: true });
+};
+
+watch(buySearch, throttle(async (val) => {
+    await fetchBuySearch(val, { page: 1, append: false });
 }, 300));
 </script>
 
@@ -1724,13 +1778,23 @@ watch(buySearch, throttle(async (val) => {
 
                 <div v-if="stockIsSearching" class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{{ $t('common.searching') }}</div>
 
-                <div v-if="stockSearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
-                    <button v-for="item in stockSearchResults" :key="item.id" @click="addStockItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
-                        <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
-                        <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                        <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
-                        <span class="ml-auto text-[10px] text-purple-300 font-bold px-2 py-0.5 bg-purple-950/30 rounded-full">{{ item.grade }}</span>
-                    </button>
+                <div v-if="stockSearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl dark:bg-gray-900 dark:border-gray-800">
+                    <div class="max-h-48 overflow-y-auto">
+                        <button v-for="item in stockSearchResults" :key="item.id" @click="addStockItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
+                            <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
+                            <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                            <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
+                            <span class="ml-auto text-[10px] text-purple-300 font-bold px-2 py-0.5 bg-purple-950/30 rounded-full">{{ item.grade }}</span>
+                        </button>
+                    </div>
+                    <LoadMoreSection
+                        :can-load-more="stockSearchHasMore"
+                        :load-more-label="$t('common.load_more')"
+                        :show-remaining="false"
+                        :remaining-count="0"
+                        :remaining-label="$t('common.more')"
+                        @load-more="loadMoreStockSearch"
+                    />
                 </div>
 
                 <div v-if="stockForm.items.length > 0" class="space-y-2">
@@ -1817,13 +1881,23 @@ watch(buySearch, throttle(async (val) => {
 
                 <div v-if="buyIsSearching" class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{{ $t('common.searching') }}</div>
 
-                <div v-if="buySearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
-                    <button v-for="item in buySearchResults" :key="item.id" @click="addBuyItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
-                        <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
-                        <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                        <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
-                        <span class="ml-auto text-[10px] text-amber-200 font-bold px-2 py-0.5 bg-amber-950/30 rounded-full">{{ item.grade }}</span>
-                    </button>
+                <div v-if="buySearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl dark:bg-gray-900 dark:border-gray-800">
+                    <div class="max-h-48 overflow-y-auto">
+                        <button v-for="item in buySearchResults" :key="item.id" @click="addBuyItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
+                            <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
+                            <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                            <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
+                            <span class="ml-auto text-[10px] text-amber-200 font-bold px-2 py-0.5 bg-amber-950/30 rounded-full">{{ item.grade }}</span>
+                        </button>
+                    </div>
+                    <LoadMoreSection
+                        :can-load-more="buySearchHasMore"
+                        :load-more-label="$t('common.load_more')"
+                        :show-remaining="false"
+                        :remaining-count="0"
+                        :remaining-label="$t('common.more')"
+                        @load-more="loadMoreBuySearch"
+                    />
                 </div>
 
                 <div v-if="buyForm.items.length > 0" class="space-y-2">

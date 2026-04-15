@@ -15,9 +15,19 @@ class LootSearchController extends Controller
     {
         $user = $request->user();
         $search = $request->input('q');
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = max(1, min(50, (int) $request->input('per_page', 12)));
 
         if (! $search || strlen($search) < 3) {
-            return response()->json([]);
+            return response()->json([
+                'items' => [],
+                'pagination' => [
+                    'page' => 1,
+                    'per_page' => $perPage,
+                    'total' => 0,
+                    'has_more' => false,
+                ],
+            ]);
         }
 
         $query = Item::where('name', 'like', "%{$search}%")
@@ -29,9 +39,18 @@ class LootSearchController extends Controller
             $query->where('chronicle', $user->cp->chronicle);
         }
 
-        $items = $query->limit(10)
-            ->get(['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle']);
+        $paginator = $query
+            ->orderBy('name')
+            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle'], 'page', $page);
 
-        return response()->json($items);
+        return response()->json([
+            'items' => $paginator->items(),
+            'pagination' => [
+                'page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'has_more' => $paginator->hasMorePages(),
+            ],
+        ]);
     }
 }
