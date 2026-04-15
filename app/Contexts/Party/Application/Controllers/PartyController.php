@@ -899,6 +899,114 @@ class PartyController extends Controller
         return back()->with('success', 'Stock añadido al warehouse y registrado.');
     }
 
+    public function buyStock(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.amount' => 'required|integer|min:1',
+            'adena_spent' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:5000',
+            'image_proof' => 'nullable|image|max:4096',
+        ]);
+
+        $current = $request->user();
+        $roleName = $current->role?->name;
+        if (! in_array($roleName, ['admin', 'cp_leader', 'accountant'], true)) {
+            abort(403, 'No tienes permiso para registrar compras del warehouse.');
+        }
+        if (! $current->cp_id) {
+            abort(403);
+        }
+
+        $cpId = (int) $current->cp_id;
+        $adenaSpent = abs((int) $request->adena_spent);
+
+        $itemIds = collect($request->items)->pluck('item_id')->map(fn ($v) => (int) $v)->filter(fn ($v) => $v > 0)->values();
+        $containsAdena = Item::query()
+            ->whereIn('id', $itemIds)
+            ->whereRaw('LOWER(name) = ?', ['adena'])
+            ->exists();
+        if ($containsAdena) {
+            return back()->withErrors(['items' => 'La Adena se gestiona en el campo de Adena gastada.']);
+        }
+
+        $adenaItem = Item::whereRaw('LOWER(name) = ?', ['adena'])->first();
+        if (! $adenaItem) {
+            return back()->withErrors(['adena_spent' => 'No existe el ítem Adena en la base de datos.']);
+        }
+
+        DB::transaction(function () use ($request, $current, $cpId, $adenaSpent, $adenaItem) {
+            $report = LootReport::create([
+                'cp_id' => $cpId,
+                'requested_by_id' => $current->id,
+                'event_type' => 'WAREHOUSE_BUY',
+                'status' => 'confirmed',
+                'image_proof' => null,
+                'description' => $request->input('description'),
+            ]);
+
+            $file = $request->file('image_proof');
+            if ($file) {
+                $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+                $imagePath = $file->storeAs("warehouse_buy/{$cpId}", "{$report->id}.{$ext}", 'public');
+                $report->image_proof = $imagePath;
+                $report->save();
+            }
+
+            foreach ($request->items as $itemData) {
+                LootEntry::create([
+                    'loot_report_id' => $report->id,
+                    'item_id' => $itemData['item_id'],
+                    'amount' => $itemData['amount'],
+                ]);
+            }
+
+            LootEntry::create([
+                'loot_report_id' => $report->id,
+                'item_id' => $adenaItem->id,
+                'amount' => -$adenaSpent,
+            ]);
+
+            $audit = AuditLog::create([
+                'entity_type' => 'LootReport',
+                'entity_id' => $report->id,
+                'user_id' => $current->id,
+                'action' => 'WAREHOUSE_BUY',
+                'old_values' => null,
+                'new_values' => [
+                    'items' => collect($request->items)->map(fn ($i) => ['item_id' => (int) $i['item_id'], 'amount' => (int) $i['amount']])->all(),
+                    'adena_spent' => $adenaSpent,
+                    'description' => $request->input('description'),
+                ],
+            ]);
+            $recipients = collect([$current->id]);
+            $leaderId = optional($current->cp)->leader_id;
+            if ($leaderId) {
+                $recipients->push($leaderId);
+            }
+            $recipients = $recipients->unique()->values();
+            $totalLabel = number_format((int) $adenaSpent, 0, ',', '.');
+            $summary = "{$current->name} registró una compra por {$totalLabel} Adena (Reporte #{$report->id})";
+            $now = now();
+            $rows = $recipients->map(fn ($rid) => [
+                'audit_log_id' => $audit->id,
+                'recipient_user_id' => $rid,
+                'actor_user_id' => $current->id,
+                'entity_type' => 'LootReport',
+                'entity_id' => $report->id,
+                'action' => 'WAREHOUSE_BUY',
+                'summary' => $summary,
+                'meta' => json_encode(['report_id' => $report->id]),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all();
+            DB::table('audit_alerts')->insert($rows);
+        });
+
+        return back()->with('success', 'Compra registrada. Adena descontada del warehouse.');
+    }
+
     private function craftableRecipeIdByItemId(string $chronicle): array
     {
         $direct = Recipe::query()

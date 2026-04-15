@@ -15,6 +15,7 @@ class LootReport extends Model
         'points_per_member',
         'status',
         'image_proof',
+        'description',
         'recipient_ids',
         'adena_distribution',
     ];

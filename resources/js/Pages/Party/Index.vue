@@ -703,6 +703,92 @@ watch(stockSearch, throttle(async (val) => {
         stockIsSearching.value = false;
     }
 }, 300));
+
+const buyStockModalOpen = ref(false);
+const buySearch = ref('');
+const buySearchResults = ref([]);
+const buyIsSearching = ref(false);
+const buyForm = useForm({
+    items: [],
+    adena_spent: '',
+    description: '',
+    image_proof: null,
+});
+
+const addBuyItem = (item) => {
+    const existing = buyForm.items.find(i => i.item_id === item.id);
+    if (existing) {
+        existing.amount++;
+        return;
+    }
+    buyForm.items.push({
+        item_id: item.id,
+        name: item.name,
+        image_url: item.image_url,
+        amount: 1
+    });
+    buySearch.value = '';
+    buySearchResults.value = [];
+};
+
+const removeBuyItem = (idx) => {
+    buyForm.items.splice(idx, 1);
+};
+
+const normalizeBuyAmount = (row) => {
+    const parsed = Number.parseInt(String(row.amount), 10);
+    row.amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+};
+
+const openBuyStock = () => {
+    buyForm.reset();
+    buyForm.items = [];
+    buyForm.adena_spent = '';
+    buyForm.description = '';
+    buyForm.image_proof = null;
+    buySearch.value = '';
+    buySearchResults.value = [];
+    buyStockModalOpen.value = true;
+};
+
+const submitBuyStock = () => {
+    const parsed = Number.parseInt(String(buyForm.adena_spent), 10);
+    buyForm.adena_spent = Number.isFinite(parsed) && parsed > 0 ? parsed : '';
+    buyForm.post(route('warehouse.buy'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            buyStockModalOpen.value = false;
+            showToast(t('warehouse.toast.purchase_recorded'));
+        },
+        onError: () => {
+            showToast(t('warehouse.toast.purchase_failed'), 'error');
+        }
+    });
+};
+
+const buyTotalLines = computed(() => (buyForm.items || []).length);
+const buyTotalUnits = computed(() => {
+    const items = buyForm.items || [];
+    return items.reduce((sum, row) => {
+        const n = Number.parseInt(String(row?.amount ?? 0), 10);
+        return sum + (Number.isFinite(n) ? Math.max(0, n) : 0);
+    }, 0);
+});
+
+watch(buySearch, throttle(async (val) => {
+    if (!val || val.length < 3) {
+        buySearchResults.value = [];
+        return;
+    }
+    buyIsSearching.value = true;
+    try {
+        const { data } = await axios.get(route('api.items.search'), { params: { q: val } });
+        buySearchResults.value = data;
+    } finally {
+        buyIsSearching.value = false;
+    }
+}, 300));
 </script>
 
 <template>
@@ -952,9 +1038,14 @@ watch(stockSearch, throttle(async (val) => {
                             <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('party.vault.title') }}</h3>
                             <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('party.vault.subtitle') }}</p>
                         </div>
-                        <button v-if="canManageWarehouse" @click="openAddStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest transition">
-                            {{ $t('party.vault.add_items') }}
-                        </button>
+                        <div v-if="canManageWarehouse" class="flex items-center gap-2">
+                            <button @click="openBuyStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest transition">
+                                {{ $t('party.vault.buy_items') }}
+                            </button>
+                            <button @click="openAddStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest transition">
+                                {{ $t('party.vault.add_items') }}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -1614,6 +1705,98 @@ watch(stockSearch, throttle(async (val) => {
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="addStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
                 <button @click="submitAddStock" :disabled="stockForm.items.length === 0 || !stockForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="buyStockModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+        <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-amber-800 to-orange-700 p-4 flex justify-between items-center border-b border-amber-500/20">
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.buy_items_for_warehouse') }}</div>
+                <button @click="buyStockModalOpen = false" class="text-white/50 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                <div class="relative">
+                    <input v-model="buySearch" type="text" :placeholder="$t('common.search_item_placeholder')" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-amber-600 pl-10 h-12 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+
+                <div v-if="buyIsSearching" class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{{ $t('common.searching') }}</div>
+
+                <div v-if="buySearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
+                    <button v-for="item in buySearchResults" :key="item.id" @click="addBuyItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
+                        <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
+                        <div v-else class="h-8 w-8 rounded mr-3 border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                        <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
+                        <span class="ml-auto text-[10px] text-amber-200 font-bold px-2 py-0.5 bg-amber-950/30 rounded-full">{{ item.grade }}</span>
+                    </button>
+                </div>
+
+                <div v-if="buyForm.items.length > 0" class="space-y-2">
+                    <div v-for="(row, idx) in buyForm.items" :key="row.item_id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/30 dark:border-gray-800">
+                        <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700">
+                        <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate">{{ row.name }}</div>
+                        </div>
+                        <input v-model="row.amount" type="number" min="1" inputmode="numeric" class="w-24 h-9 bg-white/70 border border-gray-200 text-gray-900 rounded-lg text-center font-black focus:ring-amber-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100" @blur="normalizeBuyAmount(row)" @keydown.enter.prevent="normalizeBuyAmount(row)">
+                        <button @click="removeBuyItem(idx)" class="text-gray-600 hover:text-red-500">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-white/70 border border-gray-200 rounded-2xl px-4 py-3 dark:bg-black/40 dark:border-gray-800">
+                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.lines') }}</div>
+                        <div class="text-xl font-cinzel text-gray-900 dark:text-white mt-1">{{ buyTotalLines }}</div>
+                    </div>
+                    <div class="bg-white/70 border border-gray-200 rounded-2xl px-4 py-3 text-right dark:bg-black/40 dark:border-gray-800">
+                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.units') }}</div>
+                        <div class="text-xl font-cinzel text-amber-700 dark:text-amber-300 mt-1">{{ buyTotalUnits }}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.vault.adena_spent') }}</div>
+                        <input v-model="buyForm.adena_spent" type="number" min="1" inputmode="numeric" class="w-full h-12 bg-white/70 border border-gray-200 text-gray-900 rounded-xl text-right pr-4 font-cinzel text-2xl tracking-wide focus:ring-amber-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <div v-if="buyForm.errors.adena_spent" class="mt-1 text-xs text-red-500">{{ buyForm.errors.adena_spent }}</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('common.description') }} ({{ $t('common.optional') }})</div>
+                        <input v-model="buyForm.description" type="text" class="w-full h-12 bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <div v-if="buyForm.errors.description" class="mt-1 text-xs text-red-500">{{ buyForm.errors.description }}</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('common.screenshot_optional') }}</div>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
+                            <div v-if="!buyForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-amber-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                                <p class="text-[10px] text-gray-500">{{ $t('common.allowed_images') }}</p>
+                            </div>
+                            <div v-else class="text-amber-300 flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
+                                <span class="text-[10px] text-gray-500 mt-1">{{ buyForm.image_proof.name }}</span>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*" @input="buyForm.image_proof = $event.target.files[0]" />
+                        </label>
+                    </div>
+                    <div v-if="buyForm.errors.image_proof" class="mt-1 text-xs text-red-500">{{ buyForm.errors.image_proof }}</div>
+                </div>
+            </div>
+
+            <div class="p-6 pt-0 flex space-x-4">
+                <button @click="buyStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
+                <button @click="submitBuyStock" :disabled="buyForm.items.length === 0 || !buyForm.adena_spent" class="flex-[2] py-4 bg-gradient-to-tr from-amber-700 to-orange-600 hover:from-amber-600 hover:to-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-amber-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
             </div>
         </div>
     </div>
