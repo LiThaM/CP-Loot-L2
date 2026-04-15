@@ -14,6 +14,16 @@ Route::get('/', function () {
     ]);
 });
 
+Route::post('/locale', function (\Illuminate\Http\Request $request) {
+    $data = $request->validate([
+        'locale' => 'required|string|in:en,es',
+    ]);
+
+    $request->session()->put('locale', $data['locale']);
+
+    return back();
+})->name('locale.set');
+
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SupportController;
 

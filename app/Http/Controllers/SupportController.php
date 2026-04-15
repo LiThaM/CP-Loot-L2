@@ -55,40 +55,60 @@ class SupportController extends Controller
             'server' => 'nullable|string|max:255',
             'chronicle' => 'nullable|string|in:'.implode(',', $this->chronicles()),
             'leader_name' => 'nullable|string|max:255',
-            'contact_email' => 'nullable|string|email|max:255',
+            'contact_email' => 'required|string|email|max:255',
             'message' => 'nullable|string|max:5000',
         ]);
 
-        $cpRequest = CpRequest::create([
-            'cp_name' => $data['cp_name'],
-            'server' => $data['server'] ?? null,
-            'chronicle' => $data['chronicle'] ?? null,
-            'leader_name' => $data['leader_name'] ?? null,
-            'contact_email' => $data['contact_email'] ?? null,
-            'message' => $data['message'] ?? null,
-            'status' => 'pending',
-        ]);
+        $cpRequest = null;
+        $createFailed = false;
+        $createError = null;
+
+        try {
+            $cpRequest = CpRequest::create([
+                'cp_name' => $data['cp_name'],
+                'server' => $data['server'] ?? null,
+                'chronicle' => $data['chronicle'] ?? null,
+                'leader_name' => $data['leader_name'] ?? null,
+                'contact_email' => $data['contact_email'] ?? null,
+                'message' => $data['message'] ?? null,
+                'status' => 'pending',
+            ]);
+        } catch (\Throwable $e) {
+            $createFailed = true;
+            $createError = $e->getMessage();
+        }
 
         $supportEmail = (string) env('SUPPORT_EMAIL', 'support@adenaledger.com');
         $body = collect([
             'type' => 'cp_request',
-            'request_id' => $cpRequest->id,
-            'cp_name' => $cpRequest->cp_name,
-            'server' => $cpRequest->server,
-            'chronicle' => $cpRequest->chronicle,
-            'leader_name' => $cpRequest->leader_name,
-            'contact_email' => $cpRequest->contact_email,
-            'message' => $cpRequest->message,
+            'db_create' => $createFailed ? 'failed' : 'ok',
+            'db_error' => $createFailed ? $createError : null,
+            'request_id' => $cpRequest?->id,
+            'cp_name' => $cpRequest?->cp_name ?? $data['cp_name'],
+            'server' => $cpRequest?->server ?? ($data['server'] ?? null),
+            'chronicle' => $cpRequest?->chronicle ?? ($data['chronicle'] ?? null),
+            'leader_name' => $cpRequest?->leader_name ?? ($data['leader_name'] ?? null),
+            'contact_email' => $cpRequest?->contact_email ?? $data['contact_email'],
+            'message' => $cpRequest?->message ?? ($data['message'] ?? null),
             'url' => $request->headers->get('referer'),
             'ip' => $request->ip(),
         ])->filter(fn ($v) => $v !== null)->map(fn ($v, $k) => $k.': '.$v)->implode("\n");
 
-        Mail::raw($body, function ($mail) use ($supportEmail, $cpRequest) {
-            $mail->to($supportEmail)->subject('[AdenaLedger] Solicitud alta CP #'.$cpRequest->id);
-            if (! empty($cpRequest->contact_email)) {
-                $mail->replyTo($cpRequest->contact_email);
+        Mail::raw($body, function ($mail) use ($supportEmail, $cpRequest, $data, $createFailed) {
+            $subject = $cpRequest
+                ? '[AdenaLedger] Solicitud alta CP #'.$cpRequest->id
+                : '[AdenaLedger] Solicitud alta CP (sin guardar en BD)';
+            if ($createFailed) {
+                $subject .= ' [DB ERROR]';
             }
+
+            $mail->to($supportEmail)->subject($subject);
+            $mail->replyTo($data['contact_email']);
         });
+
+        if ($createFailed) {
+            return back()->with('error', 'No se pudo registrar la solicitud. Se ha notificado a soporte.');
+        }
 
         return back()->with('success', 'Solicitud enviada. Te contactaremos con el link de invitación.');
     }
@@ -157,4 +177,3 @@ class SupportController extends Controller
         return ['C1', 'C2', 'C3', 'C4', 'C5', 'IL', 'HB', 'Classic', 'LU4'];
     }
 }
-

@@ -12,9 +12,16 @@
         </defs>
         <circle cx="128" cy="128" r="104" fill="url(#al-g)" />
         <circle cx="128" cy="128" r="88" fill="rgba(255,255,255,0.10)" />
-        <path d="M78 164c0-31 22-56 50-56s50 25 50 56" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="10" stroke-linecap="round" />
-        <path d="M88 170h80" stroke="rgba(255,255,255,0.55)" stroke-width="10" stroke-linecap="round" />
-        <path d="M88 194h80" stroke="rgba(255,255,255,0.45)" stroke-width="10" stroke-linecap="round" />
-        <path d="M128 62l40 112h-24l-7-22h-18l-7 22H88l40-112zm-6 70h12l-6-20-6 20z" fill="url(#al-gold)" />
+
+        <circle cx="92" cy="128" r="46" fill="url(#al-gold)" />
+        <circle cx="92" cy="128" r="38" fill="rgba(0,0,0,0.10)" />
+        <path d="M92 98l18 52h-12l-3-10h-6l-3 10H74l18-52zm-3 30h6l-3-10-3 10z" fill="rgba(17,24,39,0.92)" />
+
+        <rect x="132" y="78" width="86" height="100" rx="18" fill="rgba(255,255,255,0.20)" />
+        <rect x="146" y="96" width="58" height="10" rx="5" fill="rgba(255,255,255,0.70)" />
+        <rect x="146" y="118" width="46" height="10" rx="5" fill="rgba(255,255,255,0.55)" />
+        <rect x="146" y="140" width="54" height="10" rx="5" fill="rgba(255,255,255,0.45)" />
+        <rect x="146" y="158" width="20" height="10" rx="5" fill="rgba(255,255,255,0.35)" />
+        <path d="M206 146l6 6 12-14" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
 </template>

@@ -3,7 +3,6 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { onMounted } from 'vue';
 
 const props = defineProps({
     inviteCode: {
@@ -28,18 +27,18 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Registro CP" />
+    <Head :title="$t('auth.register.title')" />
 
     <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-200" style="font-family: 'Inter', sans-serif;">
         <div class="mb-8 text-center">
-            <h1 class="text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400" style="font-family: 'Cinzel', serif;">AdenaLedger</h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm uppercase tracking-wider">Únete a tu Const Party</p>
+            <h1 class="text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400" style="font-family: 'Cinzel', serif;">{{ $page.props.app?.name }}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm uppercase tracking-wider">{{ $t('auth.register.subtitle') }}</p>
         </div>
 
         <div class="w-full sm:max-w-md mt-6 px-6 py-8 l2-panel rounded-xl">
             <form @submit.prevent="submit">
                 <div>
-                    <InputLabel for="name" value="Nombre del Personaje" class="text-gray-700 dark:text-gray-300" />
+                    <InputLabel for="name" :value="$t('auth.register.character_name')" class="text-gray-700 dark:text-gray-300" />
 
                     <TextInput
                         id="name"
@@ -55,7 +54,7 @@ const submit = () => {
                 </div>
 
                 <div class="mt-4">
-                    <InputLabel for="email" value="Email" class="text-gray-700 dark:text-gray-300" />
+                    <InputLabel for="email" :value="$t('form.email')" class="text-gray-700 dark:text-gray-300" />
 
                     <TextInput
                         id="email"
@@ -70,7 +69,7 @@ const submit = () => {
                 </div>
 
                 <div class="mt-4">
-                    <InputLabel for="invite_code" value="Código de Invitación Clave" class="text-purple-700 dark:text-purple-300 font-bold" />
+                    <InputLabel for="invite_code" :value="$t('auth.register.invite_code')" class="text-purple-700 dark:text-purple-300 font-bold" />
 
                     <TextInput
                         id="invite_code"
@@ -85,7 +84,7 @@ const submit = () => {
                 </div>
 
                 <div class="mt-4">
-                    <InputLabel for="password" value="Contraseña" class="text-gray-700 dark:text-gray-300" />
+                    <InputLabel for="password" :value="$t('form.password')" class="text-gray-700 dark:text-gray-300" />
 
                     <TextInput
                         id="password"
@@ -102,7 +101,7 @@ const submit = () => {
                 <div class="mt-4">
                     <InputLabel
                         for="password_confirmation"
-                        value="Confirmar Contraseña"
+                        :value="$t('form.password_confirm')"
                         class="text-gray-700 dark:text-gray-300"
                     />
 
@@ -126,7 +125,7 @@ const submit = () => {
                         :href="route('login')"
                         class="rounded-md text-sm text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-white transition"
                     >
-                        ¿Ya tienes cuenta? Ingresar
+                        {{ $t('auth.register.have_account') }}
                     </Link>
 
                     <button
@@ -135,7 +134,7 @@ const submit = () => {
                         :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
                         :disabled="form.processing"
                     >
-                        Unirse a CP
+                        {{ $t('auth.register.submit') }}
                     </button>
                 </div>
             </form>

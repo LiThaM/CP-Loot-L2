@@ -1,5 +1,5 @@
 <script setup>
-import { Head, useForm, Link, router } from '@inertiajs/vue3';
+import { Head, useForm, Link, router, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import { ref, computed, watch } from 'vue';
@@ -22,6 +22,15 @@ const props = defineProps({
     isLeader: Boolean,
     initialTab: String,
 });
+
+const page = usePage();
+const locale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const t = (key, params = {}) => {
+    const raw = page.props.translations?.[key];
+    if (!raw || typeof raw !== 'string') return key;
+    return raw.replace(/\{(\w+)\}/g, (match, p1) => (Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : match));
+};
 
 const normalizeTab = (tab) => {
     if (tab === 'config' && !props.isLeader) return 'members';
@@ -144,18 +153,18 @@ const formatAdenaShort = (val) => {
 
 const formatAdenaFull = (val) => {
     const n = Number(val ?? 0);
-    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
 const formatNumber = (val) => {
     const n = Number(val ?? 0);
-    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
 const formatDateTime = (val) => {
     if (!val) return '';
     try {
-        return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(val));
+        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(val));
     } catch (e) {
         return String(val);
     }
@@ -166,18 +175,18 @@ const formatAuditSummary = (a) => {
     if (a.action === 'USER_UPDATED') {
         const parts = [];
         if (a.old_values?.role !== a.new_values?.role && (a.old_values?.role || a.new_values?.role)) {
-            parts.push(`rol ${a.old_values?.role ?? '—'} → ${a.new_values?.role ?? '—'}`);
+            parts.push(t('audit.change.role', { from: a.old_values?.role ?? '—', to: a.new_values?.role ?? '—' }));
         }
         if (a.old_values?.cp !== a.new_values?.cp && (a.old_values?.cp || a.new_values?.cp)) {
-            parts.push(`CP ${a.old_values?.cp ?? '—'} → ${a.new_values?.cp ?? '—'}`);
+            parts.push(t('audit.change.cp', { from: a.old_values?.cp ?? '—', to: a.new_values?.cp ?? '—' }));
         }
-        return parts.length > 0 ? parts.join(', ') : 'Actualización';
+        return parts.length > 0 ? parts.join(', ') : t('audit.user_updated');
     }
-    if (a.action === 'USER_DELETED') return 'Usuario eliminado';
+    if (a.action === 'USER_DELETED') return t('audit.user_deleted');
     if (a.action === 'ADENA_ADJUSTED') {
         const amount = Number(a.new_values?.amount ?? 0);
         const amountLabel = `${amount < 0 ? '-' : '+'}${formatNumber(Math.abs(amount))}`;
-        return `Adena ${amountLabel} · ${a.new_values?.description ?? ''}`.trim();
+        return t('audit.adena_adjusted', { amount: amountLabel, description: a.new_values?.description ?? '' }).trim();
     }
     return a.action;
 };
@@ -263,10 +272,10 @@ const performCraft = async (entry, lucky) => {
             output_item_id: outputItemId,
         });
 
-        showToast(lucky ? 'Crafteo registrado.' : 'Materiales consumidos (sin éxito).');
+        showToast(lucky ? t('craft.toast.craft_recorded') : t('craft.toast.materials_consumed_no_success'));
         router.reload({ preserveScroll: true, preserveState: true });
     } catch (e) {
-        showToast('No se pudo craftear la receta.', 'error');
+        showToast(t('craft.toast.craft_failed'), 'error');
     } finally {
         const done = new Set(craftingCrafting.value);
         done.delete(recipe.id);
@@ -309,7 +318,7 @@ const toggleRecipeTree = async (entry) => {
         const { data } = await axios.get(route('api.recipes.tree', { recipe: id }), { params: { depth: 4 } });
         craftingTreeByRecipeId.value = { ...craftingTreeByRecipeId.value, [id]: data };
     } catch (e) {
-        showToast('No se pudo cargar el árbol de receta.', 'error');
+        showToast(t('craft.toast.tree_failed'), 'error');
     } finally {
         craftingTreeLoadingByRecipeId.value = { ...craftingTreeLoadingByRecipeId.value, [id]: false };
     }
@@ -402,10 +411,10 @@ const submitAddCpRecipe = () => {
             addCpRecipeForm.reset('recipe_id');
             craftingSearchQuery.value = '';
             craftingSearchResults.value = [];
-            showToast('Receta añadida a la lista.');
+            showToast(t('craft.toast.recipe_added'));
         },
         onError: () => {
-            showToast('No se pudo añadir la receta.', 'error');
+            showToast(t('craft.toast.recipe_add_failed'), 'error');
         },
     });
 };
@@ -416,10 +425,10 @@ const removeCpRecipe = (cpRecipeId) => {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            showToast('Receta eliminada.');
+            showToast(t('craft.toast.recipe_removed'));
         },
         onError: () => {
-            showToast('No se pudo eliminar la receta.', 'error');
+            showToast(t('craft.toast.recipe_remove_failed'), 'error');
         },
     });
 };
@@ -431,10 +440,10 @@ const moveCpRecipe = (cpRecipeId, direction) => {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            showToast('Prioridad actualizada.');
+            showToast(t('craft.toast.priority_updated'));
         },
         onError: () => {
-            showToast('No se pudo cambiar la prioridad.', 'error');
+            showToast(t('craft.toast.priority_update_failed'), 'error');
         },
         onFinish: () => {
             moveCpRecipeForm.reset('direction');
@@ -471,10 +480,10 @@ const submitAssign = () => {
         preserveScroll: true,
         onSuccess: () => {
             assignModalOpen.value = false;
-            showToast('Ítem asignado y registrado.');
+            showToast(t('warehouse.toast.assigned'));
         },
         onError: () => {
-            showToast('No se pudo asignar el ítem.', 'error');
+            showToast(t('warehouse.toast.assign_failed'), 'error');
         }
     });
 };
@@ -526,10 +535,10 @@ const submitSell = () => {
         preserveScroll: true,
         onSuccess: () => {
             sellModalOpen.value = false;
-            showToast('Venta registrada.');
+            showToast(t('warehouse.toast.sale_recorded'));
         },
         onError: () => {
-            showToast('No se pudo registrar la venta.', 'error');
+            showToast(t('warehouse.toast.sale_failed'), 'error');
         }
     });
 };
@@ -553,9 +562,9 @@ watch(() => sellForm.adena_distribution, async (val, oldVal) => {
 const copyInviteLink = () => {
     const link = `${window.location.origin}/register?invite=${props.cp.invite_code}`;
     navigator.clipboard.writeText(link).then(() => {
-        showToast('¡Enlace de invitación copiado al portapapeles!');
+        showToast(t('party.invite.copied'));
     }).catch(() => {
-        showAlert('Error', 'No se pudo copiar el enlace. Cópialo manualmente.', 'error');
+        showAlert(t('common.error'), t('party.invite.copy_failed'), 'error');
     });
 };
 
@@ -584,10 +593,10 @@ const saveConfig = (type, pts) => {
 };
 
 const categories = [
-    { id: 'FARM', name: 'Farm Session', icon: '🧺', desc: 'Puntos por sesión de farmeo regular.' },
-    { id: 'BOSS', name: 'Raid Boss', icon: '⚔️', desc: 'Puntos por matar un Raid Boss de mundo.' },
-    { id: 'EPIC', name: 'Epic Boss', icon: '👑', desc: 'Puntos por participar en Valakas, Antharas, etc.' },
-    { id: 'SIEGE', name: 'Siege / Fortress', icon: '🏰', desc: 'Puntos por asedios o toma de fortalezas.' },
+    { id: 'FARM', name: t('party.events.farm.name'), icon: '🧺', desc: t('party.events.farm.desc') },
+    { id: 'BOSS', name: t('party.events.boss.name'), icon: '⚔️', desc: t('party.events.boss.desc') },
+    { id: 'EPIC', name: t('party.events.epic.name'), icon: '👑', desc: t('party.events.epic.desc') },
+    { id: 'SIEGE', name: t('party.events.siege.name'), icon: '🏰', desc: t('party.events.siege.desc') },
 ];
 
 const addStockModalOpen = ref(false);
@@ -641,10 +650,10 @@ const submitAddStock = () => {
         preserveScroll: true,
         onSuccess: () => {
             addStockModalOpen.value = false;
-            showToast('Stock añadido y registrado.');
+            showToast(t('warehouse.toast.stock_added'));
         },
         onError: () => {
-            showToast('No se pudo añadir el stock.', 'error');
+            showToast(t('warehouse.toast.stock_add_failed'), 'error');
         }
     });
 };
@@ -697,13 +706,13 @@ watch(stockSearch, throttle(async (val) => {
 </script>
 
 <template>
-    <Head title="Mi Const Party" />
+    <Head :title="$t('party.head_title')" />
 
     <MainLayout>
         <div v-if="!has_cp" class="l2-panel p-20 text-center rounded-3xl border-purple-500/15 max-w-2xl mx-auto mt-12 animate-in slide-in-from-bottom duration-500">
             <div class="text-7xl mb-6">🛡️</div>
-            <h3 class="font-cinzel text-3xl text-gray-900 dark:text-white mb-4">Unirse a una CP</h3>
-            <p class="text-gray-500 mb-8 italic">No perteneces a ninguna Constant Party todavía. Contacta con tu líder para que te proporcione el código de invitación.</p>
+            <h3 class="font-cinzel text-3xl text-gray-900 dark:text-white mb-4">{{ $t('party.join.title') }}</h3>
+            <p class="text-gray-500 mb-8 italic">{{ $t('party.join.subtitle') }}</p>
         </div>
 
         <div v-else class="space-y-8 animate-in fade-in duration-700">
@@ -726,7 +735,7 @@ watch(stockSearch, throttle(async (val) => {
                     <div v-if="isLeader" class="flex-1 max-w-xs ml-auto">
                         <div class="bg-white/70 border border-gray-200 p-3 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all dark:bg-black/40 dark:border-gray-800">
                             <div>
-                                <div class="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Link de Invitación</div>
+                                <div class="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">{{ $t('party.invite.label') }}</div>
                                 <div class="text-[10px] text-purple-700 dark:text-purple-300 font-black tracking-widest truncate max-w-[150px]">{{ cp.invite_code }}</div>
                             </div>
                             <button @click="copyInviteLink" class="bg-gray-100 hover:bg-purple-600 p-2 rounded-xl transition-all shadow-lg group-hover:scale-110 active:scale-95 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
@@ -737,7 +746,7 @@ watch(stockSearch, throttle(async (val) => {
 
                     <div class="flex items-center gap-2">
                         <div class="text-right mr-4 hidden md:block">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Líder de CP</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{{ $t('party.cp_leader') }}</div>
                             <div class="text-sm font-black text-gray-900 dark:text-white hover:text-purple-700 dark:hover:text-purple-300 transition">{{ cp.leader.name }}</div>
                         </div>
                         <div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-black text-gray-800 dark:text-white">
@@ -748,10 +757,10 @@ watch(stockSearch, throttle(async (val) => {
 
                 <!-- Tabs -->
                 <div class="flex border-t border-gray-200 mt-8 pt-4 gap-8 dark:border-gray-800">
-                    <button @click="activeTab = 'members'" :class="activeTab === 'members' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Miembros</button>
-                    <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">CP Vault</button>
-                    <button @click="activeTab = 'crafting'" :class="activeTab === 'crafting' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Crafting</button>
-                    <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">Ajustes de Puntos</button>
+                    <button @click="activeTab = 'members'" :class="activeTab === 'members' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.members') }}</button>
+                    <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.vault') }}</button>
+                    <button @click="activeTab = 'crafting'" :class="activeTab === 'crafting' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.crafting') }}</button>
+                    <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.points_settings') }}</button>
                 </div>
             </div>
 
@@ -772,9 +781,9 @@ watch(stockSearch, throttle(async (val) => {
                                 <div class="ml-4 min-w-0 flex-1">
                                     <div class="flex items-center gap-2 min-w-0">
                                         <span class="font-black uppercase tracking-tight text-gray-900 dark:text-white truncate" :class="{ 'line-through text-gray-400 dark:text-gray-600': member.membership_status === 'banned' }">{{ member.name }}</span>
-                                        <span v-if="member.id === cp.leader_id" class="text-[8px] bg-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">Leader</span>
-                                        <span v-if="member.membership_status === 'pending'" class="text-[8px] bg-yellow-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-gray-900">Pendiente</span>
-                                        <span v-if="member.membership_status === 'banned'" class="text-[8px] bg-red-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">Excluido/Retirado</span>
+                                        <span v-if="member.id === cp.leader_id" class="text-[8px] bg-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">{{ $t('party.member.badge_leader') }}</span>
+                                        <span v-if="member.membership_status === 'pending'" class="text-[8px] bg-yellow-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-gray-900">{{ $t('common.pending') }}</span>
+                                        <span v-if="member.membership_status === 'banned'" class="text-[8px] bg-red-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">{{ $t('common.excluded') }}</span>
                                     </div>
                                     <div class="flex items-center mt-1">
                                         <div class="h-1.5 flex-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden mr-3">
@@ -791,14 +800,14 @@ watch(stockSearch, throttle(async (val) => {
                                     class="px-3 py-2 rounded-xl bg-yellow-500/90 hover:bg-yellow-500 text-gray-900 text-[10px] font-black uppercase tracking-widest border border-yellow-600/30"
                                     @click.stop="approveMember(member.id)"
                                 >
-                                    Aprobar
+                                    {{ $t('common.approve') }}
                                 </button>
                                 <div class="bg-white/70 border border-gray-200 rounded-xl px-3 py-2 dark:bg-black/40 dark:border-gray-800 text-right min-w-[92px]">
-                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Debe</div>
+                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.member.owed') }}</div>
                                     <div class="text-sm font-cinzel text-orange-600 dark:text-orange-500 mt-0.5" v-tooltip="formatAdenaFull(member.adena_owed || 0)">{{ formatAdenaShort(member.adena_owed || 0) }}</div>
                                 </div>
                                 <div class="bg-white/70 border border-gray-200 rounded-xl px-3 py-2 dark:bg-black/40 dark:border-gray-800 text-right min-w-[92px]">
-                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Pagado</div>
+                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.member.paid') }}</div>
                                     <div class="text-sm font-cinzel text-emerald-700 dark:text-green-400 mt-0.5" v-tooltip="formatAdenaFull(member.adena_paid || 0)">{{ formatAdenaShort(member.adena_paid || 0) }}</div>
                                 </div>
                             </div>
@@ -808,7 +817,7 @@ watch(stockSearch, throttle(async (val) => {
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div>
                                     <div class="flex items-center justify-between gap-4 mb-3">
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Warehouse de {{ member.name }}</div>
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('party.member.warehouse_title', { name: member.name }) }}</div>
                                         <div class="flex items-center gap-2">
                                             <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase text-gray-700 bg-white/70 border-gray-200 dark:text-gray-300 dark:bg-black/30 dark:border-gray-800">
                                                 {{ (memberWarehouseById[member.id]?.items || []).length }} items
@@ -817,19 +826,19 @@ watch(stockSearch, throttle(async (val) => {
                                     </div>
 
                                     <div v-if="memberWarehouseLoading.has(member.id)" class="text-sm text-gray-600 dark:text-gray-400 italic">
-                                        Cargando warehouse...
+                                        {{ $t('common.loading') }}
                                     </div>
 
                                     <div v-else-if="memberWarehouseErrorById[member.id]" class="flex items-center justify-between gap-4 bg-white/70 border border-gray-200 dark:bg-black/40 dark:border-gray-800 rounded-xl p-4">
-                                        <div class="text-sm text-gray-700 dark:text-gray-300 font-bold">No se pudo cargar el warehouse.</div>
+                                        <div class="text-sm text-gray-700 dark:text-gray-300 font-bold">{{ $t('party.member.warehouse_load_failed') }}</div>
                                         <button class="px-4 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest" @click.stop="loadMemberWarehouse(member.id)">
-                                            Reintentar
+                                            {{ $t('common.retry') }}
                                         </button>
                                     </div>
 
                                     <div v-else>
                                         <div v-if="(memberWarehouseById[member.id]?.items || []).length === 0" class="text-sm text-gray-600 dark:text-gray-400 italic">
-                                            Sin items en su warehouse.
+                                            {{ $t('party.member.warehouse_empty') }}
                                         </div>
                                         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                             <div
@@ -851,7 +860,7 @@ watch(stockSearch, throttle(async (val) => {
 
                                 <div>
                                     <div class="flex items-center justify-between gap-4 mb-3">
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Auditoría de {{ member.name }}</div>
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('party.member.audit_title', { name: member.name }) }}</div>
                                         <div class="flex items-center gap-2">
                                             <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase text-gray-700 bg-white/70 border-gray-200 dark:text-gray-300 dark:bg-black/30 dark:border-gray-800">
                                                 {{ (memberLogsById[member.id]?.logs || []).length }} mov.
@@ -863,22 +872,22 @@ watch(stockSearch, throttle(async (val) => {
                                     </div>
 
                                     <div v-if="memberLogsLoading.has(member.id)" class="text-sm text-gray-600 dark:text-gray-400 italic">
-                                        Cargando auditoría...
+                                        {{ $t('common.loading') }}
                                     </div>
 
                                     <div v-else-if="memberLogsErrorById[member.id]" class="flex items-center justify-between gap-4 bg-white/70 border border-gray-200 dark:bg-black/40 dark:border-gray-800 rounded-xl p-4">
-                                        <div class="text-sm text-gray-700 dark:text-gray-300 font-bold">No se pudo cargar la auditoría.</div>
+                                        <div class="text-sm text-gray-700 dark:text-gray-300 font-bold">{{ $t('party.member.audit_load_failed') }}</div>
                                         <button class="px-4 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest" @click.stop="loadMemberLogs(member.id)">
-                                            Reintentar
+                                            {{ $t('common.retry') }}
                                         </button>
                                     </div>
 
                                     <div v-else class="space-y-6">
                                         <div>
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Pagos / Movimientos de Adena</div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('party.member.adena_payments_title') }}</div>
 
                                             <div v-if="(memberLogsById[member.id]?.logs || []).length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                                                Sin movimientos de Adena.
+                                                {{ $t('party.member.adena_payments_empty') }}
                                             </div>
 
                                             <div v-else class="mt-3 space-y-2">
@@ -891,13 +900,13 @@ watch(stockSearch, throttle(async (val) => {
                                                     </div>
                                                     <div class="flex items-center gap-4 shrink-0">
                                                         <div class="text-right">
-                                                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Adena</div>
+                                                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.adena') }}</div>
                                                             <div class="text-sm font-black font-cinzel" :class="log.adena < 0 ? 'text-red-500' : 'text-green-400'" v-tooltip="`${log.adena < 0 ? '-' : '+'}${formatNumber(Math.abs(log.adena))}`">
                                                                 {{ log.adena < 0 ? '-' : '+' }}{{ formatAdenaShort(Math.abs(log.adena)) }}
                                                             </div>
                                                         </div>
                                                         <Link v-if="log.report_id" :href="route('loot.index') + '?report=' + log.report_id" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-purple-700 dark:text-gray-400 dark:hover:text-purple-300 transition">
-                                                            Ver histórico
+                                                            {{ $t('party.member.view_history') }}
                                                         </Link>
                                                     </div>
                                                 </div>
@@ -905,10 +914,10 @@ watch(stockSearch, throttle(async (val) => {
                                         </div>
 
                                         <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Auditoría de Acciones</div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('party.member.actions_audit_title') }}</div>
 
                                             <div v-if="(memberLogsById[member.id]?.audits || []).length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                                                Sin acciones registradas.
+                                                {{ $t('party.member.actions_audit_empty') }}
                                             </div>
 
                                             <div v-else class="mt-3 space-y-2">
@@ -940,67 +949,67 @@ watch(stockSearch, throttle(async (val) => {
                 <div class="l2-panel p-6 rounded-3xl border-gray-800">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">CP Vault</h3>
-                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Items confirmados de la CP</p>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('party.vault.title') }}</h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('party.vault.subtitle') }}</p>
                         </div>
                         <button v-if="canManageWarehouse" @click="openAddStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest transition">
-                            Añadir Items
+                            {{ $t('party.vault.add_items') }}
                         </button>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                         <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Items</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.items') }}</div>
                             <div class="text-2xl font-cinzel text-gray-900 dark:text-white mt-1">{{ warehouseItemsTotal }}</div>
                         </div>
 
                         <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena en Warehouse</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.vault.adena_in_warehouse') }}</div>
                             <div class="text-2xl font-cinzel text-purple-700 dark:text-purple-300 mt-1" v-tooltip="formatAdenaFull(warehouseAdena || 0)">{{ formatAdenaShort(warehouseAdena || 0) }}</div>
                         </div>
 
                         <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena que Debe</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.vault.adena_owed') }}</div>
                             <div class="text-2xl font-cinzel text-orange-600 dark:text-orange-500 mt-1" v-tooltip="formatAdenaFull(cpAdenaOwed || 0)">{{ formatAdenaShort(cpAdenaOwed || 0) }}</div>
                         </div>
 
                         <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena Entregada</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.vault.adena_paid') }}</div>
                             <div class="text-2xl font-cinzel text-emerald-700 dark:text-green-400 mt-1" v-tooltip="formatAdenaFull(cpAdenaPaid || 0)">{{ formatAdenaShort(cpAdenaPaid || 0) }}</div>
                         </div>
                     </div>
 
                     <div class="relative mt-5">
-                        <input v-model="warehouseFilter" type="text" placeholder="Filtrar item..." class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
+                        <input v-model="warehouseFilter" type="text" :placeholder="$t('party.vault.filter_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
                         <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
                 </div>
 
                 <div v-if="filteredWarehouseItems.length === 0" class="l2-panel p-10 rounded-3xl border-gray-800 text-center text-gray-600 dark:text-gray-500 font-cinzel text-xl italic opacity-50">
-                    {{ warehouseFilter.trim() ? 'No hay resultados para ese filtro...' : 'Todavía no hay items confirmados en la CP...' }}
+                    {{ warehouseFilter.trim() ? $t('party.vault.empty_filtered') : $t('party.vault.empty') }}
                 </div>
 
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div v-for="item in filteredWarehouseItems" :key="item.id" class="l2-panel p-4 rounded-2xl border-gray-800 flex items-center gap-4">
                         <div class="w-12 h-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
                             <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover">
-                            <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">N/A</div>
+                            <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">{{ $t('common.na') }}</div>
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || '—' }}</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
                         </div>
                         <div class="text-right">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Cantidad</div>
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.amount') }}</div>
                             <div class="text-lg font-cinzel text-gray-900 dark:text-white">x{{ item.total_amount }}</div>
                         </div>
                         <div v-if="canManageWarehouse" class="ml-3">
                             <div class="flex flex-col gap-2">
                                 <button @click="openAssign(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg transition shadow-lg shadow-purple-950/20">
-                                    Asignar
+                                    {{ $t('common.assign') }}
                                 </button>
                                 <button @click="openSell(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white rounded-lg transition shadow-lg shadow-emerald-950/20">
-                                    Vender
+                                    {{ $t('common.sell') }}
                                 </button>
                             </div>
                         </div>
@@ -1012,8 +1021,8 @@ watch(stockSearch, throttle(async (val) => {
                 <div class="l2-panel p-6 rounded-3xl border-gray-800">
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
-                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Crafting</h3>
-                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Recetas priorizadas por el líder y materiales faltantes según el CP Vault</p>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('craft.title') }}</h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('craft.subtitle') }}</p>
                         </div>
 
                         <div v-if="isLeader" class="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -1021,7 +1030,7 @@ watch(stockSearch, throttle(async (val) => {
                                 <input
                                     v-model="craftingSearchQuery"
                                     type="text"
-                                    placeholder="Buscar receta..."
+                                    :placeholder="$t('craft.search_placeholder')"
                                     class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 h-11 px-4 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                                     @focus="craftingSearchOpen = craftingSearchQuery.trim().length >= 2"
                                     @keydown.esc="craftingSearchOpen = false"
@@ -1029,13 +1038,13 @@ watch(stockSearch, throttle(async (val) => {
 
                                 <div v-if="craftingSearchOpen" class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden dark:bg-gray-950 dark:border-gray-800">
                                     <div v-if="craftingSearchLoading" class="p-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                                        Buscando...
+                                        {{ $t('common.searching') }}
                                     </div>
                                     <div v-else-if="craftingSearchError" class="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">
-                                        No se pudo buscar recetas.
+                                        {{ $t('craft.search_failed') }}
                                     </div>
                                     <div v-else-if="craftingSearchResults.length === 0" class="p-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                                        Sin resultados.
+                                        {{ $t('common.no_results') }}
                                     </div>
                                     <button
                                         v-else
@@ -1048,10 +1057,10 @@ watch(stockSearch, throttle(async (val) => {
                                         <div class="min-w-0">
                                             <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ r.name }}</div>
                                             <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">
-                                                {{ r.success_rate || 0 }}% éxito
+                                                {{ r.success_rate || 0 }}% {{ $t('craft.success') }}
                                             </div>
                                         </div>
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 shrink-0">Añadir</div>
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 shrink-0">{{ $t('common.add') }}</div>
                                     </button>
                                 </div>
                             </div>
@@ -1061,14 +1070,14 @@ watch(stockSearch, throttle(async (val) => {
                                 :disabled="!addCpRecipeForm.recipe_id || addCpRecipeForm.processing"
                                 @click="submitAddCpRecipe"
                             >
-                                Añadir
+                                {{ $t('common.add') }}
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div v-if="(cpRecipes || []).length === 0" class="l2-panel p-10 rounded-3xl border-gray-800 text-center text-gray-600 dark:text-gray-500 font-cinzel text-xl italic opacity-50">
-                    No hay recetas priorizadas todavía.
+                    {{ $t('craft.no_recipes') }}
                 </div>
 
                 <div v-else class="space-y-4">
@@ -1077,18 +1086,18 @@ watch(stockSearch, throttle(async (val) => {
                             <div class="min-w-0">
                                 <div class="flex items-center gap-3">
                                     <div class="px-3 py-1 rounded-full bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-700 dark:bg-black/30 dark:border-gray-800 dark:text-gray-300">
-                                        Prioridad {{ entry.priority ?? 0 }}
+                                        {{ $t('craft.priority', { value: entry.priority ?? 0 }) }}
                                     </div>
                                     <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                        {{ entry.recipe?.success_rate || 0 }}% éxito
+                                        {{ entry.recipe?.success_rate || 0 }}% {{ $t('craft.success') }}
                                     </div>
                                 </div>
                                 <div class="mt-2 text-lg font-black text-gray-900 dark:text-white truncate">
-                                    {{ entry.recipe?.name || 'Receta' }}
+                                    {{ entry.recipe?.name || $t('craft.recipe_fallback') }}
                                 </div>
                                     <div class="mt-3">
                                         <div class="flex items-center justify-between gap-3">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Progreso</div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.progress') }}</div>
                                             <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">
                                                 {{ getRecipeProgress(entry.recipe) }}%
                                             </div>
@@ -1101,7 +1110,7 @@ watch(stockSearch, throttle(async (val) => {
                                         </div>
                                     </div>
                                 <div v-if="(entry.recipe?.outputs || []).length > 0" class="mt-3">
-                                    <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Resultados</div>
+                                    <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('craft.outputs') }}</div>
                                         <div v-if="(entry.recipe.outputs || []).length > 1" class="mt-2">
                                             <select
                                                 class="w-full px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-sm dark:bg-black/30 dark:border-gray-800 dark:text-gray-200"
@@ -1109,7 +1118,7 @@ watch(stockSearch, throttle(async (val) => {
                                                 @change="(e) => setSelectedOutputItemId(entry.recipe.id, Number(e.target.value))"
                                             >
                                                 <option v-for="out in entry.recipe.outputs" :key="out.item_id" :value="out.item_id">
-                                                    {{ out.name || 'Item' }} x{{ formatNumber(out.quantity || 1) }}
+                                                    {{ out.name || $t('common.item') }} x{{ formatNumber(out.quantity || 1) }}
                                                 </option>
                                             </select>
                                         </div>
@@ -1122,7 +1131,7 @@ watch(stockSearch, throttle(async (val) => {
                                             <img v-if="out.image_url" :src="out.image_url" class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
                                             <div v-else class="w-7 h-7 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
                                             <div class="min-w-0">
-                                                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ out.name || 'Item' }}</div>
+                                                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ out.name || $t('common.item') }}</div>
                                                 <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">x{{ formatNumber(out.quantity || 1) }}</div>
                                             </div>
                                         </div>
@@ -1132,7 +1141,7 @@ watch(stockSearch, throttle(async (val) => {
                                     <img v-if="entry.recipe.output_item.image_url" :src="entry.recipe.output_item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
                                     <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
                                     <div class="min-w-0">
-                                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Resultado</div>
+                                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('craft.output') }}</div>
                                         <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ entry.recipe.output_item.name }}</div>
                                     </div>
                                 </div>
@@ -1145,7 +1154,7 @@ watch(stockSearch, throttle(async (val) => {
                                         :disabled="!canCraftRecipe(entry.recipe) || craftingCrafting.has(entry.recipe.id)"
                                         @click="openCraftConfirm(entry)"
                                     >
-                                        Craftear
+                                        {{ $t('craft.actions.craft') }}
                                     </button>
                                     <template v-if="isLeader">
                                     <button
@@ -1153,21 +1162,21 @@ watch(stockSearch, throttle(async (val) => {
                                         :disabled="idx === 0 || moveCpRecipeForm.processing"
                                         @click="moveCpRecipe(entry.id, 'up')"
                                     >
-                                        Subir
+                                        {{ $t('common.up') }}
                                     </button>
                                     <button
                                         class="px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
                                         :disabled="idx === (cpRecipes || []).length - 1 || moveCpRecipeForm.processing"
                                         @click="moveCpRecipe(entry.id, 'down')"
                                     >
-                                        Bajar
+                                        {{ $t('common.down') }}
                                     </button>
                                     <button
                                         class="px-4 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                         :disabled="removeCpRecipeForm.processing"
                                         @click="removeCpRecipe(entry.id)"
                                     >
-                                        Quitar
+                                        {{ $t('common.remove') }}
                                     </button>
                                     </template>
                                 </div>
@@ -1175,10 +1184,10 @@ watch(stockSearch, throttle(async (val) => {
                         </div>
 
                         <div class="mt-5">
-                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Materiales</div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.materials') }}</div>
 
                             <div v-if="(entry.recipe?.materials || []).length === 0" class="mt-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                                No hay materiales registrados para esta receta.
+                                {{ $t('craft.no_materials') }}
                             </div>
 
                             <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
@@ -1190,18 +1199,18 @@ watch(stockSearch, throttle(async (val) => {
                                     <img v-if="mat.image_url" :src="mat.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
                                     <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
                                     <div class="min-w-0 flex-1">
-                                        <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ mat.name || 'Material' }}</div>
+                                        <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ mat.name || $t('craft.material_fallback') }}</div>
                                         <div class="flex items-center gap-2">
                                             <div class="text-[10px] font-black uppercase tracking-widest" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                                 {{ formatNumber(mat.have || 0) }} / {{ formatNumber(mat.need || 0) }}
                                             </div>
                                             <div v-if="mat.craftable" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
-                                                crafteable
+                                                {{ $t('craft.craftable') }}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="text-right shrink-0">
-                                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Falta</div>
+                                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.missing') }}</div>
                                         <div class="text-sm font-cinzel" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                             {{ formatNumber(mat.missing || 0) }}
                                         </div>
@@ -1215,14 +1224,14 @@ watch(stockSearch, throttle(async (val) => {
                                     :disabled="isTreeLoading(entry.recipe.id)"
                                     @click="toggleRecipeTree(entry)"
                                 >
-                                    {{ isTreeOpen(entry.recipe.id) ? 'Ocultar árbol' : 'Ver árbol' }}
+                                    {{ isTreeOpen(entry.recipe.id) ? $t('craft.tree.hide') : $t('craft.tree.show') }}
                                 </button>
-                                <div v-if="isTreeLoading(entry.recipe.id)" class="text-[10px] font-black uppercase tracking-widest text-gray-500">Cargando...</div>
+                                <div v-if="isTreeLoading(entry.recipe.id)" class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.loading') }}</div>
                             </div>
 
                             <div v-if="isTreeOpen(entry.recipe.id)" class="mt-4">
                                 <div v-if="getTreeData(entry.recipe.id)" class="bg-white/70 border border-gray-200 rounded-2xl p-3 dark:bg-gray-900/40 dark:border-gray-800">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Árbol de recetas</div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.tree.title') }}</div>
                                     <div class="mt-3 space-y-2">
                                         <div
                                             v-for="row in flattenTreeWithDepth(getTreeData(entry.recipe.id).nodes)"
@@ -1234,9 +1243,9 @@ watch(stockSearch, throttle(async (val) => {
                                             <div v-else class="w-8 h-8 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
                                             <div class="min-w-0 flex-1">
                                                 <div class="flex items-center gap-2">
-                                                    <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ row.name || 'Item' }}</div>
+                                                    <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ row.name || $t('common.item') }}</div>
                                                     <div v-if="(row.children || []).length > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
-                                                        crafteable
+                                                        {{ $t('craft.craftable') }}
                                                     </div>
                                                 </div>
                                                 <div class="text-[10px] font-black uppercase tracking-widest" :class="(row.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
@@ -1244,7 +1253,7 @@ watch(stockSearch, throttle(async (val) => {
                                                 </div>
                                             </div>
                                             <div class="text-right shrink-0">
-                                                <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Falta</div>
+                                                <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.missing') }}</div>
                                                 <div class="text-sm font-cinzel" :class="(row.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                                     {{ formatNumber(row.missing || 0) }}
                                                 </div>
@@ -1252,7 +1261,7 @@ watch(stockSearch, throttle(async (val) => {
                                         </div>
                                     </div>
 
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Materiales base (hojas)</div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.tree.base_materials') }}</div>
                                     <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                         <div
                                             v-for="leaf in flattenTreeLeaves(getTreeData(entry.recipe.id).nodes)"
@@ -1262,13 +1271,13 @@ watch(stockSearch, throttle(async (val) => {
                                             <img v-if="leaf.image_url" :src="leaf.image_url" class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
                                             <div v-else class="w-8 h-8 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
                                             <div class="min-w-0 flex-1">
-                                                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ leaf.name || 'Item' }}</div>
+                                                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ leaf.name || $t('common.item') }}</div>
                                                 <div class="text-[10px] font-black uppercase tracking-widest" :class="(leaf.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                                     {{ formatNumber(leaf.have || 0) }} / {{ formatNumber(leaf.need || 0) }}
                                                 </div>
                                             </div>
                                             <div class="text-right shrink-0">
-                                                <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Falta</div>
+                                                <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.missing') }}</div>
                                                 <div class="text-sm font-cinzel" :class="(leaf.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                                     {{ formatNumber(leaf.missing || 0) }}
                                                 </div>
@@ -1277,7 +1286,7 @@ watch(stockSearch, throttle(async (val) => {
                                     </div>
                                 </div>
                                 <div v-else class="text-sm text-gray-600 dark:text-gray-400 italic">
-                                    No hay árbol para mostrar.
+                                    {{ $t('craft.tree.empty') }}
                                 </div>
                             </div>
                         </div>
@@ -1288,10 +1297,10 @@ watch(stockSearch, throttle(async (val) => {
             <Modal :show="craftingConfirmOpen" @close="closeCraftConfirm">
                 <div class="p-6">
                     <div class="text-lg font-black text-gray-900 dark:text-gray-100">
-                        ¿Hubo suerte?
+                        {{ $t('craft.confirm.title') }}
                     </div>
                     <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Si eliges “Sí”, se añade el crafteado al warehouse. Si eliges “No”, se consumen materiales pero no se añade el resultado.
+                        {{ $t('craft.confirm.subtitle') }}
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3">
@@ -1300,14 +1309,14 @@ watch(stockSearch, throttle(async (val) => {
                             class="px-4 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
                             @click="confirmCraft(false)"
                         >
-                            No
+                            {{ $t('common.no') }}
                         </button>
                         <button
                             type="button"
                             class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest transition"
                             @click="confirmCraft(true)"
                         >
-                            Sí
+                            {{ $t('common.yes') }}
                         </button>
                     </div>
                 </div>
@@ -1317,8 +1326,8 @@ watch(stockSearch, throttle(async (val) => {
             <div v-if="activeTab === 'config'" class="space-y-6">
                 <div class="l2-panel p-8 rounded-3xl border-gray-800">
                     <div class="mb-8">
-                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Sistema de Puntuación</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Define cuántos puntos recibe cada miembro por actividad confirmada.</p>
+                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('party.points.title') }}</h3>
+                        <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('party.points.subtitle') }}</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1329,7 +1338,7 @@ watch(stockSearch, throttle(async (val) => {
                                 <p class="text-[10px] text-gray-600 dark:text-gray-500 font-bold leading-tight">{{ cat.desc }}</p>
                             </div>
                             <div class="flex flex-col items-end gap-2">
-                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Puntos Actuales</div>
+                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.points.current') }}</div>
                                 <div class="flex items-center gap-3">
                                     <input 
                                         type="number" 
@@ -1337,7 +1346,7 @@ watch(stockSearch, throttle(async (val) => {
                                         @change="saveConfig(cat.id, $event.target.value)"
                                         class="w-16 bg-white border border-gray-200 text-purple-700 font-black text-center py-1 rounded-lg focus:ring-purple-600 transition dark:bg-black/50 dark:border-gray-700 dark:text-purple-300"
                                     >
-                                    <div class="text-xs font-bold text-gray-700 dark:text-gray-300">PTS</div>
+                                    <div class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ $t('party.points.pts') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -1345,7 +1354,7 @@ watch(stockSearch, throttle(async (val) => {
                 </div>
 
                 <div class="p-6 bg-purple-950/10 border border-purple-500/15 rounded-2xl text-xs text-purple-700 dark:text-purple-200 font-bold italic">
-                    💡 Estos puntos serán aplicados automáticamente al aprobar registros de loot marcados con estas categorías. El líder siempre podrá sobrescribirlos manualmente en el momento de la aprobación.
+                    {{ $t('party.points.hint') }}
                 </div>
             </div>
         </div>
@@ -1355,7 +1364,7 @@ watch(stockSearch, throttle(async (val) => {
     <div v-if="assignModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
         <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Asignar Ítem desde Warehouse</div>
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.assign_from_warehouse') }}</div>
                 <button @click="assignModalOpen = false" class="text-white/50 hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -1368,36 +1377,36 @@ watch(stockSearch, throttle(async (val) => {
                     </div>
                     <div>
                         <div class="text-sm font-black text-gray-900 dark:text-white">{{ selectedItem?.name }}</div>
-                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">En baúl: x{{ selectedItem?.total_amount }}</div>
+                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">{{ $t('party.in_vault') }} x{{ selectedItem?.total_amount }}</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Miembro</div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('common.member') }}</div>
                         <select v-model="assignForm.user_id" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-200">
-                            <option :value="null" disabled>Selecciona un miembro</option>
+                            <option :value="null" disabled>{{ $t('common.select_member') }}</option>
                             <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
                         </select>
                     </div>
                     <div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Cantidad</div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('common.amount') }}</div>
                         <input type="number" v-model.number="assignForm.amount" min="1" :max="selectedItem?.total_amount || 1" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-purple-600 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     </div>
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura del Trade (obligatoria)</div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.trade_screenshot_required') }}</div>
                     <div class="flex items-center justify-center w-full">
                         <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
                             <div v-if="!assignForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
                                 <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
-                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                                <p class="text-[10px] text-gray-500">{{ $t('common.allowed_images') }}</p>
                             </div>
                             <div v-else class="text-purple-300 flex flex-col items-center">
                                 <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
                                 <span class="text-[10px] text-gray-500 mt-1">{{ assignForm.image_proof.name }}</span>
                             </div>
                             <input type="file" class="hidden" accept="image/*" @input="onFileChange" />
@@ -1407,8 +1416,8 @@ watch(stockSearch, throttle(async (val) => {
             </div>
 
             <div class="p-6 pt-0 flex space-x-4">
-                <button @click="assignModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
-                <button @click="submitAssign" :disabled="!assignForm.user_id || !assignForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Asignar</button>
+                <button @click="assignModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
+                <button @click="submitAssign" :disabled="!assignForm.user_id || !assignForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.assign') }}</button>
             </div>
         </div>
     </div>
@@ -1417,7 +1426,7 @@ watch(stockSearch, throttle(async (val) => {
     <div v-if="sellModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
         <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-emerald-900 to-green-800 p-4 flex justify-between items-center border-b border-emerald-500/20">
-                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Vender Ítem desde Warehouse</div>
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.sell_from_warehouse') }}</div>
                 <button @click="sellModalOpen = false" class="text-white/50 hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -1431,48 +1440,48 @@ watch(stockSearch, throttle(async (val) => {
                         </div>
                         <div class="min-w-0">
                             <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ selectedSellItem?.name }}</div>
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest">En baúl: x{{ selectedSellItem?.total_amount }}</div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest">{{ $t('party.in_vault') }} x{{ selectedSellItem?.total_amount }}</div>
                         </div>
                     </div>
                     <div class="bg-white/70 border border-gray-200 rounded-xl px-4 py-2 text-right dark:bg-black/40 dark:border-gray-700">
-                        <div class="text-[9px] text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest">Total Venta</div>
+                        <div class="text-[9px] text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest">{{ $t('party.total_sale') }}</div>
                         <div class="text-lg font-cinzel text-emerald-700 dark:text-emerald-300" v-tooltip="formatAdenaFull(sellTotalAdena)">{{ formatAdenaShort(sellTotalAdena) }}</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Cantidad</div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('common.amount') }}</div>
                         <input type="number" v-model.number="sellForm.amount" min="1" :max="selectedSellItem?.total_amount || 1" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-emerald-500 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     </div>
                     <div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Precio / Unidad</div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.unit_price') }}</div>
                         <input type="number" v-model.number="sellForm.unit_price" min="1" inputmode="numeric" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-emerald-500 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     </div>
                 </div>
 
                 <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">Destino Adena</div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">{{ $t('party.adena_destination') }}</div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <label class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
                             <input type="radio" value="cp" v-model="sellForm.adena_distribution" class="text-emerald-500">
                             <div class="min-w-0">
-                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Fondo CP</div>
-                                <div class="text-[10px] text-gray-500">No genera split a miembros.</div>
+                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">{{ $t('party.cp_fund') }}</div>
+                                <div class="text-[10px] text-gray-500">{{ $t('party.no_split_desc') }}</div>
                             </div>
                         </label>
                         <label class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
                             <input type="radio" value="attendees" v-model="sellForm.adena_distribution" class="text-emerald-500">
                             <div class="min-w-0">
-                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Split</div>
-                                <div class="text-[10px] text-gray-500">Genera Adena a deber por miembro.</div>
+                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">{{ $t('party.split') }}</div>
+                                <div class="text-[10px] text-gray-500">{{ $t('party.split_desc') }}</div>
                             </div>
                         </label>
                     </div>
 
                     <div v-if="sellForm.adena_distribution === 'attendees'" class="mt-4 space-y-3">
                         <div class="flex items-center justify-between gap-3">
-                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Miembros para split</div>
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.split_members') }}</div>
                             <div class="text-[10px] text-gray-400 font-black uppercase tracking-widest">
                                 {{ sellSplitCount }} • x{{ formatAdenaShort(sellPerMember) }}
                             </div>
@@ -1487,17 +1496,17 @@ watch(stockSearch, throttle(async (val) => {
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura de la Venta (obligatoria)</div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.sale_screenshot_required') }}</div>
                     <div class="flex items-center justify-center w-full">
                         <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
                             <div v-if="!sellForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
                                 <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-emerald-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
-                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                                <p class="text-[10px] text-gray-500">{{ $t('common.allowed_images') }}</p>
                             </div>
                             <div v-else class="text-emerald-300 flex flex-col items-center">
                                 <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
                                 <span class="text-[10px] text-gray-500 mt-1">{{ sellForm.image_proof.name }}</span>
                             </div>
                             <input type="file" class="hidden" accept="image/*" @input="sellForm.image_proof = $event.target.files[0]" />
@@ -1507,8 +1516,8 @@ watch(stockSearch, throttle(async (val) => {
             </div>
 
             <div class="p-6 pt-0 flex space-x-4">
-                <button @click="sellModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
-                <button @click="submitSell" :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof || (sellForm.adena_distribution === 'attendees' && (!sellForm.recipient_ids || sellForm.recipient_ids.length === 0))" class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">Registrar Venta</button>
+                <button @click="sellModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
+                <button @click="submitSell" :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof || (sellForm.adena_distribution === 'attendees' && (!sellForm.recipient_ids || sellForm.recipient_ids.length === 0))" class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.register_sale') }}</button>
             </div>
         </div>
     </div>
@@ -1516,7 +1525,7 @@ watch(stockSearch, throttle(async (val) => {
     <div v-if="addStockModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
         <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Añadir Items al Warehouse</div>
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.add_items_to_warehouse') }}</div>
                 <button @click="addStockModalOpen = false" class="text-white/50 hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -1524,14 +1533,14 @@ watch(stockSearch, throttle(async (val) => {
 
             <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                 <div class="relative">
-                    <input v-model="stockSearch" type="text" placeholder="Buscar item..." class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 pl-10 h-12 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    <input v-model="stockSearch" type="text" :placeholder="$t('common.search_item_placeholder')" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 pl-10 h-12 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     <button type="button" @click="quickAddAdena" class="absolute right-2 top-2 h-8 px-3 rounded-lg bg-gradient-to-r from-yellow-600 to-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:from-yellow-500 hover:to-amber-400 transition">
-                        Añadir Adena
+                        {{ $t('party.add_adena') }}
                     </button>
                 </div>
 
-                <div v-if="stockIsSearching" class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Buscando...</div>
+                <div v-if="stockIsSearching" class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{{ $t('common.searching') }}</div>
 
                 <div v-if="stockSearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
                     <button v-for="item in stockSearchResults" :key="item.id" @click="addStockItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
@@ -1573,27 +1582,27 @@ watch(stockSearch, throttle(async (val) => {
 
                 <div v-if="stockForm.items.length > 0" class="grid grid-cols-2 gap-3">
                     <div class="bg-white/70 border border-gray-200 rounded-2xl px-4 py-3 dark:bg-black/40 dark:border-gray-800">
-                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">Líneas</div>
+                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.lines') }}</div>
                         <div class="text-xl font-cinzel text-gray-900 dark:text-white mt-1">{{ stockTotalLines }}</div>
                     </div>
                     <div class="bg-white/70 border border-gray-200 rounded-2xl px-4 py-3 text-right dark:bg-black/40 dark:border-gray-800">
-                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">Unidades</div>
+                        <div class="text-[9px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.units') }}</div>
                         <div class="text-xl font-cinzel text-purple-700 dark:text-purple-300 mt-1">{{ stockTotalUnits }}</div>
                     </div>
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura (obligatoria)</div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.screenshot_required') }}</div>
                     <div class="flex items-center justify-center w-full">
                         <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
                             <div v-if="!stockForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
                                 <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
-                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                                <p class="text-[10px] text-gray-500">{{ $t('common.allowed_images') }}</p>
                             </div>
                             <div v-else class="text-purple-300 flex flex-col items-center">
                                 <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
                                 <span class="text-[10px] text-gray-500 mt-1">{{ stockForm.image_proof.name }}</span>
                             </div>
                             <input type="file" class="hidden" accept="image/*" @input="stockForm.image_proof = $event.target.files[0]" />
@@ -1603,8 +1612,8 @@ watch(stockSearch, throttle(async (val) => {
             </div>
 
             <div class="p-6 pt-0 flex space-x-4">
-                <button @click="addStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
-                <button @click="submitAddStock" :disabled="stockForm.items.length === 0 || !stockForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Guardar</button>
+                <button @click="addStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
+                <button @click="submitAddStock" :disabled="stockForm.items.length === 0 || !stockForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
             </div>
         </div>
     </div>

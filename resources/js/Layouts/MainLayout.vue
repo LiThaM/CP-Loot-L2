@@ -14,6 +14,27 @@ const alerts = computed(() => page.props.alerts || { unreadCount: 0, items: [] }
 const flashSuccess = computed(() => page.props.flash?.success);
 const flashError = computed(() => page.props.flash?.error);
 
+const t = (key, params = {}) => {
+    const translations = page.props.translations || {};
+    const raw = translations[key] || key;
+    if (!raw || typeof raw !== 'string') return raw;
+    return raw.replace(/\{(\w+)\}/g, (match, p1) => (
+        Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : match
+    ));
+};
+
+const appName = computed(() => page.props.app?.name || t('app.name'));
+const supportEmail = computed(() => page.props.app?.supportEmail || '');
+const donationWallet = computed(() => page.props.app?.donationWallet || '');
+const locale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+
+const setLocale = (nextLocale) => {
+    const val = String(nextLocale || '').toLowerCase();
+    if (!['en', 'es'].includes(val) || val === locale.value) return;
+    router.post(route('locale.set'), { locale: val }, { preserveScroll: true });
+};
+
 const showingNavigationDropdown = ref(false);
 const darkMode = ref(false);
 const alertsOpen = ref(false);
@@ -25,11 +46,9 @@ const showSupportModal = ref(false);
 const showCpRequestModal = ref(false);
 const showDonationModal = ref(false);
 
-const donationWallet = '0x0D5cf74c1487a0B3867930E884daa44f5019a40E';
-
 const copyDonationWallet = async () => {
-    await navigator.clipboard.writeText(donationWallet);
-    showToast({ tone: 'success', title: 'Donaciones', message: 'Cartera copiada al portapapeles.' });
+    await navigator.clipboard.writeText(donationWallet.value);
+    showToast({ tone: 'success', title: t('modal.donations.title'), message: t('toast.wallet_copied') });
 };
 
 const supportForm = useForm({
@@ -54,7 +73,7 @@ const normalizeFlashMessage = (val, fallback) => {
     if (typeof val === 'object') {
         const msg = val.message || val.error || val.success;
         if (typeof msg === 'string' && msg.trim()) return msg;
-        if (val.link) return 'Link disponible.';
+        if (val.link) return t('common.link_available');
     }
     return fallback;
 };
@@ -74,10 +93,10 @@ const submitSupport = () => {
         onSuccess: () => {
             showSupportModal.value = false;
             supportForm.reset();
-            showToast({ tone: 'success', title: 'Soporte', message: 'Mensaje enviado a soporte.' });
+            showToast({ tone: 'success', title: t('modal.support.title'), message: t('toast.support_sent') });
         },
         onError: () => {
-            showToast({ tone: 'error', title: 'Soporte', message: 'Revisa los campos e inténtalo de nuevo.' });
+            showToast({ tone: 'error', title: t('modal.support.title'), message: t('toast.check_fields') });
         },
     });
 };
@@ -88,10 +107,10 @@ const submitCpRequest = () => {
         onSuccess: () => {
             showCpRequestModal.value = false;
             cpRequestForm.reset();
-            showToast({ tone: 'success', title: 'Solicitud CP', message: 'Solicitud enviada. Te contactaremos con el link de invitación.' });
+            showToast({ tone: 'success', title: t('modal.cp_request.title'), message: t('toast.cp_request_sent') });
         },
         onError: () => {
-            showToast({ tone: 'error', title: 'Solicitud CP', message: 'Revisa los campos e inténtalo de nuevo.' });
+            showToast({ tone: 'error', title: t('modal.cp_request.title'), message: t('toast.check_fields') });
         },
     });
 };
@@ -111,10 +130,10 @@ const lootForm = useForm({
 });
 
 const eventTypes = [
-    { value: 'FARM', label: 'Farm Session', icon: '🧺' },
-    { value: 'BOSS', label: 'Raid Boss', icon: '⚔️' },
-    { value: 'EPIC', label: 'Epic Boss', icon: '👑' },
-    { value: 'SIEGE', label: 'Siege / Fortress', icon: '🏰' },
+    { value: 'FARM', labelKey: 'loot.event_types.farm', icon: '🧺' },
+    { value: 'BOSS', labelKey: 'loot.event_types.raid_boss', icon: '⚔️' },
+    { value: 'EPIC', labelKey: 'loot.event_types.epic_boss', icon: '👑' },
+    { value: 'SIEGE', labelKey: 'loot.event_types.siege', icon: '🏰' },
 ];
 
 const openLootModal = () => {
@@ -206,7 +225,7 @@ const isAdenaName = (val) => String(val ?? '').trim().toLowerCase() === 'adena';
 
 const formatNumber = (val) => {
     const n = Number(val ?? 0);
-    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
 const formatAdenaShort = (val) => {
@@ -262,23 +281,23 @@ onMounted(() => {
 });
 
 watch(flashSuccess, (val) => {
-    const message = normalizeFlashMessage(val, 'Acción completada.');
+    const message = normalizeFlashMessage(val, t('toast.action_completed'));
     if (!message) return;
     const key = `flash-success:${typeof val === 'string' ? val : JSON.stringify(val)}`;
     const last = sessionStorage.getItem('lastFlashToastKey') || '';
     if (last === key) return;
     sessionStorage.setItem('lastFlashToastKey', key);
-    showToast({ tone: 'success', title: 'Hecho', message, kind: 'flash' });
+    showToast({ tone: 'success', title: t('common.done'), message, kind: 'flash' });
 }, { immediate: true });
 
 watch(flashError, (val) => {
-    const message = normalizeFlashMessage(val, 'Ha ocurrido un error.');
+    const message = normalizeFlashMessage(val, t('common.error_occurred'));
     if (!message) return;
     const key = `flash-error:${typeof val === 'string' ? val : JSON.stringify(val)}`;
     const last = sessionStorage.getItem('lastFlashToastKey') || '';
     if (last === key) return;
     sessionStorage.setItem('lastFlashToastKey', key);
-    showToast({ tone: 'error', title: 'Error', message, kind: 'flash' });
+    showToast({ tone: 'error', title: t('common.error'), message, kind: 'flash' });
 }, { immediate: true });
 
 watch(() => alerts.value.items, (items) => {
@@ -295,11 +314,11 @@ watch(() => alerts.value.items, (items) => {
     if (unreadNew.length === 0) return;
 
     if (unreadNew.length === 1) {
-        showToast({ tone: 'success', title: 'Nueva alerta', message: unreadNew[0].summary || 'Tienes una nueva alerta.', kind: 'alert' });
+        showToast({ tone: 'success', title: t('alerts.toast_new_title'), message: unreadNew[0].summary || t('alerts.toast_new_fallback'), kind: 'alert' });
         return;
     }
 
-    showToast({ tone: 'success', title: 'Nuevas alertas', message: `${unreadNew.length} nuevas. Última: ${unreadNew[0].summary || ''}`.trim(), kind: 'alert' });
+    showToast({ tone: 'success', title: t('alerts.toast_many_title'), message: t('alerts.toast_many_message', { count: unreadNew.length, last: unreadNew[0].summary || '' }).trim(), kind: 'alert' });
 }, { deep: true });
 
 </script>
@@ -317,7 +336,7 @@ watch(() => alerts.value.items, (items) => {
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
                         <div class="text-[10px] font-black uppercase tracking-widest opacity-80">
-                            {{ toast.title || (toast.tone === 'error' ? 'Error' : 'Hecho') }}
+                            {{ toast.title || (toast.tone === 'error' ? $t('common.error') : $t('common.done')) }}
                         </div>
                         <div class="text-sm font-bold mt-0.5 break-words">{{ toast.message }}</div>
                     </div>
@@ -325,7 +344,7 @@ watch(() => alerts.value.items, (items) => {
                         class="text-white/60 hover:text-white transition -mt-0.5"
                         @click.stop="toast = { ...toast, open: false }"
                         type="button"
-                        aria-label="Cerrar"
+                        :aria-label="$t('common.close')"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
@@ -338,29 +357,52 @@ watch(() => alerts.value.items, (items) => {
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <Link href="/">
-                            <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 tracking-wider font-cinzel">AdenaLedger</span>
+                            <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 tracking-wider font-cinzel">{{ appName }}</span>
                         </Link>
                     </div>
                     
                     <div class="hidden lg:flex items-center space-x-8">
                         <template v-if="isAdmin">
-                            <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">Dashboard</Link>
-                            <Link :href="route('system.items.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.items.index')}">Items</Link>
-                            <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">Traduccions</Link>
+                            <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.dashboard') }}</Link>
+                            <Link :href="route('system.items.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.items.index')}">{{ $t('nav.items') }}</Link>
+                            <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">{{ $t('nav.translations') }}</Link>
                         </template>
                         <template v-else>
-                            <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">Inici</Link>
-                            <Link :href="route('loot.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('loot.index')}">Loot</Link>
-                            <Link :href="route('party.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.index')}">Party</Link>
-                            <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">CP Vault</Link>
-                            <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">Warehouse</Link>
-                            <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">ITEMS DB</Link>
-                            <Link v-if="canAuditCp" :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">Miembros</Link>
+                            <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.home') }}</Link>
+                            <Link :href="route('loot.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('loot.index')}">{{ $t('nav.loot') }}</Link>
+                            <Link :href="route('party.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.index')}">{{ $t('nav.party') }}</Link>
+                            <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">{{ $t('nav.cp_vault') }}</Link>
+                            <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">{{ $t('nav.warehouse') }}</Link>
+                            <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">{{ $t('nav.items_db') }}</Link>
+                            <Link v-if="canAuditCp" :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">{{ $t('nav.members') }}</Link>
                         </template>
                     </div>
 
                     <div v-if="user" class="flex items-center space-x-3 relative">
-                        <button @click="toggleDark" class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition" title="Tema">
+                        <div class="flex items-center rounded-lg border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/50 overflow-hidden">
+                            <button
+                                type="button"
+                                class="px-3 py-2 text-[10px] font-black uppercase tracking-widest transition"
+                                :class="locale === 'es'
+                                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'"
+                                @click="setLocale('es')"
+                            >
+                                {{ $t('lang.es') }}
+                            </button>
+                            <button
+                                type="button"
+                                class="px-3 py-2 text-[10px] font-black uppercase tracking-widest transition"
+                                :class="locale === 'en'
+                                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'"
+                                @click="setLocale('en')"
+                            >
+                                {{ $t('lang.en') }}
+                            </button>
+                        </div>
+
+                        <button @click="toggleDark" class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition" :title="$t('nav.theme')">
                             <svg v-if="!darkMode" class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v1a1 1 0 11-2 0V4a1 1 0 011-1zm0 11a4 4 0 100-8 4 4 0 000 8zm7-4a1 1 0 010 2h-1a1 1 0 110-2h1zM4 10a1 1 0 000 2H3a1 1 0 110-2h1zm11.657-5.657a1 1 0 010 1.414L14.95 6.464a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM6.464 14.95a1 1 0 010 1.414l-.707.707A1 1 0 013.343 15.95l.707-.707a1 1 0 011.414 0zM16.657 15.657a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414zM6.464 5.05A1 1 0 105.05 6.464l-.707-.707A1 1 0 106.464 5.05z"/></svg>
                             <svg v-else class="w-5 h-5 text-blue-300" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 116.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
                         </button>
@@ -372,17 +414,17 @@ watch(() => alerts.value.items, (items) => {
                             </button>
                             <div v-if="alertsOpen" class="absolute right-0 mt-2 w-80 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl p-2">
                                 <div class="flex items-center justify-between px-2 py-1">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">Alertas</div>
-                                    <button @click="markAllAlerts" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white">Marcar todo</button>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('alerts.title') }}</div>
+                                    <button @click="markAllAlerts" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white">{{ $t('alerts.mark_all') }}</button>
                                 </div>
-                                <div v-if="alerts.items.length === 0" class="p-3 text-sm text-gray-600 dark:text-gray-500">Sin alertas</div>
+                                <div v-if="alerts.items.length === 0" class="p-3 text-sm text-gray-600 dark:text-gray-500">{{ $t('alerts.none') }}</div>
                                 <div v-else class="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-gray-200 dark:divide-gray-800">
                                     <div v-for="a in alerts.items" :key="a.id" class="p-3 flex items-start gap-3">
                                         <div class="flex-1">
                                             <div class="text-xs text-gray-900 dark:text-white font-bold">{{ a.summary }}</div>
-                                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">{{ new Date(a.created_at).toLocaleString('es-ES') }}</div>
+                                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">{{ new Date(a.created_at).toLocaleString(localeTag) }}</div>
                                         </div>
-                                        <button v-if="!a.read_at" @click="markAlertRead(a.id)" class="text-[10px] font-black uppercase tracking-widest text-purple-700 hover:text-black dark:text-purple-300 dark:hover:text-white">Leída</button>
+                                        <button v-if="!a.read_at" @click="markAlertRead(a.id)" class="text-[10px] font-black uppercase tracking-widest text-purple-700 hover:text-black dark:text-purple-300 dark:hover:text-white">{{ $t('alerts.mark_read') }}</button>
                                     </div>
                                 </div>
                             </div>
@@ -396,8 +438,10 @@ watch(() => alerts.value.items, (items) => {
                                 </div>
                             </button>
                             <div v-if="userMenuOpen" class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl py-2">
-                                <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">Perfil</Link>
-                                <button @click="router.post(route('logout'))" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">Salir</button>
+                                <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.profile') }}</Link>
+                                <button type="button" @click="showSupportModal = true; userMenuOpen = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.support') }}</button>
+                                <button type="button" @click="showDonationModal = true; userMenuOpen = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.donations') }}</button>
+                                <button @click="router.post(route('logout'))" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.logout') }}</button>
                             </div>
                         </div>
                     </div>
@@ -421,43 +465,26 @@ watch(() => alerts.value.items, (items) => {
             <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50 backdrop-blur p-6 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
                 <div class="min-w-0">
                     <div class="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-300">
-                        © {{ new Date().getFullYear() }} AdenaLedger
+                        {{ $t('footer.copyright', { year: new Date().getFullYear(), appName }) }}
                     </div>
                     <div class="mt-1 text-[11px] text-gray-600 dark:text-gray-500 tracking-wide">
-                        100% gratuito. Si te ayuda, se aceptan donaciones para cerveza. Soporte: <a class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" href="mailto:support@adenaledger.com">support@adenaledger.com</a>
+                        {{ $t('footer.free') }}
+                        ·
+                        {{ $t('footer.donations_label') }}
+                        <span class="font-mono break-all">{{ donationWallet }}</span>
+                        ·
+                        {{ $t('footer.support_label') }}
+                        <a class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${supportEmail}`">{{ supportEmail }}</a>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-900 hover:bg-purple-50 transition dark:bg-gray-900/60 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800/80"
-                        @click="showCpRequestModal = true"
-                    >
-                        Solicitar alta CP
-                    </button>
-                    <button
-                        type="button"
-                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-900 hover:bg-purple-50 transition dark:bg-gray-900/60 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800/80"
-                        @click="showSupportModal = true"
-                    >
-                        Soporte
-                    </button>
-                    <button
-                        type="button"
-                        class="px-4 py-2 rounded-xl bg-gray-900 text-white font-black tracking-widest uppercase shadow-lg border border-purple-900/35 hover:border-purple-400/60 transition text-[10px] dark:bg-black/50"
-                        @click="showDonationModal = true"
-                    >
-                        Donaciones
-                    </button>
-                </div>
             </div>
         </footer>
 
         <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Soporte</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.support.title') }}</h3>
                     <button @click="showSupportModal = false" class="text-white/50 hover:text-white transition" type="button">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -471,30 +498,30 @@ watch(() => alerts.value.items, (items) => {
                     </div>
 
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Asunto</label>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.subject') }}</label>
                         <input v-model="supportForm.subject" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Mensaje</label>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.message') }}</label>
                         <textarea v-model="supportForm.message" rows="5" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"></textarea>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Tu email (opcional)</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.email_optional') }}</label>
                             <input v-model="supportForm.email" type="email" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Tu nombre (opcional)</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.name_optional') }}</label>
                             <input v-model="supportForm.name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                         </div>
                     </div>
 
                     <div class="pt-2 flex gap-3">
                         <button @click="showSupportModal = false" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition" type="button">
-                            Cerrar
+                            {{ $t('common.close') }}
                         </button>
                         <button @click="submitSupport" :disabled="supportForm.processing" class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale" type="button">
-                            Enviar
+                            {{ $t('common.send') }}
                         </button>
                     </div>
                 </div>
@@ -504,7 +531,7 @@ watch(() => alerts.value.items, (items) => {
         <div v-if="showCpRequestModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Solicitud de Alta CP</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.cp_request.title') }}</h3>
                     <button @click="showCpRequestModal = false" class="text-white/50 hover:text-white transition" type="button">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -518,16 +545,16 @@ watch(() => alerts.value.items, (items) => {
                     </div>
 
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Nombre de la CP</label>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.cp_name') }}</label>
                         <input v-model="cpRequestForm.cp_name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Servidor (opcional)</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.server_optional') }}</label>
                             <input v-model="cpRequestForm.server" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Crónica</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.chronicle') }}</label>
                             <select v-model="cpRequestForm.chronicle" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                                 <option value="C1">C1</option>
                                 <option value="C2">C2</option>
@@ -543,25 +570,25 @@ watch(() => alerts.value.items, (items) => {
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Líder (opcional)</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.leader_optional') }}</label>
                             <input v-model="cpRequestForm.leader_name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Email de contacto (opcional)</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.contact_email_optional') }}</label>
                             <input v-model="cpRequestForm.contact_email" type="email" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Mensaje (opcional)</label>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('form.message_optional') }}</label>
                         <textarea v-model="cpRequestForm.message" rows="4" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"></textarea>
                     </div>
 
                     <div class="pt-2 flex gap-3">
                         <button @click="showCpRequestModal = false" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition" type="button">
-                            Cerrar
+                            {{ $t('common.close') }}
                         </button>
                         <button @click="submitCpRequest" :disabled="cpRequestForm.processing" class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale" type="button">
-                            Enviar solicitud
+                            {{ $t('common.send_request') }}
                         </button>
                     </div>
                 </div>
@@ -571,7 +598,7 @@ watch(() => alerts.value.items, (items) => {
         <div v-if="showDonationModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <div class="l2-panel w-full max-w-lg rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Donaciones</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.donations.title') }}</h3>
                     <button @click="showDonationModal = false" class="text-white/50 hover:text-white transition" type="button">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -579,22 +606,22 @@ watch(() => alerts.value.items, (items) => {
 
                 <div class="p-6 space-y-4">
                     <div class="text-sm text-gray-700 dark:text-gray-300">
-                        AdenaLedger es 100% gratuito. Si te ayuda, se aceptan donaciones para cerveza.
+                        {{ $t('modal.donations.description', { appName }) }}
                     </div>
 
                     <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/40 p-4">
                         <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                            Cartera
+                            {{ $t('modal.donations.wallet_label') }}
                         </div>
                         <div class="mt-2 font-mono text-xs break-all text-gray-900 dark:text-gray-100">
                             {{ donationWallet }}
                         </div>
                         <div class="mt-4 flex gap-3">
                             <button type="button" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl font-bold uppercase tracking-widest text-[10px] transition" @click="showDonationModal = false">
-                                Cerrar
+                                {{ $t('common.close') }}
                             </button>
                             <button type="button" class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-purple-950/50" @click="copyDonationWallet">
-                                Copiar
+                                {{ $t('common.copy') }}
                             </button>
                         </div>
                     </div>
@@ -607,21 +634,21 @@ watch(() => alerts.value.items, (items) => {
             <template v-if="isAdmin">
                 <Link :href="route('dashboard')" class="flex flex-col items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('dashboard') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Admin</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.admin') }}</span>
                 </Link>
                 <Link :href="route('system.items.index')" class="flex flex-col items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('system.items.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Items</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.items') }}</span>
                 </Link>
             </template>
             <template v-else>
                 <Link :href="route('dashboard')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('dashboard') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Inici</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.home') }}</span>
                 </Link>
                 <Link :href="route('party.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('party.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Party</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.party') }}</span>
                 </Link>
                 
                 <button @click="openLootModal" class="relative -top-6 flex flex-col items-center justify-center bg-gradient-to-tr from-purple-600 to-blue-600 rounded-full w-16 h-16 shadow-lg shadow-purple-950/40 border-4 border-gray-100 dark:border-gray-900 text-white transform hover:scale-110 transition-all duration-300">
@@ -630,19 +657,19 @@ watch(() => alerts.value.items, (items) => {
 
                 <Link :href="route('loot.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('loot.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Loot</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.loot') }}</span>
                 </Link>
                 <Link :href="route('itemsdb.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('itemsdb.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Items</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.items_db') }}</span>
                 </Link>
                 <Link v-if="canAuditCp" :href="route('system.users.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('system.users.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Miembros</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.members') }}</span>
                 </Link>
                 <Link :href="route('profile.edit')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('profile.edit') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Perfil</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.profile') }}</span>
                 </Link>
             </template>
         </div>
@@ -651,7 +678,7 @@ watch(() => alerts.value.items, (items) => {
         <div v-if="showLootModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Informe de Sesión</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('loot.modal.title') }}</h3>
                     <button @click="showLootModal = false" class="text-white/50 hover:text-white transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -667,7 +694,7 @@ watch(() => alerts.value.items, (items) => {
 
                     <!-- Step 1: Session Type -->
                     <div class="space-y-3">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">Tipo de Actividad</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.activity_type') }}</label>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <button 
                                 v-for="type in eventTypes" 
@@ -677,20 +704,20 @@ watch(() => alerts.value.items, (items) => {
                                 :class="lootForm.event_type === type.value ? 'bg-purple-600/15 border-purple-500 text-purple-700 dark:text-white shadow-lg shadow-purple-950/30' : 'bg-white/70 border-gray-200 text-gray-700 hover:border-gray-300 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-500 dark:hover:border-gray-500'"
                             >
                                 <span class="text-2xl mb-1">{{ type.icon }}</span>
-                                <span class="text-[10px] font-black uppercase tracking-tighter">{{ type.label }}</span>
+                                <span class="text-[10px] font-black uppercase tracking-tighter">{{ $t(type.labelKey) }}</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Step 2: Add Items (Cart Logic) -->
                     <div class="space-y-4">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">Añadir Items Conseguidos</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.add_items') }}</label>
                         
                         <div class="relative">
                             <input 
                                 v-model="itemSearch"
                                 type="text" 
-                                placeholder="Escribe el nombre del item..."
+                                :placeholder="$t('loot.modal.item_search_placeholder')"
                                 class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-12 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                             >
                             <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -726,7 +753,7 @@ watch(() => alerts.value.items, (items) => {
                                 <div class="flex-1">
                                     <div class="text-sm font-bold">{{ item.name }}</div>
                                     <div class="text-[10px] text-gray-500" v-tooltip="isAdenaName(item.name) ? formatNumber(item.amount) : null">
-                                        Cantidad: {{ isAdenaName(item.name) ? formatAdenaShort(item.amount) : item.amount }}
+                                        {{ $t('loot.modal.quantity') }}: {{ isAdenaName(item.name) ? formatAdenaShort(item.amount) : item.amount }}
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-2">
@@ -751,7 +778,7 @@ watch(() => alerts.value.items, (items) => {
 
                     <!-- Step 3: Asistentes -->
                     <div v-if="cpMembers.length > 0" class="space-y-3">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">Asistentes de la Sesión</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.attendees') }}</label>
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                             <button
                                 v-for="member in cpMembers"
@@ -771,32 +798,32 @@ watch(() => alerts.value.items, (items) => {
 
                     <!-- Step 4: Adena Distribution -->
                     <div v-if="hasAdena" class="space-y-2">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">Distribución de Adena</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.adena_distribution') }}</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <label class="flex items-center gap-2 p-3 border rounded-xl bg-white/70 border-gray-200 text-gray-800 cursor-pointer dark:bg-gray-900/40 dark:border-gray-800 dark:text-gray-200">
                                 <input type="radio" name="adenaDistribution" value="attendees" v-model="lootForm.adena_distribution">
-                                <span class="text-xs font-bold uppercase tracking-widest">Repartir entre asistentes</span>
+                                <span class="text-xs font-bold uppercase tracking-widest">{{ $t('loot.modal.adena_attendees') }}</span>
                             </label>
                             <label class="flex items-center gap-2 p-3 border rounded-xl bg-white/70 border-gray-200 text-gray-800 cursor-pointer dark:bg-gray-900/40 dark:border-gray-800 dark:text-gray-200">
                                 <input type="radio" name="adenaDistribution" value="cp" v-model="lootForm.adena_distribution">
-                                <span class="text-xs font-bold uppercase tracking-widest">Enviar al Warehouse (fondo CP)</span>
+                                <span class="text-xs font-bold uppercase tracking-widest">{{ $t('loot.modal.adena_cp') }}</span>
                             </label>
                         </div>
                     </div>
 
                     <!-- Step 3: Proof -->
                     <div class="space-y-3">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">Imagen de Prueba (Screen)</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.proof_image') }}</label>
                         <div class="flex items-center justify-center w-full">
                             <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 dark:border-gray-700 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white dark:bg-gray-900/50 dark:hover:bg-gray-800/80 transition group relative overflow-hidden">
                                 <div v-if="!lootForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
                                     <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                    <p class="mb-2 text-sm text-gray-700 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
-                                    <p class="text-[10px] text-gray-500">PNG, JPG o WEBP (Máx. 3MB)</p>
+                                    <p class="mb-2 text-sm text-gray-700 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('loot.modal.upload_click') }}</p>
+                                    <p class="text-[10px] text-gray-500">{{ $t('loot.modal.upload_hint') }}</p>
                                 </div>
                                 <div v-else class="text-purple-700 dark:text-purple-300 flex flex-col items-center">
                                     <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                    <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                    <span class="text-xs font-black uppercase tracking-widest">{{ $t('loot.modal.image_captured') }}</span>
                                     <span class="text-[10px] text-gray-500 mt-1">{{ lootForm.image_proof.name }}</span>
                                 </div>
                                 <input type="file" class="hidden" @input="lootForm.image_proof = $event.target.files[0]" />
@@ -807,7 +834,7 @@ watch(() => alerts.value.items, (items) => {
                     <!-- Footer Action -->
                     <div class="pt-6 flex space-x-4">
                         <button @click="showLootModal = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">
-                            Cancelar
+                            {{ $t('common.cancel') }}
                         </button>
                         <button 
                             @click="submitLoot" 
@@ -816,9 +843,9 @@ watch(() => alerts.value.items, (items) => {
                         >
                             <span v-if="lootForm.processing" class="flex items-center justify-center">
                                 <svg class="animate-spin h-5 w-5 mr-3 border-b-2 border-white rounded-full" viewBox="0 0 24 24"></svg>
-                                Enviando...
+                                {{ $t('common.sending') }}
                             </span>
-                            <span v-else>Enviar Informe de Sesión</span>
+                            <span v-else>{{ $t('loot.modal.submit') }}</span>
                         </button>
                     </div>
                 </div>

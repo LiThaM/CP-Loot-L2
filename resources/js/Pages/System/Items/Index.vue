@@ -92,7 +92,7 @@ const getGradeColor = (itemGrade) => {
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 class="l2-title text-2xl text-purple-700 dark:text-purple-300 tracking-wider">{{ pageTitle }}</h2>
                 <div class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span class="font-bold text-purple-700 dark:text-purple-300">{{ items.total }}</span> items encontrados
+                    <span class="font-bold text-purple-700 dark:text-purple-300">{{ items.total }}</span> {{ $t('system.items.items_found') }}
                 </div>
             </div>
         </template>
@@ -102,35 +102,35 @@ const getGradeColor = (itemGrade) => {
             <div class="l2-panel p-6 rounded-xl border border-gray-200 dark:border-gray-800 mb-8">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Buscar Item</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.items.search_item') }}</label>
                         <input 
                             v-model="search"
                             type="text" 
-                            placeholder="Ej: Angel Slayer..."
+                            :placeholder="$t('system.items.search_placeholder')"
                             class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-lg focus:ring-purple-600 focus:border-purple-600 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                         >
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Crónica</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.items.chronicle') }}</label>
                         <select v-model="chronicle" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg focus:ring-purple-600 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                            <option :value="undefined">Todas las Crónicas</option>
+                            <option :value="undefined">{{ $t('system.items.all_chronicles') }}</option>
                             <option v-for="c in chronicles" :key="c" :value="c">{{ c.toUpperCase() }}</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Rango / Grado</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.items.grade') }}</label>
                         <select v-model="grade" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg focus:ring-purple-600 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                            <option :value="undefined">Todos los Grados</option>
+                            <option :value="undefined">{{ $t('system.items.all_grades') }}</option>
                             <option v-for="g in grades" :key="g" :value="g">{{ g }}</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Categoría</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.items.category') }}</label>
                         <select v-model="category" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg focus:ring-purple-600 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                            <option :value="undefined">Todas las Categorías</option>
+                            <option :value="undefined">{{ $t('system.items.all_categories') }}</option>
                             <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
                         </select>
                     </div>
@@ -143,12 +143,12 @@ const getGradeColor = (itemGrade) => {
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
                         <thead class="bg-white/70 dark:bg-gray-900/50">
                             <tr>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Item</th>
-                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Grado</th>
-                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Categoría</th>
-                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Crónica</th>
-                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Puntos Base</th>
-                                <th v-if="canEdit" class="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Acciones</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('common.item') }}</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.grade') }}</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.category') }}</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.chronicle') }}</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.base_points') }}</th>
+                                <th v-if="canEdit" class="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('common.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/60 dark:bg-gray-900/20">
@@ -191,7 +191,7 @@ const getGradeColor = (itemGrade) => {
                                         @click.stop="openEdit(item)"
                                         class="text-purple-700 hover:text-purple-600 dark:text-purple-300 dark:hover:text-purple-200 font-bold uppercase tracking-widest text-[10px] ml-4 hover:underline"
                                     >
-                                        Editar
+                                        {{ $t('common.edit') }}
                                     </button>
                                 </td>
                             </tr>
@@ -224,7 +224,7 @@ const getGradeColor = (itemGrade) => {
         <div v-if="canEdit && editItem" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Editar Item</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('system.items.edit_item') }}</h3>
                     <button @click="editItem = null" class="text-white/50 hover:text-white transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -232,32 +232,32 @@ const getGradeColor = (itemGrade) => {
 
                 <form @submit.prevent="updateItem" class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Nombre</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{{ $t('common.name') }}</label>
                         <input v-model="editForm.name" type="text" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg shadow-inner dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Grado</label>
+                            <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.items.grade') }}</label>
                             <select v-model="editForm.grade" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                                 <option v-for="g in grades" :key="g" :value="g">{{ g }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Puntos Base</label>
+                            <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.items.base_points') }}</label>
                             <input v-model="editForm.base_points" type="number" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg shadow-inner dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Categoría</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.items.category') }}</label>
                         <select v-model="editForm.category" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                             <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Descripción</label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{{ $t('common.description') }}</label>
                         <textarea v-model="editForm.description" rows="3" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-lg shadow-inner dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"></textarea>
                     </div>
 
@@ -267,14 +267,14 @@ const getGradeColor = (itemGrade) => {
                             @click="editItem = null"
                             class="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl uppercase font-bold tracking-widest text-xs transition border border-gray-700"
                         >
-                            Cancelar
+                            {{ $t('common.cancel') }}
                         </button>
                         <button 
                             type="submit"
                             :disabled="editForm.processing"
                             class="flex-1 px-4 py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl uppercase font-extrabold tracking-widest text-xs transition shadow-lg shadow-purple-950/20 disabled:opacity-50"
                         >
-                            Guardar Cambios
+                            {{ $t('common.save_changes') }}
                         </button>
                     </div>
                 </form>
@@ -284,7 +284,7 @@ const getGradeColor = (itemGrade) => {
         <div v-if="detailItem" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="detailItem = null">
             <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Detalle</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('system.items.details') }}</h3>
                     <button @click="detailItem = null" class="text-white/50 hover:text-white transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -309,26 +309,26 @@ const getGradeColor = (itemGrade) => {
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Puntos Base</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('system.items.base_points') }}</div>
                             <div class="text-xl font-cinzel text-blue-700 dark:text-blue-300 mt-1">{{ detailItem.base_points }}</div>
                         </div>
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">External ID</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('system.items.external_id') }}</div>
                             <div class="text-sm font-black text-gray-900 dark:text-white mt-1">{{ detailItem.external_id ?? '—' }}</div>
                         </div>
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Icon Name</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('system.items.icon_name') }}</div>
                             <div class="text-sm font-black text-gray-900 dark:text-white mt-1 break-all">{{ detailItem.icon_name ?? '—' }}</div>
                         </div>
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Imagen</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.image') }}</div>
                             <div class="text-sm font-black text-gray-900 dark:text-white mt-1 break-all">{{ detailItem.image_url ?? '—' }}</div>
                         </div>
                     </div>
 
                     <div class="mt-6 p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                        <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Descripción</div>
-                        <div class="text-sm text-gray-900 dark:text-gray-200 mt-2 whitespace-pre-wrap">{{ detailItem.description || 'Sin descripción.' }}</div>
+                        <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.description') }}</div>
+                        <div class="text-sm text-gray-900 dark:text-gray-200 mt-2 whitespace-pre-wrap">{{ detailItem.description || $t('common.no_description') }}</div>
                     </div>
                 </div>
             </div>

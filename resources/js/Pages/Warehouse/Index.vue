@@ -1,8 +1,17 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { computed, ref } from 'vue';
 import emitter from '@/event-bus';
+
+const page = usePage();
+const locale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const t = (key, params = {}) => {
+    const raw = page.props.translations?.[key];
+    if (!raw || typeof raw !== 'string') return key;
+    return raw.replace(/\{(\w+)\}/g, (match, p1) => (Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : match));
+};
 
 const props = defineProps({
     has_cp: Boolean,
@@ -48,13 +57,13 @@ const formatAdenaShort = (val) => {
 
 const formatAdenaFull = (val) => {
     const n = Number(val ?? 0);
-    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
 const showToast = (message, tone = 'success') => {
     emitter.emit('toast', {
         tone,
-        title: tone === 'error' ? 'Error' : 'Hecho',
+        title: tone === 'error' ? t('common.error') : t('common.done'),
         message,
         kind: 'action'
     });
@@ -82,78 +91,78 @@ const submitReturn = () => {
         preserveScroll: true,
         onSuccess: () => {
             returnModalOpen.value = false;
-            showToast('Solicitud de devolución enviada.');
+            showToast(t('warehouse.toast.return_requested'));
         },
         onError: () => {
-            showToast('No se pudo enviar la devolución.', 'error');
+            showToast(t('warehouse.toast.return_failed'), 'error');
         }
     });
 };
 </script>
 
 <template>
-    <Head title="Warehouse" />
+    <Head :title="$t('nav.warehouse')" />
 
     <MainLayout>
         <div v-if="!has_cp" class="l2-panel p-20 text-center rounded-3xl border-purple-500/15 max-w-2xl mx-auto mt-12 animate-in slide-in-from-bottom duration-500">
             <div class="text-7xl mb-6">🛡️</div>
-            <h3 class="font-cinzel text-3xl text-gray-900 dark:text-white mb-4">Unirse a una CP</h3>
-            <p class="text-gray-500 mb-8 italic">No perteneces a ninguna Constant Party todavía. Contacta con tu líder para que te proporcione el código de invitación.</p>
+            <h3 class="font-cinzel text-3xl text-gray-900 dark:text-white mb-4">{{ $t('warehouse.join_cp_title') }}</h3>
+            <p class="text-gray-500 mb-8 italic">{{ $t('warehouse.join_cp_text') }}</p>
         </div>
 
         <div v-else class="space-y-6 animate-in fade-in duration-700">
             <div class="l2-panel p-6 rounded-3xl border-gray-800">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">Warehouse</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Items asignados a tu personaje</p>
+                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('nav.warehouse') }}</h3>
+                        <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('warehouse.assigned_items_kicker') }}</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
                     <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Items</div>
+                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.items') }}</div>
                         <div class="text-2xl font-cinzel text-gray-900 dark:text-white mt-1">{{ myItemsTotal }}</div>
                     </div>
 
                     <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena que te Deben</div>
+                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('warehouse.adena_owed') }}</div>
                         <div class="text-2xl font-cinzel text-orange-600 dark:text-orange-500 mt-1" v-tooltip="formatAdenaFull(myAdenaOwed || 0)">{{ formatAdenaShort(myAdenaOwed || 0) }}</div>
                     </div>
 
                     <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Adena Entregada</div>
+                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('warehouse.adena_paid') }}</div>
                         <div class="text-2xl font-cinzel text-emerald-700 dark:text-green-400 mt-1" v-tooltip="formatAdenaFull(myAdenaPaid || 0)">{{ formatAdenaShort(myAdenaPaid || 0) }}</div>
                     </div>
                 </div>
 
                 <div class="relative mt-5">
-                    <input v-model="myWarehouseFilter" type="text" placeholder="Filtrar item..." class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
+                    <input v-model="myWarehouseFilter" type="text" :placeholder="$t('warehouse.filter_item_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
                     <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
             </div>
 
             <div v-if="filteredMyItems.length === 0" class="l2-panel p-10 rounded-3xl border-gray-800 text-center text-gray-600 dark:text-gray-500 font-cinzel text-xl italic opacity-50">
-                {{ myWarehouseFilter.trim() ? 'No hay resultados para ese filtro...' : 'No tienes items asignados...' }}
+                {{ myWarehouseFilter.trim() ? $t('common.no_results') : $t('warehouse.no_items_assigned') }}
             </div>
 
             <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div v-for="item in filteredMyItems" :key="item.id" class="l2-panel p-4 rounded-2xl border-gray-800 flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
                         <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover">
-                        <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">N/A</div>
+                        <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">{{ $t('common.na') }}</div>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
-                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || '—' }}</div>
+                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Cantidad</div>
+                        <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.amount') }}</div>
                         <div class="text-lg font-cinzel text-orange-500">x{{ item.total_amount }}</div>
                     </div>
                     <div class="ml-3">
                         <button @click="openReturn(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gray-800 hover:bg-purple-600 text-white rounded-lg transition">
-                            Devolver
+                            {{ $t('warehouse.return') }}
                         </button>
                     </div>
                 </div>
@@ -164,7 +173,7 @@ const submitReturn = () => {
     <div v-if="returnModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
         <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">Devolver Ítem</div>
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('warehouse.return_item') }}</div>
                 <button @click="returnModalOpen = false" class="text-white/50 hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -177,29 +186,29 @@ const submitReturn = () => {
                     </div>
                     <div>
                         <div class="text-sm font-black text-gray-900 dark:text-white">{{ selectedMyItem?.name }}</div>
-                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">Asignado: x{{ selectedMyItem?.total_amount }}</div>
+                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">{{ $t('warehouse.assigned') }}: x{{ selectedMyItem?.total_amount }}</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Cantidad</div>
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('common.amount') }}</div>
                         <input type="number" v-model.number="returnForm.amount" min="1" :max="selectedMyItem?.total_amount || 1" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl text-center font-black focus:ring-purple-600 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
                     </div>
                 </div>
 
                 <div>
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Captura del Trade (obligatoria)</div>
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('warehouse.trade_screenshot_required') }}</div>
                     <div class="flex items-center justify-center w-full">
                         <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
                             <div v-if="!returnForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
                                 <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
-                                <p class="text-[10px] text-gray-500">PNG, JPG o WEBP</p>
+                                <p class="mb-2 text-sm text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                                <p class="text-[10px] text-gray-500">{{ $t('common.allowed_images') }}</p>
                             </div>
                             <div v-else class="text-purple-300 flex flex-col items-center">
                                 <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
                                 <span class="text-[10px] text-gray-500 mt-1">{{ returnForm.image_proof.name }}</span>
                             </div>
                             <input type="file" class="hidden" accept="image/*" @input="returnForm.image_proof = $event.target.files[0]" />
@@ -209,8 +218,8 @@ const submitReturn = () => {
             </div>
 
             <div class="p-6 pt-0 flex space-x-4">
-                <button @click="returnModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">Cancelar</button>
-                <button @click="submitReturn" :disabled="!returnForm.item_id || !returnForm.amount || !returnForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Enviar</button>
+                <button @click="returnModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
+                <button @click="submitReturn" :disabled="!returnForm.item_id || !returnForm.amount || !returnForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.send') }}</button>
             </div>
         </div>
     </div>

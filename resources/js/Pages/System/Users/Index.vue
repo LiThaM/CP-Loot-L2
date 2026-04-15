@@ -1,8 +1,17 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, useForm, router, Link } from '@inertiajs/vue3';
+import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import axios from 'axios';
+
+const page = usePage();
+const locale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const t = (key, params = {}) => {
+    const raw = page.props.translations?.[key];
+    if (!raw || typeof raw !== 'string') return key;
+    return raw.replace(/\{(\w+)\}/g, (match, p1) => (Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : match));
+};
 
 const props = defineProps({
     users: Array,
@@ -69,25 +78,25 @@ const submitEdit = () => {
 };
 
 const deleteUser = async (user) => {
-    if (await confirmAction('¿Eliminar usuario?', `¿Estás seguro de eliminar a ${user.name}? Se perderán todos sus registros.`, 'Eliminar', 'Cancelar')) {
+    if (await confirmAction(t('system.users.swal.delete_title'), t('system.users.swal.delete_text', { name: user.name }), t('common.delete'), t('common.cancel'))) {
         router.delete(route('system.users.destroy', user.id));
     }
 };
 
 const banUser = async (user) => {
-    if (await confirmAction('¿Excluir/Banear usuario?', `¿Estás seguro de excluir/banear a ${user.name}? No aparecerá en los listados de loot ni conteos.`, 'Excluir', 'Cancelar')) {
+    if (await confirmAction(t('system.users.swal.ban_title'), t('system.users.swal.ban_text', { name: user.name }), t('system.users.swal.ban_confirm'), t('common.cancel'))) {
         router.patch(route('system.users.ban', user.id));
     }
 };
 
 const unbanUser = async (user) => {
-    if (await confirmAction('¿Reactivar usuario?', `¿Estás seguro de reactivar a ${user.name}?`, 'Reactivar', 'Cancelar')) {
+    if (await confirmAction(t('system.users.swal.unban_title'), t('system.users.swal.unban_text', { name: user.name }), t('system.users.swal.unban_confirm'), t('common.cancel'))) {
         router.patch(route('system.users.unban', user.id));
     }
 };
 
 const formatNumber = (val) => {
-    return new Intl.NumberFormat('es-ES').format(val || 0);
+    return new Intl.NumberFormat(localeTag.value).format(val || 0);
 };
 
 const formatAdenaShort = (val) => {
@@ -114,9 +123,9 @@ const formatAdenaShort = (val) => {
 const formatDateTime = (val) => {
     if (!val) return '';
     try {
-        return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(val));
-    } catch (e) {
-        return val;
+        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(val));
+    } catch {
+        return String(val);
     }
 };
 
@@ -125,18 +134,19 @@ const formatAuditSummary = (a) => {
     if (a.action === 'USER_UPDATED') {
         const parts = [];
         if (a.old_values?.role !== a.new_values?.role && (a.old_values?.role || a.new_values?.role)) {
-            parts.push(`rol ${a.old_values?.role ?? '—'} → ${a.new_values?.role ?? '—'}`);
+            parts.push(t('system.users.audit.role_change', { from: a.old_values?.role ?? '—', to: a.new_values?.role ?? '—' }));
         }
         if (a.old_values?.cp !== a.new_values?.cp && (a.old_values?.cp || a.new_values?.cp)) {
-            parts.push(`CP ${a.old_values?.cp ?? '—'} → ${a.new_values?.cp ?? '—'}`);
+            parts.push(t('system.users.audit.cp_change', { from: a.old_values?.cp ?? '—', to: a.new_values?.cp ?? '—' }));
         }
-        return parts.length > 0 ? parts.join(', ') : 'Actualización';
+        return parts.length > 0 ? parts.join(', ') : t('system.users.audit.updated');
     }
-    if (a.action === 'USER_DELETED') return 'Usuario eliminado';
+    if (a.action === 'USER_DELETED') return t('system.users.audit.user_deleted');
     if (a.action === 'ADENA_ADJUSTED') {
         const amount = Number(a.new_values?.amount ?? 0);
         const amountLabel = `${amount < 0 ? '-' : '+'}${formatNumber(Math.abs(amount))}`;
-        return `Adena ${amountLabel} · ${a.new_values?.description ?? ''}`.trim();
+        const desc = String(a.new_values?.description ?? '').trim();
+        return desc ? t('system.users.audit.adena_adjusted_with_desc', { amount: amountLabel, description: desc }) : t('system.users.audit.adena_adjusted', { amount: amountLabel });
     }
     return a.action;
 };
@@ -179,15 +189,15 @@ const toggleUserLogs = async (user) => {
 </script>
 
 <template>
-    <Head title="Gestión de Usuarios" />
+    <Head :title="$t('system.users.page_title')" />
 
     <MainLayout>
         <template #header>
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 class="font-cinzel text-3xl text-gray-900 dark:text-white tracking-widest uppercase">Gestión de Miembros</h2>
+                    <h2 class="font-cinzel text-3xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('system.users.header_title') }}</h2>
                     <p class="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">
-                        {{ isAdmin ? 'Auditoría Global de Usuarios y Balances' : 'Gestión de Saldo y Auditoría de CP' }}
+                        {{ isAdmin ? $t('system.users.subtitle_admin') : $t('system.users.subtitle_leader') }}
                     </p>
                 </div>
                 
@@ -195,7 +205,7 @@ const toggleUserLogs = async (user) => {
                     <input 
                         v-model="search"
                         type="text" 
-                        placeholder="Buscar por nombre o email..."
+                        :placeholder="$t('system.users.search_placeholder')"
                         class="w-full bg-white border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 text-sm pl-10 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-300 dark:placeholder-gray-500"
                     >
                     <svg class="w-4 h-4 text-gray-400 dark:text-gray-600 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -207,15 +217,15 @@ const toggleUserLogs = async (user) => {
             <!-- Summary Stats (Common) -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800">
-                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Usuarios Totales</div>
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.users.total_users') }}</div>
                     <div class="text-3xl font-cinzel text-gray-900 dark:text-white">{{ filteredUsers.length }}</div>
                 </div>
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800">
-                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Adena Acumulada (Total)</div>
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.users.total_adena') }}</div>
                     <div class="text-3xl font-cinzel text-purple-700 dark:text-purple-300" v-tooltip="formatNumber(users.reduce((acc, u) => acc + (u.total_adena || 0), 0))">{{ formatAdenaShort(users.reduce((acc, u) => acc + (u.total_adena || 0), 0)) }}</div>
                 </div>
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800">
-                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Puntos Totales</div>
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('system.users.total_points') }}</div>
                     <div class="text-3xl font-cinzel text-blue-700 dark:text-blue-300">{{ formatNumber(users.reduce((acc, u) => acc + (u.total_points || 0), 0)) }}</div>
                 </div>
             </div>
@@ -225,11 +235,11 @@ const toggleUserLogs = async (user) => {
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-white/70 border-b border-gray-200 dark:bg-gray-900/50 dark:border-gray-800">
-                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500">Miembro</th>
-                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500">Role / CP</th>
-                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Saldo Adena</th>
-                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Saldo Puntos</th>
-                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500 text-center">Acciones</th>
+                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('system.users.member') }}</th>
+                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('system.users.role_cp') }}</th>
+                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">{{ $t('system.users.adena_balance') }}</th>
+                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">{{ $t('system.users.points_balance') }}</th>
+                            <th class="p-5 text-[10px] font-black uppercase tracking-widest text-gray-500 text-center">{{ $t('common.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200/70 dark:divide-gray-800/50">
@@ -244,7 +254,7 @@ const toggleUserLogs = async (user) => {
                                         <div class="text-sm font-black transition" :class="user.membership_status === 'banned' ? 'text-red-600 dark:text-red-400 line-through' : 'text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300'">{{ user.name }}</div>
                                         <div class="flex items-center gap-2 mt-0.5">
                                             <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold">{{ user.email }}</div>
-                                            <span v-if="user.membership_status === 'banned'" class="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-100 text-red-700 border border-red-200 rounded-md dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">Excluido</span>
+                                            <span v-if="user.membership_status === 'banned'" class="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-100 text-red-700 border border-red-200 rounded-md dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">{{ $t('common.excluded') }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -252,7 +262,7 @@ const toggleUserLogs = async (user) => {
                             <td class="p-5">
                                 <div class="flex flex-col gap-1">
                                     <span class="text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 bg-gray-100 rounded-md border border-gray-200 w-max text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">{{ user.role.name }}</span>
-                                    <span class="text-[10px] font-bold text-gray-700 dark:text-gray-600">{{ user.cp?.name || 'SIn CP' }}</span>
+                                    <span class="text-[10px] font-bold text-gray-700 dark:text-gray-600">{{ user.cp?.name || $t('common.no_cp') }}</span>
                                 </div>
                             </td>
                             <td class="p-5 text-right">
@@ -266,7 +276,7 @@ const toggleUserLogs = async (user) => {
                                     <button 
                                         @click.stop="openAdenaModal(user)"
                                         class="p-2 bg-gray-100 hover:bg-purple-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                                        title="Gestionar Saldo Adena"
+                                        :title="$t('system.users.actions.manage_adena')"
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     </button>
@@ -275,7 +285,7 @@ const toggleUserLogs = async (user) => {
                                         <button 
                                             @click.stop="openEditModal(user)"
                                             class="p-2 bg-gray-100 hover:bg-blue-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                                            title="Editar Rol/CP"
+                                            :title="$t('system.users.actions.edit_role_cp')"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                         </button>
@@ -283,7 +293,7 @@ const toggleUserLogs = async (user) => {
                                             v-if="isAdmin"
                                             @click.stop="deleteUser(user)"
                                             class="p-2 bg-gray-100 hover:bg-black rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                                            title="Eliminar Usuario"
+                                            :title="$t('system.users.actions.delete_user')"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
                                         </button>
@@ -291,7 +301,7 @@ const toggleUserLogs = async (user) => {
                                             v-if="user.membership_status === 'banned'"
                                             @click.stop="unbanUser(user)"
                                             class="p-2 bg-gray-100 hover:bg-green-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                                            title="Reactivar Usuario"
+                                            :title="$t('system.users.actions.reactivate_user')"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                         </button>
@@ -299,13 +309,13 @@ const toggleUserLogs = async (user) => {
                                             v-else
                                             @click.stop="banUser(user)"
                                             class="p-2 bg-gray-100 hover:bg-red-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                                            title="Excluir/Banear Usuario"
+                                            :title="$t('system.users.actions.ban_user')"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                                         </button>
                                     </template>
                                 </div>
-                                <div class="text-[9px] text-gray-700 font-bold uppercase" v-else>Sólo Lectura</div>
+                                <div class="text-[9px] text-gray-700 font-bold uppercase" v-else>{{ $t('common.read_only') }}</div>
                             </td>
                             </tr>
 
@@ -313,16 +323,16 @@ const toggleUserLogs = async (user) => {
                                 <td colspan="5" class="p-5">
                                     <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800">
                                         <div class="flex items-center justify-between">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Pagos / Movimientos de Adena</div>
-                                            <button class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:hover:text-white transition" @click.stop="toggleUserLogs(user)">Cerrar</button>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('system.users.adena_movements') }}</div>
+                                            <button class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:hover:text-white transition" @click.stop="toggleUserLogs(user)">{{ $t('common.close') }}</button>
                                         </div>
 
                                         <div v-if="loadingLogs.has(user.id)" class="mt-4 text-gray-500 text-sm italic">
-                                            Cargando...
+                                            {{ $t('common.loading') }}
                                         </div>
 
                                         <div v-else-if="!userLogs[user.id]?.logs || userLogs[user.id].logs.length === 0" class="mt-4 text-gray-600 text-sm italic">
-                                            Sin movimientos de Adena.
+                                            {{ $t('system.users.no_adena_movements') }}
                                         </div>
 
                                         <div v-else class="mt-4 space-y-2">
@@ -335,13 +345,13 @@ const toggleUserLogs = async (user) => {
                                                 </div>
                                                 <div class="flex items-center gap-4 shrink-0">
                                                     <div class="text-right">
-                                                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">Adena</div>
+                                                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.adena') }}</div>
                                                         <div class="text-sm font-black font-cinzel" :class="log.adena < 0 ? 'text-red-500' : 'text-green-400'" v-tooltip="`${log.adena < 0 ? '-' : '+'}${formatNumber(Math.abs(log.adena))}`">
                                                             {{ log.adena < 0 ? '-' : '+' }}{{ formatAdenaShort(Math.abs(log.adena)) }}
                                                         </div>
                                                     </div>
                                                     <Link v-if="log.report_id" :href="route('loot.index') + '?report=' + log.report_id" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-purple-700 dark:text-gray-400 dark:hover:text-purple-300 transition">
-                                                        Ver histórico
+                                                        {{ $t('common.view_history') }}
                                                     </Link>
                                                 </div>
                                             </div>
@@ -349,11 +359,11 @@ const toggleUserLogs = async (user) => {
 
                                         <div class="mt-8 border-t border-gray-200 dark:border-gray-800 pt-6">
                                             <div class="flex items-center justify-between">
-                                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Auditoría de Acciones</div>
+                                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('system.users.action_audit') }}</div>
                                             </div>
 
                                             <div v-if="!userLogs[user.id]?.audits || userLogs[user.id].audits.length === 0" class="mt-4 text-gray-600 text-sm italic">
-                                                Sin acciones registradas.
+                                                {{ $t('system.users.no_actions') }}
                                             </div>
 
                                             <div v-else class="mt-4 space-y-2">
@@ -379,7 +389,7 @@ const toggleUserLogs = async (user) => {
                     </tbody>
                 </table>
                 <div v-if="filteredUsers.length === 0" class="p-10 text-center text-gray-600 italic font-cinzel text-xl opacity-30">
-                    No se encontraron usuarios...
+                    {{ $t('system.users.no_users_found') }}
                 </div>
             </div>
         </div>
@@ -389,7 +399,7 @@ const toggleUserLogs = async (user) => {
             <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <div>
-                        <h3 class="font-cinzel text-xl text-white tracking-widest">Gestión de Saldo</h3>
+                        <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('system.users.balance_management') }}</h3>
                         <p class="text-[10px] text-white/50 font-black uppercase tracking-tighter">{{ selectedUser.name }}</p>
                     </div>
                     <button @click="showAdenaModal = false" class="text-white/50 hover:text-white transition">
@@ -400,36 +410,36 @@ const toggleUserLogs = async (user) => {
                 <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Monto de Adena</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.adena_amount') }}</label>
                             <input 
                                 v-model="adenaForm.amount" 
                                 type="number" 
-                                placeholder="Ej: -1000000 para pagar, 500000 para abonar" 
+                                :placeholder="$t('system.users.adena_amount_placeholder')" 
                                 class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 font-bold text-center text-xl h-14 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"
                             >
-                            <p class="text-[9px] text-gray-600 font-bold uppercase mt-2 text-center">Usa valores negativos para descontar del fondo (pagos)</p>
+                            <p class="text-[9px] text-gray-600 font-bold uppercase mt-2 text-center">{{ $t('system.users.negative_values_tip') }}</p>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Motivo / Descripción</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.reason_description') }}</label>
                             <input 
                                 v-model="adenaForm.description" 
                                 type="text" 
-                                placeholder="Ej: Pago de drop Draconic Bow" 
+                                :placeholder="$t('system.users.reason_placeholder')" 
                                 class="w-full bg-white border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 h-10 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"
                             >
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Captura del Trade (obligatoria)</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.trade_screenshot_required') }}</label>
                             <div class="flex items-center justify-center w-full">
                                 <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
                                     <div v-if="!adenaForm.image_proof" class="flex flex-col items-center justify-center pt-5 pb-6">
                                         <svg class="w-8 h-8 mb-4 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                        <p class="mb-2 text-sm text-gray-700 dark:text-gray-400 font-bold uppercase tracking-wider">Hacer clic para subir</p>
-                                        <p class="text-[10px] text-gray-500">PNG, JPG o WEBP (Máx. 4MB)</p>
+                                        <p class="mb-2 text-sm text-gray-700 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                                        <p class="text-[10px] text-gray-500">{{ $t('common.allowed_images_max_4mb') }}</p>
                                     </div>
                                     <div v-else class="text-purple-300 flex flex-col items-center">
                                         <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                        <span class="text-xs font-black uppercase tracking-widest">Imagen Capturada</span>
+                                        <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
                                         <span class="text-[10px] text-gray-500 mt-1">{{ adenaForm.image_proof.name }}</span>
                                     </div>
                                     <input type="file" class="hidden" accept="image/*" @input="adenaForm.image_proof = $event.target.files[0]" />
@@ -439,8 +449,8 @@ const toggleUserLogs = async (user) => {
                     </div>
 
                     <div class="pt-6 flex space-x-4">
-                        <button @click="showAdenaModal = false" class="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold uppercase tracking-widest text-xs transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400">Cancelar</button>
-                        <button @click="submitAdena" :disabled="adenaForm.processing || !adenaForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Registrar Transacción</button>
+                        <button @click="showAdenaModal = false" class="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold uppercase tracking-widest text-xs transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400">{{ $t('common.cancel') }}</button>
+                        <button @click="submitAdena" :disabled="adenaForm.processing || !adenaForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('system.users.register_transaction') }}</button>
                     </div>
                 </div>
             </div>
@@ -450,7 +460,7 @@ const toggleUserLogs = async (user) => {
         <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                  <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
-                    <h3 class="font-cinzel text-xl text-white tracking-widest">Reasignar Usuario</h3>
+                    <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('system.users.reassign_user') }}</h3>
                     <button @click="showEditModal = false" class="text-white/50 hover:text-white transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -458,26 +468,26 @@ const toggleUserLogs = async (user) => {
                 <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Rol del Sistema</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.system_role') }}</label>
                             <select v-model="editForm.role_id" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl dark:bg-black/50 dark:border-gray-700 dark:text-gray-300">
                                 <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
                             </select>
                         </div>
                         <div v-if="isAdmin">
-                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Asignar a CP</label>
+                            <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.assign_cp') }}</label>
                             <select v-model="editForm.cp_id" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl dark:bg-black/50 dark:border-gray-700 dark:text-gray-300">
-                                <option :value="null">Ninguna / Solo</option>
+                                <option :value="null">{{ $t('system.users.no_cp_option') }}</option>
                                 <option v-for="cp in cps" :key="cp.id" :value="cp.id">{{ cp.name }}</option>
                             </select>
                         </div>
                         <div v-else class="bg-white/70 border border-gray-200 rounded-xl px-4 py-3 dark:bg-black/40 dark:border-gray-800">
                             <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">CP</div>
-                            <div class="text-sm font-bold text-gray-900 dark:text-gray-200 mt-1">{{ selectedUser?.cp?.name || 'Sin CP' }}</div>
+                            <div class="text-sm font-bold text-gray-900 dark:text-gray-200 mt-1">{{ selectedUser?.cp?.name || $t('common.no_cp') }}</div>
                         </div>
                     </div>
                     <div class="pt-6 flex space-x-4">
-                        <button @click="showEditModal = false" class="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold uppercase tracking-widest text-xs transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400">Cancelar</button>
-                        <button @click="submitEdit" :disabled="editForm.processing" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">Actualizar Asignación</button>
+                        <button @click="showEditModal = false" class="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold uppercase tracking-widest text-xs transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400">{{ $t('common.cancel') }}</button>
+                        <button @click="submitEdit" :disabled="editForm.processing" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('system.users.update_assignment') }}</button>
                     </div>
                 </div>
             </div>

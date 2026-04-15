@@ -48,19 +48,31 @@ const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
 const isAdmin = computed(() => page.props.auth.user.role.name === 'admin');
 const currentCp = computed(() => props.selectedCp || currentUser.value.cp);
+const locale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const t = (key, params = {}) => {
+    const raw = page.props.translations?.[key];
+    if (!raw || typeof raw !== 'string') return key;
+    let out = raw;
+    for (const [k, v] of Object.entries(params)) {
+        const token = `{${k}}`;
+        out = out.split(token).join(String(v));
+    }
+    return out;
+};
 
 const copyInviteLink = () => {
     if (!currentCp.value?.invite_code) {
-        showAlert('Error', 'No hay un código de invitación disponible.', 'error');
+        showAlert(t('common.error'), t('cp.invite.none'), 'error');
         return;
     }
     const link = `${window.location.origin}/register?invite=${currentCp.value.invite_code}`;
     
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(link).then(() => {
-            showToast('¡Enlace de invitación copiado al portapapeles!');
+            showToast(t('cp.invite.copied'));
         }).catch(() => {
-            showAlert('Atención', 'No se pudo copiar el enlace automáticamente. Por favor, cópialo manualmente.', 'warning');
+            showAlert(t('common.attention'), t('cp.invite.copy_failed'), 'warning');
         });
     } else {
         const textArea = document.createElement("textarea");
@@ -70,9 +82,9 @@ const copyInviteLink = () => {
         textArea.select();
         try {
             document.execCommand('copy');
-            showToast('¡Enlace de invitación copiado al portapapeles!');
+            showToast(t('cp.invite.copied'));
         } catch (err) {
-            showAlert('Atención', 'No se pudo copiar el enlace automáticamente. Por favor, cópialo manualmente.', 'warning');
+            showAlert(t('common.attention'), t('cp.invite.copy_failed'), 'warning');
         }
         document.body.removeChild(textArea);
     }
@@ -149,7 +161,7 @@ const formatAdenaShort = (val) => {
 
 const formatAdenaFull = (val) => {
     const n = Number(val ?? 0);
-    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
 const partyMembers = computed(() => props.members || []);
@@ -162,7 +174,7 @@ const topAdenaOwed = computed(() => insights.value.topAdenaOwed || []);
 const formatDateTimeShort = (val) => {
     if (!val) return '';
     try {
-        return new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
+        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
     } catch (e) {
         return String(val);
     }
@@ -211,7 +223,7 @@ const ringDash = (percent) => {
         <!-- Admin Back Link -->
         <div v-if="selectedCp && isAdmin" class="mb-4">
             <Link :href="route('dashboard')" class="text-blue-500 hover:text-blue-400 text-sm flex items-center gap-2 transition">
-                <span class="text-lg">←</span> Volver al Panel de Administración
+                <span class="text-lg">←</span> {{ $t('cp.back_to_admin') }}
             </Link>
         </div>
 
@@ -220,37 +232,37 @@ const ringDash = (percent) => {
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between gap-4 mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Live Party Status</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('cp.live_status') }}</div>
                             <div class="text-sm font-black tracking-widest text-gray-900 dark:text-white">
-                                {{ currentCp ? currentCp.name : 'Mi CP' }}
+                                {{ currentCp ? currentCp.name : $t('member.my_cp') }}
                                 <span class="ml-2 text-[10px] font-black uppercase tracking-widest text-blue-700/80 dark:text-blue-300/80">{{ currentCp?.server }}</span>
                                 <span class="ml-2 text-[10px] font-black uppercase tracking-widest text-purple-700/70 dark:text-purple-300/80">{{ currentCp?.chronicle }}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <Link :href="route('loot.index')" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 dark:from-purple-600/40 dark:to-blue-600/40 dark:hover:from-purple-600/55 dark:hover:to-blue-600/55 text-white text-[10px] leading-none font-black uppercase tracking-widest border border-purple-500/30 transition">
-                                Pendientes ({{ stats.pending_reports || 0 }})
+                                {{ $t('member.pending') }} ({{ stats.pending_reports || 0 }})
                             </Link>
                             <button @click="openLootModal" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition">
-                                Report Loot
+                                {{ $t('cp.actions.report_loot') }}
                             </button>
                         </div>
                     </div>
 
                     <div v-if="partyMembers.length === 0" class="py-10 text-center text-gray-500 text-sm">
-                        Sin miembros para mostrar
+                        {{ $t('cp.members.none') }}
                     </div>
                     <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                         <div v-for="m in partyMembers.slice(0, 12)" :key="m.id" class="flex items-center gap-3 p-3 rounded-lg border transition" :class="m.membership_status === 'banned' ? 'border-red-500/30 bg-red-500/5 hover:bg-red-500/10' : 'border-gray-200 bg-white/70 hover:bg-white dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/30'">
                             <div class="relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-black tracking-widest text-white border" :class="m.membership_status === 'banned' ? 'bg-gradient-to-tr from-red-600/40 to-orange-600/40 border-red-500/30' : 'bg-gradient-to-tr from-purple-600/40 to-blue-600/40 border-purple-500/30'">
                                 {{ initialsFromName(m.name) }}
                                 <div class="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border" :class="m.membership_status === 'banned' ? 'bg-red-600 text-white border-red-500' : 'bg-white text-gray-900 border-gray-200 dark:bg-black/70 dark:text-gray-200 dark:border-white/10'">
-                                    {{ m.membership_status === 'banned' ? 'Excluido' : 'Idle' }}
+                                    {{ m.membership_status === 'banned' ? $t('common.excluded') : $t('common.idle') }}
                                 </div>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="text-[11px] font-black text-gray-900 dark:text-white truncate" :class="{'line-through text-red-500 dark:text-red-400': m.membership_status === 'banned'}">{{ m.name }}</div>
-                                <div class="text-[9px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-500 truncate">{{ m.role?.name || 'member' }}</div>
+                                <div class="text-[9px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-500 truncate">{{ m.role?.name || $t('roles.member') }}</div>
                                 <div class="mt-2 space-y-1">
                                     <div class="h-1.5 rounded-full bg-black/5 dark:bg-white/5 overflow-hidden">
                                         <div class="h-full w-full bg-gradient-to-r from-emerald-500/70 to-emerald-300/70"></div>
@@ -264,57 +276,57 @@ const ringDash = (percent) => {
                     </div>
 
                     <div v-if="partyMembers.length > 12" class="pt-3 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                        +{{ partyMembers.length - 12 }} más
+                        {{ $t('common.more', { count: partyMembers.length - 12 }) }}
                     </div>
                 </div>
 
                 <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur h-[320px] flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">CP Activity</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Últimos 7 días</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">{{ $t('cp.activity.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.last_7_days') }}</div>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="px-3 py-1 rounded-lg border border-gray-200 bg-white/70 text-[10px] font-black uppercase tracking-widest text-gray-700 dark:border-white/10 dark:bg-black/30 dark:text-gray-300">
-                                Total: {{ activitySum }}
+                                {{ $t('common.total', { count: activitySum }) }}
                             </div>
                         </div>
                     </div>
                     <div class="flex-1 min-h-[240px]">
                         <Line v-if="chartData" :data="chartData" :options="chartOptions" />
-                        <div v-else class="h-full flex items-center justify-center text-gray-600 italic">No hay datos de actividad suficientes</div>
+                        <div v-else class="h-full flex items-center justify-center text-gray-600 italic">{{ $t('cp.activity.no_data') }}</div>
                     </div>
                 </div>
             </div>
 
             <div class="xl:col-span-4 space-y-6">
                 <div class="l2-panel p-5 rounded-lg border border-white/10 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
-                    <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-300/80 mb-4">Quick Metrics</div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-300/80 mb-4">{{ $t('cp.metrics.title') }}</div>
                     <div class="grid grid-cols-2 gap-3">
                         <div class="p-4 rounded-lg border border-gray-200 bg-white/70 dark:border-purple-500/15 dark:bg-black/20">
-                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">Members</div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('common.members') }}</div>
                             <div class="text-2xl font-cinzel text-gray-900 dark:text-white mt-1">{{ stats.total_members || 0 }}</div>
                         </div>
                         <div class="p-4 rounded-lg border border-gray-200 bg-white/70 dark:border-blue-500/15 dark:bg-black/20">
-                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">Items</div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('common.items') }}</div>
                             <div class="text-2xl font-cinzel text-blue-700 dark:text-blue-300 mt-1">{{ stats.total_items_cp || 0 }}</div>
                         </div>
                         <div class="p-4 rounded-lg border border-gray-200 bg-white/70 dark:border-emerald-500/15 dark:bg-black/20">
-                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">CP Points</div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('cp.metrics.cp_points') }}</div>
                             <div class="text-2xl font-cinzel text-emerald-700 dark:text-emerald-300 mt-1">{{ stats.total_points_cp || 0 }}</div>
                         </div>
                         <div class="p-4 rounded-lg border border-gray-200 bg-white/70 dark:border-purple-500/15 dark:bg-black/20">
-                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">Adena</div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('common.adena') }}</div>
                             <div class="text-2xl font-cinzel text-purple-700 dark:text-purple-300 mt-1" v-tooltip="formatAdenaFull(stats.warehouse_adena || 0)">{{ formatAdenaShort(stats.warehouse_adena || 0) }}</div>
                         </div>
                         <div class="p-4 rounded-lg border border-gray-200 bg-white/70 dark:border-purple-500/15 dark:bg-black/20 col-span-2" v-if="insights.cpAdenaOwed != null">
                             <div class="flex items-center justify-between gap-4">
                                 <div>
-                                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">Adena a Pagar</div>
+                                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('cp.metrics.adena_to_pay') }}</div>
                                     <div class="text-2xl font-cinzel text-purple-700 dark:text-purple-200 mt-1" v-tooltip="formatAdenaFull(insights.cpAdenaOwed || 0)">{{ formatAdenaShort(insights.cpAdenaOwed || 0) }}</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">Pagada</div>
+                                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('cp.metrics.adena_paid') }}</div>
                                     <div class="text-sm font-black text-gray-800 dark:text-gray-300" v-tooltip="formatAdenaFull(insights.cpAdenaPaid || 0)">{{ formatAdenaShort(insights.cpAdenaPaid || 0) }}</div>
                                 </div>
                             </div>
@@ -325,8 +337,8 @@ const ringDash = (percent) => {
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Daily Tasks</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Progreso estimado</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('cp.tasks.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.tasks.subtitle') }}</div>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="flex items-center gap-2">
@@ -346,7 +358,7 @@ const ringDash = (percent) => {
                                     />
                                 </svg>
                                 <div class="text-right">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Dailies</div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('cp.tasks.dailies') }}</div>
                                     <div class="text-sm font-black text-gray-900 dark:text-white">{{ dailiesProgress }}%</div>
                                 </div>
                             </div>
@@ -367,7 +379,7 @@ const ringDash = (percent) => {
                                     />
                                 </svg>
                                 <div class="text-right">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">Bosses</div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('cp.tasks.bosses') }}</div>
                                     <div class="text-sm font-black text-gray-900 dark:text-white">{{ bossesProgress }}%</div>
                                 </div>
                             </div>
@@ -376,21 +388,21 @@ const ringDash = (percent) => {
 
                     <div class="space-y-2">
                         <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
-                            <div class="text-xs font-bold text-gray-900 dark:text-gray-200">Aprobar reportes pendientes</div>
+                            <div class="text-xs font-bold text-gray-900 dark:text-gray-200">{{ $t('cp.tasks.approve_pending_reports') }}</div>
                             <div class="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border" :class="(stats.pending_reports || 0) > 0 ? 'border-purple-500/30 text-purple-700 bg-purple-500/10 dark:text-purple-200' : 'border-emerald-500/25 text-emerald-700 bg-emerald-500/10 dark:text-emerald-300'">
-                                {{ (stats.pending_reports || 0) > 0 ? 'Pendiente' : 'OK' }}
+                                {{ (stats.pending_reports || 0) > 0 ? $t('common.pending') : $t('common.ok') }}
                             </div>
                         </div>
                         <Link :href="route('party.warehouse_cp')" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 hover:bg-white dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/30 transition">
-                            <div class="text-xs font-bold text-gray-900 dark:text-gray-200">Revisar warehouse</div>
+                            <div class="text-xs font-bold text-gray-900 dark:text-gray-200">{{ $t('cp.tasks.review_warehouse') }}</div>
                             <div class="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-500/25 text-blue-700 dark:text-blue-200 bg-blue-500/10">
-                                {{ stats.total_items_cp || 0 }} items
+                                {{ stats.total_items_cp || 0 }} {{ $t('common.items') }}
                             </div>
                         </Link>
                         <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
-                            <div class="text-xs font-bold text-gray-900 dark:text-gray-200">Ajustar configuración de eventos</div>
+                            <div class="text-xs font-bold text-gray-900 dark:text-gray-200">{{ $t('cp.tasks.adjust_events') }}</div>
                             <Link :href="route('party.index', { tab: 'config' })" class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-purple-500/25 text-purple-700 dark:text-purple-200 bg-purple-500/10 hover:bg-purple-500/15 transition">
-                                Abrir
+                                {{ $t('common.open') }}
                             </Link>
                         </div>
                     </div>
@@ -403,14 +415,14 @@ const ringDash = (percent) => {
             <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">Últimos Objetos</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Confirmados</div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">{{ $t('cp.latest_items.title') }}</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.confirmed') }}</div>
                     </div>
-                    <Link :href="route('party.warehouse_cp')" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">Abrir warehouse</Link>
+                    <Link :href="route('party.warehouse_cp')" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">{{ $t('cp.latest_items.open_warehouse') }}</Link>
                 </div>
 
                 <div v-if="latestItems.length === 0" class="text-sm text-gray-600 italic py-6 text-center">
-                    Sin registros recientes.
+                    {{ $t('common.no_recent_records') }}
                 </div>
 
                 <div v-else class="space-y-2">
@@ -438,17 +450,17 @@ const ringDash = (percent) => {
             <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Semana</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Puntos y actividad</div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('member.week.title') }}</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.week.points_activity') }}</div>
                     </div>
-                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">7 días</div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('member.last_7_days') }}</div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Top Puntos</div>
+                        <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('member.week.top_points') }}</div>
                         <div v-if="topPointsWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
-                            Sin datos.
+                            {{ $t('common.no_data') }}
                         </div>
                         <div v-else class="space-y-2">
                             <div v-for="(m, idx) in topPointsWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
@@ -459,7 +471,7 @@ const ringDash = (percent) => {
                                     <div class="min-w-0">
                                         <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
                                         <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                            {{ Number(m.sessions || 0) }} sesiones
+                                            {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
                                         </div>
                                     </div>
                                 </div>
@@ -471,9 +483,9 @@ const ringDash = (percent) => {
                     </div>
 
                     <div>
-                        <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Top Actividad</div>
+                        <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('cp.week.top_activity') }}</div>
                         <div v-if="topActivityWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
-                            Sin datos.
+                            {{ $t('common.no_data') }}
                         </div>
                         <div v-else class="space-y-2">
                             <div v-for="(m, idx) in topActivityWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
@@ -484,7 +496,7 @@ const ringDash = (percent) => {
                                     <div class="min-w-0">
                                         <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
                                         <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                            {{ Number(m.sessions || 0) }} sesiones
+                                            {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
                                         </div>
                                     </div>
                                 </div>
@@ -500,14 +512,14 @@ const ringDash = (percent) => {
             <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Adena Pendiente</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Top miembros</div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('cp.adena_pending.title') }}</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.adena_pending.subtitle') }}</div>
                     </div>
-                    <Link :href="isAdmin ? route('system.users.index') : route('party.index', { tab: 'members' })" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">Auditar</Link>
+                    <Link :href="isAdmin ? route('system.users.index') : route('party.index', { tab: 'members' })" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">{{ $t('cp.adena_pending.audit') }}</Link>
                 </div>
 
                 <div v-if="topAdenaOwed.length === 0" class="text-sm text-gray-600 italic py-6 text-center">
-                    Sin deudas registradas.
+                    {{ $t('cp.adena_pending.none') }}
                 </div>
 
                 <div v-else class="space-y-2">
@@ -515,7 +527,7 @@ const ringDash = (percent) => {
                         <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
                         <div class="text-right">
                             <div class="text-sm font-black font-cinzel text-purple-700 dark:text-purple-200" v-tooltip="formatAdenaFull(m.owed || 0)">{{ formatAdenaShort(m.owed || 0) }}</div>
-                                <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">adena</div>
+                                <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.adena') }}</div>
                         </div>
                     </div>
                 </div>

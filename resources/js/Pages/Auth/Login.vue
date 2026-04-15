@@ -28,12 +28,12 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Ingresar" />
+    <Head :title="$t('auth.login.title')" />
 
     <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-200" style="font-family: 'Inter', sans-serif;">
         <div class="mb-8 text-center">
-            <h1 class="text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400" style="font-family: 'Cinzel', serif;">AdenaLedger</h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm uppercase tracking-wider">Identificarse</p>
+            <h1 class="text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400" style="font-family: 'Cinzel', serif;">{{ $page.props.app?.name }}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2 text-sm uppercase tracking-wider">{{ $t('auth.login.subtitle') }}</p>
         </div>
 
         <div class="w-full sm:max-w-md mt-6 px-6 py-8 l2-panel rounded-xl relative overflow-hidden">
@@ -46,7 +46,7 @@ const submit = () => {
 
             <form @submit.prevent="submit">
                 <div>
-                    <InputLabel for="email" value="Email" class="text-gray-700 dark:text-gray-300" />
+                    <InputLabel for="email" :value="$t('form.email')" class="text-gray-700 dark:text-gray-300" />
 
                     <TextInput
                         id="email"
@@ -62,7 +62,7 @@ const submit = () => {
                 </div>
 
                 <div class="mt-4">
-                    <InputLabel for="password" value="Contraseña" class="text-gray-700 dark:text-gray-300" />
+                    <InputLabel for="password" :value="$t('form.password')" class="text-gray-700 dark:text-gray-300" />
 
                     <TextInput
                         id="password"
@@ -79,7 +79,7 @@ const submit = () => {
                 <div class="mt-4 block">
                     <label class="flex items-center">
                         <Checkbox name="remember" v-model:checked="form.remember" class="border-gray-300 bg-white text-purple-600 focus:ring-purple-600 dark:border-gray-700 dark:bg-gray-900" />
-                        <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recordarme</span>
+                        <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ $t('auth.login.remember') }}</span>
                     </label>
                 </div>
 
@@ -89,7 +89,7 @@ const submit = () => {
                         :href="route('password.request')"
                         class="rounded-md text-sm text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-white transition"
                     >
-                        ¿Olvidaste tu contraseña?
+                        {{ $t('auth.login.forgot') }}
                     </Link>
                     <span v-else></span>
 
@@ -99,7 +99,7 @@ const submit = () => {
                         :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
                         :disabled="form.processing"
                     >
-                        Entrar
+                        {{ $t('auth.login.submit') }}
                     </button>
                 </div>
             </form>

@@ -49,6 +49,8 @@ const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
 const currentCp = computed(() => currentUser.value?.cp || null);
 const isPending = computed(() => (currentUser.value?.membership_status ?? 'approved') === 'pending');
+const locale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
 
 const openLootModal = () => {
     emitter.emit('open-loot-modal');
@@ -121,13 +123,13 @@ const formatAdenaShort = (val) => {
 
 const formatAdenaFull = (val) => {
     const n = Number(val ?? 0);
-    return new Intl.NumberFormat('es-ES').format(Number.isFinite(n) ? Math.trunc(n) : 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
 const formatDateTimeShort = (val) => {
     if (!val) return '';
     try {
-        return new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
+        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
     } catch (e) {
         return String(val);
     }
@@ -142,32 +144,32 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
 
 <template>
     <div class="space-y-6">
-        <h2 class="text-2xl text-gray-900 dark:text-gray-200 font-bold l2-title">Panel de Miembro</h2>
+        <h2 class="text-2xl text-gray-900 dark:text-gray-200 font-bold l2-title">{{ $t('member.title') }}</h2>
 
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
             <div class="xl:col-span-8 space-y-6">
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Estado de la Party</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('member.party_status') }}</div>
                             <div class="text-sm font-black tracking-widest text-gray-900 dark:text-white">
-                                {{ currentCp ? currentCp.name : 'Mi CP' }}
+                                {{ currentCp ? currentCp.name : $t('member.my_cp') }}
                                 <span v-if="currentCp?.server" class="ml-2 text-[10px] font-black uppercase tracking-widest text-blue-700/80 dark:text-blue-300/80">{{ currentCp.server }}</span>
                                 <span v-if="currentCp?.chronicle" class="ml-2 text-[10px] font-black uppercase tracking-widest text-purple-700/70 dark:text-purple-300/80">{{ currentCp.chronicle }}</span>
                             </div>
                             <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">
-                                Pendientes: <span class="text-gray-900 dark:text-white">{{ stats.pending_reports || 0 }}</span> • Reportes: <span class="text-gray-900 dark:text-white">{{ stats.total_reports || 0 }}</span>
+                                {{ $t('member.pending') }}: <span class="text-gray-900 dark:text-white">{{ stats.pending_reports || 0 }}</span> • {{ $t('member.reports') }}: <span class="text-gray-900 dark:text-white">{{ stats.total_reports || 0 }}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <Link v-if="!isPending" :href="route('party.index')" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition">
-                                Miembros / Saldos
+                                {{ $t('member.actions.members_balances') }}
                             </Link>
                             <Link v-if="!isPending" :href="route('loot.index')" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 dark:from-purple-600/40 dark:to-blue-600/40 dark:hover:from-purple-600/55 dark:hover:to-blue-600/55 text-white text-[10px] leading-none font-black uppercase tracking-widest border border-purple-500/30 transition">
-                                Loot ({{ stats.pending_reports || 0 }})
+                                {{ $t('nav.loot') }} ({{ stats.pending_reports || 0 }})
                             </Link>
                             <button v-if="!isPending" @click="openLootModal" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition">
-                                Reportar Sesión
+                                {{ $t('member.actions.report_session') }}
                             </button>
                         </div>
                     </div>
@@ -176,13 +178,13 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                 <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur h-[320px] flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">Actividad de la CP</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Últimos 7 días</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">{{ $t('member.cp_activity.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.last_7_days') }}</div>
                         </div>
                     </div>
                     <div class="flex-1 min-h-0">
                         <div v-if="!chartData" class="h-full flex items-center justify-center text-sm text-gray-600 dark:text-gray-500 italic">
-                            Sin datos todavía
+                            {{ $t('common.no_data_yet') }}
                         </div>
                         <Line v-else :data="chartData" :options="chartOptions" />
                     </div>
@@ -191,13 +193,13 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                 <div class="l2-panel p-5 rounded-lg border border-emerald-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">Tus últimos ítems</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Asignaciones confirmadas</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">{{ $t('member.latest_items.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.latest_items.subtitle') }}</div>
                         </div>
                     </div>
 
                     <div v-if="personalLatestItems.length === 0" class="py-8 text-center text-gray-600 dark:text-gray-500 italic">
-                        Todavía no tienes ítems asignados
+                        {{ $t('member.latest_items.none') }}
                     </div>
 
                     <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -222,16 +224,16 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Últimos drops de la CP</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Confirmados</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('member.cp_latest_drops.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.confirmed') }}</div>
                         </div>
                         <Link :href="route('loot.index')" class="text-[10px] font-black uppercase tracking-widest text-blue-700 hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-200 transition">
-                            Ver todo
+                            {{ $t('common.view_all') }}
                         </Link>
                     </div>
 
                     <div v-if="cpLatestItems.length === 0" class="py-8 text-center text-gray-600 dark:text-gray-500 italic">
-                        Sin historial todavía
+                        {{ $t('common.no_history_yet') }}
                     </div>
 
                     <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -256,38 +258,38 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
 
             <div class="xl:col-span-4 space-y-6">
                 <div class="l2-panel p-5 rounded-lg border border-gray-200 dark:border-white/5 bg-white/70 dark:bg-black/20">
-                    <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-400">Tu Resumen</div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-400">{{ $t('member.summary.title') }}</div>
 
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Puntos</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('member.summary.points') }}</div>
                             <div class="text-2xl font-cinzel text-gray-900 dark:text-white mt-1">{{ stats.personal_points || 0 }}</div>
                         </div>
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Ítems</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('member.summary.items') }}</div>
                             <div class="text-2xl font-cinzel text-purple-700 dark:text-purple-300 mt-1">{{ stats.personal_items || 0 }}</div>
                         </div>
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Debe</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('member.summary.owed') }}</div>
                             <div class="text-2xl font-cinzel text-orange-600 dark:text-orange-500 mt-1" v-tooltip="formatAdenaFull(stats.personal_adena_owed || 0)">{{ formatAdenaShort(stats.personal_adena_owed || 0) }}</div>
                         </div>
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">Pagado</div>
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('member.summary.paid') }}</div>
                             <div class="text-2xl font-cinzel text-emerald-700 dark:text-green-400 mt-1" v-tooltip="formatAdenaFull(stats.personal_adena_paid || 0)">{{ formatAdenaShort(stats.personal_adena_paid || 0) }}</div>
                         </div>
                     </div>
 
                     <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">CP Vault</span>
+                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('nav.cp_vault') }}</span>
                             <span class="font-black text-gray-900 dark:text-white" v-tooltip="formatAdenaFull(stats.warehouse_adena || 0)">{{ formatAdenaShort(stats.warehouse_adena || 0) }}</span>
                         </div>
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">CP Debe</span>
+                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.summary.cp_owed') }}</span>
                             <span class="font-black text-orange-600 dark:text-orange-500" v-tooltip="formatAdenaFull(insights.cpAdenaOwed || 0)">{{ formatAdenaShort(insights.cpAdenaOwed || 0) }}</span>
                         </div>
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">CP Pagado</span>
+                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.summary.cp_paid') }}</span>
                             <span class="font-black text-emerald-700 dark:text-green-400" v-tooltip="formatAdenaFull(insights.cpAdenaPaid || 0)">{{ formatAdenaShort(insights.cpAdenaPaid || 0) }}</span>
                         </div>
                     </div>
@@ -296,17 +298,17 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">Semana</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">Puntos y adena</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('member.week.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.week.subtitle') }}</div>
                         </div>
-                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">7 días</div>
+                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('member.last_7_days') }}</div>
                     </div>
 
                     <div class="space-y-4">
                         <div>
-                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Top Puntos</div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('member.week.top_points') }}</div>
                             <div v-if="topPointsWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
-                                Sin datos.
+                                {{ $t('common.no_data') }}
                             </div>
                             <div v-else class="space-y-2">
                                 <div v-for="(m, idx) in topPointsWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
@@ -317,7 +319,7 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                                         <div class="min-w-0">
                                             <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
                                             <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                                {{ Number(m.sessions || 0) }} sesiones
+                                                {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
                                             </div>
                                         </div>
                                     </div>
@@ -329,9 +331,9 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         </div>
 
                         <div>
-                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Top Adena</div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('member.week.top_adena') }}</div>
                             <div v-if="topAdenaWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
-                                Sin datos.
+                                {{ $t('common.no_data') }}
                             </div>
                             <div v-else class="space-y-2">
                                 <div v-for="(m, idx) in topAdenaWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
@@ -342,13 +344,13 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                                         <div class="min-w-0">
                                             <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
                                             <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                                {{ Number(m.sessions || 0) }} sesiones
+                                                {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="text-right shrink-0">
                                         <div class="text-sm font-black font-cinzel text-purple-700 dark:text-purple-200" v-tooltip="formatAdenaFull(m.adena || 0)">{{ formatAdenaShort(m.adena || 0) }}</div>
-                                        <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">adena</div>
+                                        <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.adena') }}</div>
                                     </div>
                                 </div>
                             </div>
