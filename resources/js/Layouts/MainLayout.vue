@@ -429,6 +429,7 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.dashboard') }}</Link>
                             <Link :href="route('system.items.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.items.index')}">{{ $t('nav.items') }}</Link>
                             <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">{{ $t('nav.translations') }}</Link>
+                            <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
                         </template>
                         <template v-else>
                             <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.home') }}</Link>
@@ -438,16 +439,17 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">{{ $t('nav.warehouse') }}</Link>
                             <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">{{ $t('nav.items_db') }}</Link>
                             <Link v-if="canAuditCp" :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">{{ $t('nav.members') }}</Link>
+                            <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
                         </template>
                     </div>
 
                     <div v-if="user" class="flex items-center space-x-3 relative">
-                        <div class="flex items-center rounded-lg border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/50 overflow-hidden">
+                        <div :class="darkMode ? 'border-white/10 bg-gray-950/80 shadow-black/20' : 'border-gray-200 bg-white/80 shadow-lg shadow-purple-500/5'" class="flex items-center h-10 rounded-xl border backdrop-blur-md p-1 transition-all">
                             <button
                                 type="button"
-                                class="px-3 py-2 text-[10px] font-black uppercase tracking-widest transition"
+                                class="w-8 h-8 flex items-center justify-center text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                                 :class="locale === 'es'
-                                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                                    ? 'bg-gray-900 text-white shadow-lg dark:bg-white dark:text-gray-900'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'"
                                 @click="setLocale('es')"
                             >
@@ -455,9 +457,9 @@ watch(() => alerts.value.items, (items) => {
                             </button>
                             <button
                                 type="button"
-                                class="px-3 py-2 text-[10px] font-black uppercase tracking-widest transition"
+                                class="w-8 h-8 flex items-center justify-center text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                                 :class="locale === 'en'
-                                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                                    ? 'bg-gray-900 text-white shadow-lg dark:bg-white dark:text-gray-900'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'"
                                 @click="setLocale('en')"
                             >
@@ -465,9 +467,15 @@ watch(() => alerts.value.items, (items) => {
                             </button>
                         </div>
 
-                        <button @click="toggleDark" class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition" :title="$t('nav.theme')">
-                            <svg v-if="!darkMode" class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v1a1 1 0 11-2 0V4a1 1 0 011-1zm0 11a4 4 0 100-8 4 4 0 000 8zm7-4a1 1 0 010 2h-1a1 1 0 110-2h1zM4 10a1 1 0 000 2H3a1 1 0 110-2h1zm11.657-5.657a1 1 0 010 1.414L14.95 6.464a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM6.464 14.95a1 1 0 010 1.414l-.707.707A1 1 0 013.343 15.95l.707-.707a1 1 0 011.414 0zM16.657 15.657a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414zM6.464 5.05A1 1 0 105.05 6.464l-.707-.707A1 1 0 106.464 5.05z"/></svg>
-                            <svg v-else class="w-5 h-5 text-blue-300" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 116.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                        <button @click="toggleDark" class="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 shadow-lg shadow-purple-500/5 dark:shadow-black/20 transition duration-300 group/theme" :title="$t('nav.theme')">
+                            <!-- Show Moon when Light to transition to Dark -->
+                            <svg v-if="!darkMode" class="w-5 h-5 text-indigo-600 transition-transform duration-500 group-hover/theme:rotate-12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                            <!-- Show Sun when Dark to transition to Light -->
+                            <svg v-else class="w-5 h-5 text-yellow-400 transition-transform duration-500 group-hover/theme:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                            </svg>
                         </button>
 
                         <div class="relative">
@@ -537,15 +545,15 @@ watch(() => alerts.value.items, (items) => {
                         <span class="font-mono break-all">{{ donationWallet }}</span>
                         ·
                         {{ $t('footer.support_label') }}
-                        <a class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${supportEmail}`">{{ supportEmail }}</a>
+                        <button type="button" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" @click="showSupportModal = true">{{ supportEmail }}</button>
                     </div>
                 </div>
 
             </div>
         </footer>
 
-        <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
+        <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
+            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.support.title') }}</h3>
                     <button @click="showSupportModal = false" class="text-white/50 hover:text-white transition" type="button">
@@ -554,8 +562,8 @@ watch(() => alerts.value.items, (items) => {
                 </div>
 
                 <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                    <div v-if="Object.keys(supportForm.errors).length > 0" class="p-4 bg-red-950/20 border border-red-900/50 rounded-xl">
-                        <ul class="list-disc list-inside text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                    <div v-if="Object.keys(supportForm.errors).length > 0" class="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl">
+                        <ul class="list-disc list-inside text-[10px] text-red-600 dark:text-red-500 font-bold uppercase tracking-widest">
                             <li v-for="(error, field) in supportForm.errors" :key="field">{{ error }}</li>
                         </ul>
                     </div>
@@ -591,8 +599,8 @@ watch(() => alerts.value.items, (items) => {
             </div>
         </div>
 
-        <div v-if="showCpRequestModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
+        <div v-if="showCpRequestModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
+            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.cp_request.title') }}</h3>
                     <button @click="showCpRequestModal = false" class="text-white/50 hover:text-white transition" type="button">
@@ -601,8 +609,8 @@ watch(() => alerts.value.items, (items) => {
                 </div>
 
                 <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                    <div v-if="Object.keys(cpRequestForm.errors).length > 0" class="p-4 bg-red-950/20 border border-red-900/50 rounded-xl">
-                        <ul class="list-disc list-inside text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                    <div v-if="Object.keys(cpRequestForm.errors).length > 0" class="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl">
+                        <ul class="list-disc list-inside text-[10px] text-red-600 dark:text-red-500 font-bold uppercase tracking-widest">
                             <li v-for="(error, field) in cpRequestForm.errors" :key="field">{{ error }}</li>
                         </ul>
                     </div>
@@ -658,8 +666,8 @@ watch(() => alerts.value.items, (items) => {
             </div>
         </div>
 
-        <div v-if="showDonationModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-            <div class="l2-panel w-full max-w-lg rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col">
+        <div v-if="showDonationModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
+            <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.donations.title') }}</h3>
                     <button @click="showDonationModal = false" class="text-white/50 hover:text-white transition" type="button">
@@ -703,6 +711,10 @@ watch(() => alerts.value.items, (items) => {
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                     <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.items') }}</span>
                 </Link>
+                <Link :href="route('tickets.index')" class="flex flex-col items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('tickets.*') }">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">Tickets</span>
+                </Link>
             </template>
             <template v-else>
                 <Link :href="route('dashboard')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('dashboard') }">
@@ -729,6 +741,10 @@ watch(() => alerts.value.items, (items) => {
                 <Link v-if="canAuditCp" :href="route('system.users.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('system.users.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
                     <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.members') }}</span>
+                </Link>
+                <Link :href="route('tickets.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('tickets.*') }">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">Tickets</span>
                 </Link>
                 <Link :href="route('profile.edit')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('profile.edit') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>

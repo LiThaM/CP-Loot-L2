@@ -42,6 +42,7 @@ class FetchLu4Command extends Command
         $recipesImported = 0;
         $skipped = 0;
         $notFound = 0;
+        $invalid = 0;
         $consecutiveNotFound = 0;
         $recipeIds = [];
 
@@ -98,6 +99,17 @@ class FetchLu4Command extends Command
             $html = $fetched['html'];
             $consecutiveNotFound = 0;
 
+            $name = trim((string) ($data['name'] ?? ''));
+            if ($name === '' || in_array($name, ['-', '—', '–', '_'], true)) {
+                $invalid++;
+                $bar->advance();
+                if ($throttleMs > 0) {
+                    usleep($throttleMs * 1000);
+                }
+
+                continue;
+            }
+
             $localImage = null;
             if ($download) {
                 $localImage = $scraper->downloadIconFromUrl($data['image_url'], $id);
@@ -114,7 +126,7 @@ class FetchLu4Command extends Command
             $item = Item::updateOrCreate(
                 ['external_id' => $id, 'chronicle' => 'LU4'],
                 [
-                    'name' => $data['name'],
+                    'name' => $name,
                     'grade' => $this->normalizeGrade($data['grade'] ?? null, $data['name']),
                     'category' => $data['category'],
                     'source' => 'lu4',
@@ -142,7 +154,7 @@ class FetchLu4Command extends Command
 
         $bar->finish();
         $this->newLine(2);
-        $this->info("Imported: {$imported} | Recipes detected: {$recipesImported} | Skipped: {$skipped} | Not found: {$notFound}");
+        $this->info("Imported: {$imported} | Recipes detected: {$recipesImported} | Skipped: {$skipped} | Invalid skipped: {$invalid} | Not found: {$notFound}");
 
         $recipeIds = array_values(array_unique($recipeIds));
         if (count($recipeIds) > 0) {

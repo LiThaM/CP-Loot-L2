@@ -40,6 +40,14 @@ const props = defineProps({
     cpInsights: {
         type: Object,
         default: null
+    },
+    cpRequests: {
+        type: Array,
+        default: () => []
+    },
+    supportTickets: {
+        type: Array,
+        default: () => []
     }
 });
 </script>
@@ -63,7 +71,7 @@ const props = defineProps({
             <!-- Render specific dashboard based on role -->
             <template v-if="roleName === 'admin'">
                 <CpStats v-if="selectedCp" :stats="stats" :selectedCp="selectedCp" :chartData="chartData" :cpInsights="cpInsights" />
-                <AdminStats v-else :stats="stats" :cps="cps" :chartData="chartData" />
+                <AdminStats v-else :stats="stats" :cps="cps" :chartData="chartData" :cpRequests="cpRequests" :supportTickets="supportTickets" />
             </template>
             <CpStats v-else-if="roleName === 'cp_leader'" :stats="stats" :chartData="chartData" :members="members" :cpInsights="cpInsights" />
             <MemberStats v-else :stats="stats" :chartData="chartData" :members="members" :cpInsights="cpInsights" />

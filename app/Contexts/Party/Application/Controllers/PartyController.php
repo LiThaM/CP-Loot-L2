@@ -112,13 +112,49 @@ class PartyController extends Controller
 
         $cpRecipes = CpRecipe::query()
             ->where('cp_id', $user->cp_id)
-            ->with(['recipe.outputItem', 'recipe.outputs.item', 'recipe.materials.item'])
+            ->with(['recipe.outputItem', 'recipe.outputs.item', 'recipe.materials.item', 'recipe.recipeItem'])
             ->orderBy('priority')
             ->get()
             ->map(function (CpRecipe $cpRecipe) use ($warehouseAmountsByItemId, $craftableRecipeIdByItemId) {
                 $recipe = $cpRecipe->recipe;
                 $materials = $recipe?->materials ?? collect();
                 $outputs = $recipe?->outputs ?? collect();
+
+                $materialsList = $materials->map(function ($mat) use ($warehouseAmountsByItemId) {
+                    $need = (int) ($mat->quantity ?? 1);
+                    $have = (int) ($warehouseAmountsByItemId[$mat->item_id] ?? 0);
+
+                    return [
+                        'item_id' => $mat->item_id,
+                        'name' => $mat->item?->name,
+                        'image_url' => $mat->item?->image_url,
+                        'need' => $need,
+                        'have' => $have,
+                        'missing' => max(0, $need - $have),
+                    ];
+                })->map(function (array $m) use ($craftableRecipeIdByItemId) {
+                    $m['craft_recipe_id'] = $craftableRecipeIdByItemId[(int) $m['item_id']] ?? null;
+                    $m['craftable'] = $m['craft_recipe_id'] !== null;
+
+                    return $m;
+                })->values();
+
+                // Inject Recipe scroll as a "material" for UI visibility
+                if ($recipe?->recipe_item_id) {
+                    $recipeItem = $recipe->recipeItem;
+                    $have = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
+                    $materialsList->prepend([
+                        'item_id' => $recipe->recipe_item_id,
+                        'name' => $recipeItem?->name ?? 'Receta ' . $recipe->name,
+                        'image_url' => $recipeItem?->image_url,
+                        'need' => 1,
+                        'have' => $have,
+                        'missing' => max(0, 1 - $have),
+                        'craft_recipe_id' => null,
+                        'craftable' => false,
+                        'is_recipe' => true,
+                    ]);
+                }
 
                 return [
                     'id' => $cpRecipe->id,
@@ -141,24 +177,7 @@ class PartyController extends Controller
                                 'chance' => $out->chance,
                             ];
                         })->values(),
-                        'materials' => $materials->map(function ($mat) use ($warehouseAmountsByItemId) {
-                            $need = (int) ($mat->quantity ?? 1);
-                            $have = (int) ($warehouseAmountsByItemId[$mat->item_id] ?? 0);
-
-                            return [
-                                'item_id' => $mat->item_id,
-                                'name' => $mat->item?->name,
-                                'image_url' => $mat->item?->image_url,
-                                'need' => $need,
-                                'have' => $have,
-                                'missing' => max(0, $need - $have),
-                            ];
-                        })->map(function (array $m) use ($craftableRecipeIdByItemId) {
-                            $m['craft_recipe_id'] = $craftableRecipeIdByItemId[(int) $m['item_id']] ?? null;
-                            $m['craftable'] = $m['craft_recipe_id'] !== null;
-
-                            return $m;
-                        })->values(),
+                        'materials' => $materialsList,
                     ] : null,
                 ];
             })

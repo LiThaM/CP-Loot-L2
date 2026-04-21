@@ -153,28 +153,28 @@ const rejectRequest = async (req) => {
     <div class="space-y-8 animate-in fade-in duration-700">
         <!-- Global KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-xl relative overflow-hidden group">
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
                 <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🛡️</div>
                 <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_cps') }}</div>
                 <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_cps }}</div>
                 <div class="mt-2 text-[10px] text-green-500 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_cps_hint') }}</div>
             </div>
 
-            <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-xl relative overflow-hidden group">
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
                 <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">👥</div>
                 <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_members') }}</div>
                 <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_members }}</div>
                 <div class="mt-2 text-[10px] text-orange-500 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_members_hint') }}</div>
             </div>
 
-            <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-xl relative overflow-hidden group">
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
                 <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">⚔️</div>
                 <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_reports') }}</div>
                 <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_reports }}</div>
                 <div class="mt-2 text-[10px] text-purple-700 dark:text-purple-300 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_reports_hint') }}</div>
             </div>
 
-            <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-xl relative overflow-hidden group">
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
                 <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💎</div>
                 <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_points') }}</div>
                 <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_points_global }}</div>
@@ -185,7 +185,7 @@ const rejectRequest = async (req) => {
         <!-- CP List (Audit View) -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Activity Chart -->
-            <div class="lg:col-span-2 l2-panel p-8 rounded-3xl border-gray-800 shadow-2xl flex flex-col">
+            <div class="lg:col-span-2 l2-panel p-8 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col transition-all">
                 <div class="flex items-center justify-between mb-8">
                     <div>
                         <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest">{{ $t('admin.activity.title') }}</h3>
@@ -208,7 +208,7 @@ const rejectRequest = async (req) => {
                     {{ $t('admin.actions.create_cp') }}
                 </button>
 
-                <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col">
+                <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col transition-all">
                     <div class="mb-4 flex items-end justify-between gap-4">
                         <div>
                             <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cp_requests.title') }}</h3>
@@ -248,7 +248,7 @@ const rejectRequest = async (req) => {
                 </div>
 
                 <!-- Support Tickets -->
-                <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col">
+                <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col transition-all">
                     <div class="mb-4 flex items-end justify-between gap-4">
                         <div>
                             <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">Soporte</h3>
@@ -258,23 +258,23 @@ const rejectRequest = async (req) => {
                     </div>
                     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
                         <div v-if="!(supportTickets || []).length" class="text-xs text-gray-500">Ningún ticket nuevo.</div>
-                        <div v-for="tck in (supportTickets || [])" :key="tck.id" class="p-4 bg-white/70 border border-red-500/30 rounded-2xl dark:bg-gray-900/50 dark:border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+                        <div v-for="tck in (supportTickets || [])" :key="tck.id" class="p-4 bg-white/70 border border-red-200 rounded-2xl dark:bg-gray-900/50 dark:border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)] transition-all">
                             <div class="min-w-0">
                                 <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white truncate">{{ tck.subject }}</div>
-                                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                <div class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
                                     <span v-if="tck.name">{{ tck.name }}</span>
                                     <span v-if="tck.name && tck.email"> · </span>
                                     <a v-if="tck.email" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" :href="`mailto:${tck.email}`">{{ tck.email }}</a>
                                 </div>
                             </div>
-                            <div v-if="tck.message" class="mt-3 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-line">{{ tck.message }}</div>
-                            <div class="mt-2 text-[9px] text-gray-400 uppercase tracking-widest text-right">{{ new Date(tck.created_at).toLocaleDateString() }}</div>
+                            <div v-if="tck.message" class="mt-3 text-xs text-gray-700 dark:text-gray-400 whitespace-pre-line leading-relaxed">{{ tck.message }}</div>
+                            <div class="mt-2 text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right">{{ new Date(tck.created_at).toLocaleDateString() }}</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- CP List -->
-                <div class="l2-panel p-6 rounded-3xl border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col">
+                <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col transition-all">
                     <div class="mb-4">
                         <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cps.title') }}</h3>
                     </div>
@@ -300,7 +300,7 @@ const rejectRequest = async (req) => {
 
         <!-- Create CP Modal -->
         <div v-if="showCreateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-            <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('admin.create_modal.title') }}</h3>
                     <button @click="showCreateModal = false" class="text-white/50 hover:text-white transition">
@@ -354,7 +354,7 @@ const rejectRequest = async (req) => {
         </div>
 
         <!-- System Inventory Preview -->
-        <div class="l2-panel p-8 rounded-3xl border-gray-800 shadow-2xl">
+        <div class="l2-panel p-8 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl transition-all">
             <div class="flex justify-between items-center mb-8">
                 <div>
                     <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest">{{ $t('admin.items.title') }}</h3>

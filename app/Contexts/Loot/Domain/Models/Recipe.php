@@ -10,6 +10,7 @@ class Recipe extends Model
         'external_id',
         'chronicle',
         'name',
+        'recipe_item_id',
         'output_item_id',
         'output_quantity',
         'success_rate',
@@ -23,6 +24,11 @@ class Recipe extends Model
     public function outputItem()
     {
         return $this->belongsTo(Item::class, 'output_item_id');
+    }
+ 
+    public function recipeItem()
+    {
+        return $this->belongsTo(Item::class, 'recipe_item_id');
     }
 
     public function materials()

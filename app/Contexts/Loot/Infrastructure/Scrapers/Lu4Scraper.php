@@ -87,7 +87,7 @@ class Lu4Scraper
         if ($grade && str_ends_with($rawName, $grade)) {
             $name = trim(substr($rawName, 0, -strlen($grade)));
         }
-        if ($name === '') {
+        if ($name === '' || in_array($name, ['-', '—', '–', '_'], true)) {
             return null;
         }
 
@@ -96,6 +96,9 @@ class Lu4Scraper
 
         $iconSrc = $this->firstAttr($crawler, '.item-icon img', 'src');
         $imageUrl = $this->toAbsoluteUrl($iconSrc);
+        if ($imageUrl === $this->hostBase.'/i64/.png') {
+            $imageUrl = null;
+        }
         $iconName = $this->extractIconName($iconSrc);
         $description = '';
 

@@ -1393,7 +1393,10 @@ watch(buySearch, throttle(async (val) => {
                                             <div class="text-[10px] font-black uppercase tracking-widest" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                                 {{ formatNumber(mat.have || 0) }} / {{ formatNumber(mat.need || 0) }}
                                             </div>
-                                            <div v-if="mat.craftable" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
+                                            <div v-if="mat.is_recipe" class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-black uppercase tracking-widest dark:bg-indigo-900/30 dark:text-indigo-200">
+                                                {{ $t('craft.recipe_fallback') }}
+                                            </div>
+                                            <div v-else-if="mat.craftable" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
                                                 {{ $t('craft.craftable') }}
                                             </div>
                                         </div>
@@ -1433,7 +1436,10 @@ watch(buySearch, throttle(async (val) => {
                                             <div class="min-w-0 flex-1">
                                                 <div class="flex items-center gap-2">
                                                     <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ row.name || $t('common.item') }}</div>
-                                                    <div v-if="(row.children || []).length > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
+                                                    <div v-if="row.is_recipe" class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-black uppercase tracking-widest dark:bg-indigo-900/30 dark:text-indigo-200">
+                                                        {{ $t('craft.recipe_fallback') }}
+                                                    </div>
+                                                    <div v-else-if="(row.children || []).length > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
                                                         {{ $t('craft.craftable') }}
                                                     </div>
                                                 </div>

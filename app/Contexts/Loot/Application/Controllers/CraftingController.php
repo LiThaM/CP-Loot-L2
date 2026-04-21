@@ -75,7 +75,7 @@ class CraftingController extends Controller
             abort(422, 'La receta no pertenece al mismo cronicón del CP.');
         }
 
-        $recipe->load(['materials', 'outputs', 'outputItem']);
+        $recipe->load(['materials', 'outputs', 'outputItem', 'recipeItem']);
 
         $successRate = (float) ($recipe->success_rate ?? 0);
         $lucky = $request->boolean('lucky', $successRate >= 100);
@@ -99,6 +99,8 @@ class CraftingController extends Controller
         try {
             DB::transaction(function () use ($user, $cp, $recipe, $shouldProduce, $outputItemId) {
                 $warehouseAmountsByItemId = $this->warehouseAmountsByItemId((int) $cp->id);
+ 
+                // Check Materials
                 foreach ($recipe->materials as $mat) {
                     $need = (int) ($mat->quantity ?? 1);
                     $have = (int) ($warehouseAmountsByItemId[$mat->item_id] ?? 0);
@@ -106,7 +108,15 @@ class CraftingController extends Controller
                         throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$mat->item_id.':'.$need.':'.$have);
                     }
                 }
-
+ 
+                // Check Recipe Item
+                if ($recipe->recipe_item_id) {
+                    $haveRecipe = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
+                    if ($haveRecipe < 1) {
+                        throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$recipe->recipe_item_id.':1:'.$haveRecipe);
+                    }
+                }
+ 
                 $consumeReport = LootReport::create([
                     'cp_id' => $cp->id,
                     'requested_by_id' => $user->id,
@@ -115,12 +125,22 @@ class CraftingController extends Controller
                     'image_proof' => null,
                     'recipient_ids' => null,
                 ]);
-
+ 
+                // Consume materials
                 foreach ($recipe->materials as $mat) {
                     LootEntry::create([
                         'loot_report_id' => $consumeReport->id,
                         'item_id' => $mat->item_id,
                         'amount' => (int) ($mat->quantity ?? 1),
+                    ]);
+                }
+ 
+                // Consume recipe
+                if ($recipe->recipe_item_id) {
+                    LootEntry::create([
+                        'loot_report_id' => $consumeReport->id,
+                        'item_id' => $recipe->recipe_item_id,
+                        'amount' => 1,
                     ]);
                 }
 
@@ -203,6 +223,22 @@ class CraftingController extends Controller
                 visitedRecipeIds: $visitedRecipeIds,
             );
         })->values();
+ 
+        // Inject Recipe Item as a mandatory node if exists
+        if ($recipe->recipe_item_id) {
+            $recipeItemNode = [
+                'item_id' => (int) $recipe->recipe_item_id,
+                'name' => $recipe->recipeItem?->name ?? 'Receta ' . $recipe->name,
+                'image_url' => $recipe->recipeItem?->image_url,
+                'need' => 1,
+                'have' => (int) ($amounts[$recipe->recipe_item_id] ?? 0),
+                'missing' => max(0, 1 - (int) ($amounts[$recipe->recipe_item_id] ?? 0)),
+                'craft_recipe_id' => null, // Recipes are not crafted in this system generally
+                'children' => [],
+                'is_recipe' => true,
+            ];
+            $nodes->prepend($recipeItemNode);
+        }
 
         return response()->json([
             'recipe' => [
