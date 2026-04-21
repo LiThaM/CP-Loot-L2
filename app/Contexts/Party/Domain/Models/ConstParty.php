@@ -9,7 +9,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConstParty extends Model
 {
-    protected $fillable = ['leader_id', 'name', 'server', 'chronicle', 'invite_code'];
+    protected $fillable = ['leader_id', 'name', 'server', 'chronicle', 'invite_code', 'logo_path'];
+
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute()
+    {
+        if ($this->logo_path) {
+            return asset('storage/' . $this->logo_path);
+        }
+        
+        // Return a premium looking default based on the CP name or just a fallback
+        return null;
+    }
 
     public function leader()
     {

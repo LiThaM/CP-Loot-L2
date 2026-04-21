@@ -27,10 +27,16 @@ Route::post('/locale', function (\Illuminate\Http\Request $request) {
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\Admin\ImpersonateController;
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::post('/admin/impersonate/{user}', [ImpersonateController::class, 'take'])->name('admin.impersonate');
+    Route::post('/admin/stop-impersonating', [ImpersonateController::class, 'leave'])->name('admin.impersonate.leave');
+});
 
 Route::post('/support/contact', [SupportController::class, 'contact'])
     ->middleware('throttle:10,1')
@@ -79,6 +85,10 @@ Route::middleware('auth')->group(function () {
             ] : null,
         ]);
     })->name('excluded');
+
+    Route::get('/membership/pending', function (Request $request) {
+        return Inertia::render('Auth/Pending');
+    })->name('membership.pending');
 
     // Phase 3 & 4 Routes
     Route::get('/party', [PartyController::class, 'index'])->name('party.index');
@@ -158,6 +168,7 @@ Route::middleware('auth')->group(function () {
 
     // Adena Ledger
     Route::post('/adena/transaction', [AdenaActionController::class, 'store'])->name('adena.transaction.store');
+    Route::post('/adena/donate', [AdenaActionController::class, 'donate'])->name('adena.donate');
 
     Route::post('/alerts/{alert}/read', function (Request $request, $alert) {
         $user = $request->user();
@@ -199,7 +210,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/cp/recipes/{cpRecipe}/move', [CraftingController::class, 'move'])->name('cp.recipes.move');
     Route::delete('/cp/recipes/{cpRecipe}', [CraftingController::class, 'destroy'])->name('cp.recipes.destroy');
 
-    // CP Custom Points Config
+    // CP Settings & Identity
+    Route::post('/cp/settings', [ConstPartyController::class, 'update'])->name('cp.settings.update');
     Route::post('/cp/event-config', [CpEventConfigController::class, 'update'])->name('cp.event-config.update');
 
     // Wishlist

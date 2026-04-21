@@ -11,7 +11,7 @@ class ConstPartyController extends Controller
 {
     public function store(Request $request)
     {
-        // Only admins should create CPs (Gate or simple check, assuming simple check for now based on role_id)
+        // ... (existing code remains same)
         if ($request->user()->role->name !== 'admin') {
             abort(403, 'Unauthorized action.');
         }
@@ -31,7 +31,6 @@ class ConstPartyController extends Controller
             'invite_code' => $inviteCode,
         ]);
 
-        // Generate the full registration url
         $magicLink = route('register', ['invite' => $inviteCode]);
 
         return back()->with('success', [
@@ -39,5 +38,34 @@ class ConstPartyController extends Controller
             'link' => $magicLink,
             'cp_name' => $cp->name,
         ]);
+    }
+
+    public function update(Request $request)
+    {
+        $user = $request->user();
+        $cp = $user->cp;
+
+        if (! $cp || $user->id !== $cp->leader_id) {
+            abort(403, 'Solo el líder fundador de la CP puede modificar los ajustes generales.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:const_parties,name,'.$cp->id,
+            'server' => 'nullable|string|max:255',
+            'logo' => 'nullable|image|max:3072', // 3MB
+        ]);
+
+        $cp->update([
+            'name' => $request->name,
+            'server' => $request->server,
+        ]);
+
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $path = $file->store("cp-logos/{$cp->id}", 'public');
+            $cp->update(['logo_path' => $path]);
+        }
+
+        return back()->with('success', 'Ajustes de la Const Party actualizados correctamente.');
     }
 }

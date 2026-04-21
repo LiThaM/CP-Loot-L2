@@ -121,4 +121,50 @@ class AdenaActionController extends Controller
 
         return back()->with('success', $msg);
     }
+    public function donate(Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|integer|min:1',
+        ]);
+
+        $user = $request->user();
+        if (!$user->cp_id) {
+            abort(403, 'No perteneces a ninguna CP.');
+        }
+
+        // Calcular adena adeudada para validar
+        $gained = PointsLog::where('user_id', $user->id)->where('action_type', 'ADENA_GAIN')->sum('adena');
+        $paid = abs(PointsLog::where('user_id', $user->id)->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])->sum('adena'));
+        $owed = max(0, $gained - $paid);
+
+        $amount = (int) $request->amount;
+        if ($amount > $owed) {
+            abort(422, 'No puedes donar más de lo que la CP te debe.');
+        }
+
+        DB::transaction(function () use ($user, $amount) {
+            PointsLog::create([
+                'cp_id' => $user->cp_id,
+                'user_id' => $user->id,
+                'action_type' => 'ADENA_OFFSET',
+                'points' => 0,
+                'adena' => -$amount,
+                'description' => 'Donación voluntaria al fondo de la CP',
+            ]);
+
+            AuditLog::create([
+                'entity_type' => 'User',
+                'entity_id' => $user->id,
+                'user_id' => $user->id,
+                'action' => 'ADENA_DONATED',
+                'old_values' => null,
+                'new_values' => [
+                    'amount' => $amount,
+                    'description' => 'Donación voluntaria',
+                ],
+            ]);
+        });
+
+        return back()->with('success', '¡Gracias por tu donación! Tu saldo ha sido ajustado.');
+    }
 }

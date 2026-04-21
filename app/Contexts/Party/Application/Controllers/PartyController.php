@@ -9,8 +9,10 @@ use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Loot\Domain\Models\Recipe;
+use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Contexts\System\Domain\Models\AuditLog;
+use App\Contexts\Identity\Domain\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -218,12 +220,16 @@ class PartyController extends Controller
             'eventConfigs' => $eventConfigs,
             'warehouseItems' => $warehouseItems,
             'warehouseAdena' => $warehouseAdena,
+            'warehouseAdenaNet' => $warehouseAdena - $cpAdenaOwed,
             'cpAdenaOwed' => $cpAdenaOwed,
             'cpAdenaPaid' => $cpAdenaPaid,
             'cpRecipes' => $cpRecipes,
             'canManageWarehouse' => $canManageWarehouse,
             'isLeader' => $user->id === $cp->leader_id,
             'initialTab' => $initialTab,
+            'roles' => Role::all(),
+            'cps' => in_array($user->role?->name, ['admin']) ? ConstParty::all() : [],
+            'isAdmin' => $user->role?->name === 'admin',
         ]);
     }
 

@@ -20,7 +20,7 @@ class EnsureCpMembershipApproved
         if ($status === 'pending') {
             $message = 'Tu cuenta está pendiente de aprobación por el líder del CP.';
             $allowedRouteNames = [
-                'dashboard',
+                'membership.pending',
                 'profile.edit',
                 'profile.update',
                 'profile.destroy',
@@ -32,7 +32,7 @@ class EnsureCpMembershipApproved
                 'password.confirm',
                 'password.update',
             ];
-            $redirectRouteName = 'dashboard';
+            $redirectRouteName = 'membership.pending';
         } elseif ($status === 'banned') {
             $message = 'Tu cuenta ha sido excluida del CP.';
             $allowedRouteNames = [

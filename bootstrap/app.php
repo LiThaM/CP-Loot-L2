@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             EnsureCpMembershipApproved::class,
+            \App\Http\Middleware\TrackActivity::class,
         ]);
 
         //

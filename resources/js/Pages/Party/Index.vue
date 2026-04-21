@@ -16,12 +16,16 @@ const props = defineProps({
     eventConfigs: Array,
     warehouseItems: Array,
     warehouseAdena: Number,
+    warehouseAdenaNet: Number,
     cpAdenaOwed: Number,
     cpAdenaPaid: Number,
     cpRecipes: Array,
     canManageWarehouse: Boolean,
     isLeader: Boolean,
+    isAdmin: Boolean,
     initialTab: String,
+    roles: Array,
+    cps: Array,
 });
 
 const page = usePage();
@@ -94,6 +98,125 @@ const loadMemberLogs = async (memberId) => {
         const done = new Set(memberLogsLoading.value);
         done.delete(memberId);
         memberLogsLoading.value = done;
+    }
+};
+
+// User Management Actions
+const showUserAdenaModal = ref(false);
+const showUserEditModal = ref(false);
+const selectedUserForManagement = ref(null);
+
+const userAdenaForm = useForm({
+    user_id: '',
+    amount: '',
+    description: '',
+    image_proof: null,
+});
+
+const userEditForm = useForm({
+    role_id: '',
+    cp_id: '',
+});
+
+const donationForm = useForm({
+    amount: '',
+});
+
+const openUserAdenaModal = (user) => {
+    selectedUserForManagement.value = user;
+    userAdenaForm.user_id = user.id;
+    userAdenaForm.amount = '';
+    userAdenaForm.description = '';
+    userAdenaForm.image_proof = null;
+    showUserAdenaModal.value = true;
+};
+
+const submitUserAdena = () => {
+    userAdenaForm.post(route('adena.transaction.store'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            showUserAdenaModal.value = false;
+            showToast(t('system.users.adena_adjusted_success'));
+        },
+    });
+};
+
+const openUserEditModal = (user) => {
+    selectedUserForManagement.value = user;
+    userEditForm.role_id = user.role_id;
+    userEditForm.cp_id = user.cp_id;
+    showUserEditModal.value = true;
+};
+
+const submitUserEdit = () => {
+    userEditForm.patch(route('system.users.update', selectedUserForManagement.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showUserEditModal.value = false;
+            showToast(t('system.users.updated_success'));
+        },
+    });
+};
+
+const cpSettingsForm = useForm({
+    name: props.cp?.name || '',
+    server: props.cp?.server || '',
+    logo: null,
+});
+
+const logoPreview = ref(null);
+
+const onLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    cpSettingsForm.logo = file;
+    logoPreview.value = URL.createObjectURL(file);
+};
+
+const submitCpSettings = () => {
+    cpSettingsForm.post(route('cp.settings.update'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            showToast(t('cp.settings.success'));
+        },
+    });
+};
+
+const banUser = async (user) => {
+    if (await confirmAction(t('system.users.swal.ban_title'), t('system.users.swal.ban_text', { name: user.name }), t('system.users.swal.ban_confirm'), t('common.cancel'))) {
+        router.patch(route('system.users.ban', user.id), {}, { preserveScroll: true });
+    }
+};
+
+const unbanUser = async (user) => {
+    if (await confirmAction(t('system.users.swal.unban_title'), t('system.users.swal.unban_text', { name: user.name }), t('system.users.swal.unban_confirm'), t('common.cancel'))) {
+        router.patch(route('system.users.unban', user.id), {}, { preserveScroll: true });
+    }
+};
+
+const donateAdena = async (maxAmount) => {
+    const { value: amount } = await showAlert({
+        title: t('party.donation.modal_title'),
+        text: t('party.donation.modal_text', { max: formatAdenaShort(maxAmount) }),
+        input: 'number',
+        inputAttributes: {
+            min: 1,
+            max: maxAmount,
+            step: 1
+        },
+        inputValue: maxAmount,
+        showCancelButton: true,
+        confirmButtonText: t('common.donate'),
+        cancelButtonText: t('common.cancel'),
+    });
+
+    if (amount) {
+        router.post(route('adena.donate'), { amount }, {
+            preserveScroll: true,
+            onSuccess: () => showToast(t('party.donation.success')),
+        });
     }
 };
 
@@ -905,13 +1028,18 @@ watch(buySearch, throttle(async (val) => {
                 <div class="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div class="flex items-center">
-                        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-4xl mr-6 border border-gray-200 dark:border-gray-700 shadow-2xl">🛡️</div>
+                        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-4xl mr-6 border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden group">
+                            <img v-if="cp.logo_url" :src="cp.logo_url" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            <span v-else>🛡️</span>
+                        </div>
                         <div>
                             <h2 class="font-cinzel text-4xl text-gray-900 dark:text-white tracking-widest uppercase">{{ cp.name }}</h2>
                             <div class="flex items-center gap-3 mt-1">
                                 <span class="text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">{{ cp.server }}</span>
                                 <span class="text-gray-400 dark:text-gray-700">•</span>
                                 <span class="text-xs font-black uppercase tracking-widest text-gray-700 dark:text-gray-400">{{ cp.chronicle }}</span>
+                                <span class="text-gray-400 dark:text-gray-700">•</span>
+                                <span class="text-xs font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">{{ members.length }} {{ $t('party.members_count') }}</span>
                             </div>
                         </div>
                     </div>
@@ -945,6 +1073,7 @@ watch(buySearch, throttle(async (val) => {
                     <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.vault') }}</button>
                     <button @click="activeTab = 'crafting'" :class="activeTab === 'crafting' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.crafting') }}</button>
                     <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.points_settings') }}</button>
+                    <button v-if="isLeader" @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.settings') }}</button>
                 </div>
             </div>
 
@@ -978,7 +1107,17 @@ watch(buySearch, throttle(async (val) => {
                                 </div>
                             </div>
 
-                            <div class="col-span-5 flex items-center justify-end gap-3">
+                            <div class="col-span-5 flex items-center justify-end gap-3 px-4">
+                                <!-- Member Donation Button (Current User) -->
+                                <button
+                                    v-if="member.id === $page.props.auth.user.id && member.adena_owed > 0"
+                                    class="px-3 py-2 rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-950/20 active:scale-95 transition-all"
+                                    @click.stop="donateAdena(member.adena_owed)"
+                                    :title="$t('party.donation.btn_title')"
+                                >
+                                    💝 {{ $t('party.donation.btn_label') }}
+                                </button>
+
                                 <button
                                     v-if="isLeader && member.membership_status === 'pending' && member.id !== cp.leader_id"
                                     class="px-3 py-2 rounded-xl bg-yellow-500/90 hover:bg-yellow-500 text-gray-900 text-[10px] font-black uppercase tracking-widest border border-yellow-600/30"
@@ -986,6 +1125,7 @@ watch(buySearch, throttle(async (val) => {
                                 >
                                     {{ $t('common.approve') }}
                                 </button>
+
                                 <div class="bg-white/70 border border-gray-200 rounded-xl px-3 py-2 dark:bg-black/40 dark:border-gray-800 text-right min-w-[92px]">
                                     <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.member.owed') }}</div>
                                     <div class="text-sm font-cinzel text-orange-600 dark:text-orange-500 mt-0.5" v-tooltip="formatAdenaFull(member.adena_owed || 0)">{{ formatAdenaShort(member.adena_owed || 0) }}</div>
@@ -993,6 +1133,40 @@ watch(buySearch, throttle(async (val) => {
                                 <div class="bg-white/70 border border-gray-200 rounded-xl px-3 py-2 dark:bg-black/40 dark:border-gray-800 text-right min-w-[92px]">
                                     <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.member.paid') }}</div>
                                     <div class="text-sm font-cinzel text-emerald-700 dark:text-green-400 mt-0.5" v-tooltip="formatAdenaFull(member.adena_paid || 0)">{{ formatAdenaShort(member.adena_paid || 0) }}</div>
+                                </div>
+
+                                <!-- Consolidation: Management Actions -->
+                                <div class="flex items-center gap-1.5 ml-2 border-l border-gray-200 dark:border-gray-800 pl-3" v-if="(isAdmin || isLeader) && member.id !== $page.props.auth.user.id">
+                                    <button 
+                                        @click.stop="openUserAdenaModal(member)"
+                                        class="p-2 bg-gray-100 hover:bg-purple-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                                        :title="$t('system.users.actions.manage_adena')"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </button>
+                                    <button 
+                                        @click.stop="openUserEditModal(member)"
+                                        class="p-2 bg-gray-100 hover:bg-blue-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                                        :title="$t('system.users.actions.edit_role_cp')"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button
+                                        v-if="member.membership_status === 'banned'"
+                                        @click.stop="unbanUser(member)"
+                                        class="p-2 bg-gray-100 hover:bg-green-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                                        :title="$t('system.users.actions.reactivate_user')"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </button>
+                                    <button
+                                        v-else
+                                        @click.stop="banUser(member)"
+                                        class="p-2 bg-gray-100 hover:bg-red-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                                        :title="$t('system.users.actions.ban_user')"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1146,25 +1320,33 @@ watch(buySearch, throttle(async (val) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.items') }}</div>
-                            <div class="text-2xl font-cinzel text-gray-900 dark:text-white mt-1">{{ warehouseItemsTotal }}</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                        <div class="l2-panel p-6 rounded-3xl border-purple-500/15 bg-gradient-to-br from-purple-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                            <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💰</div>
+                            <div class="text-[10px] text-purple-700 dark:text-purple-300 font-black uppercase tracking-widest mb-1">{{ $t('party.vault.adena_in_warehouse') }}</div>
+                            <div class="text-3xl font-cinzel text-gray-900 dark:text-white" v-tooltip="formatAdenaFull(warehouseAdena || 0)">{{ formatAdenaShort(warehouseAdena || 0) }}</div>
+                            <div class="mt-2 text-[10px] text-purple-500 font-bold uppercase tracking-widest">{{ $t('common.warehouse') }}</div>
                         </div>
 
-                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.vault.adena_in_warehouse') }}</div>
-                            <div class="text-2xl font-cinzel text-purple-700 dark:text-purple-300 mt-1" v-tooltip="formatAdenaFull(warehouseAdena || 0)">{{ formatAdenaShort(warehouseAdena || 0) }}</div>
+                        <div class="l2-panel p-6 rounded-3xl border-emerald-500/15 bg-gradient-to-br from-emerald-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                            <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💎</div>
+                            <div class="text-[10px] text-emerald-700 dark:text-emerald-500 font-black uppercase tracking-widest mb-1">{{ $t('cp.metrics.adena_net') }}</div>
+                            <div class="text-3xl font-cinzel text-emerald-700 dark:text-emerald-400" v-tooltip="formatAdenaFull(warehouseAdenaNet || 0)">{{ formatAdenaShort(warehouseAdenaNet || 0) }}</div>
+                            <div class="mt-2 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">{{ $t('common.liquid_assets') }}</div>
                         </div>
 
-                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.vault.adena_owed') }}</div>
-                            <div class="text-2xl font-cinzel text-orange-600 dark:text-orange-500 mt-1" v-tooltip="formatAdenaFull(cpAdenaOwed || 0)">{{ formatAdenaShort(cpAdenaOwed || 0) }}</div>
+                        <div class="l2-panel p-6 rounded-3xl border-orange-500/15 bg-gradient-to-br from-orange-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                            <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💸</div>
+                            <div class="text-[10px] text-orange-600 dark:text-orange-500 font-black uppercase tracking-widest mb-1">{{ $t('party.vault.adena_owed') }}</div>
+                            <div class="text-3xl font-cinzel text-orange-600 dark:text-orange-500" v-tooltip="formatAdenaFull(cpAdenaOwed || 0)">{{ formatAdenaShort(cpAdenaOwed || 0) }}</div>
+                            <div class="mt-2 text-[10px] text-orange-500 font-bold uppercase tracking-widest">{{ $t('common.pending_debt') }}</div>
                         </div>
 
-                        <div class="bg-white/70 border border-gray-200 p-4 rounded-2xl dark:bg-black/40 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('party.vault.adena_paid') }}</div>
-                            <div class="text-2xl font-cinzel text-emerald-700 dark:text-green-400 mt-1" v-tooltip="formatAdenaFull(cpAdenaPaid || 0)">{{ formatAdenaShort(cpAdenaPaid || 0) }}</div>
+                        <div class="l2-panel p-6 rounded-3xl border-blue-500/15 bg-gradient-to-br from-blue-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                            <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🤝</div>
+                            <div class="text-[10px] text-emerald-700 dark:text-green-400 font-black uppercase tracking-widest mb-1">{{ $t('party.vault.adena_paid') }}</div>
+                            <div class="text-3xl font-cinzel text-emerald-700 dark:text-emerald-400" v-tooltip="formatAdenaFull(cpAdenaPaid || 0)">{{ formatAdenaShort(cpAdenaPaid || 0) }}</div>
+                            <div class="mt-2 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">{{ $t('common.total_distributed') }}</div>
                         </div>
                     </div>
 
@@ -1550,6 +1732,78 @@ watch(buySearch, throttle(async (val) => {
 
                 <div class="p-6 bg-purple-950/10 border border-purple-500/15 rounded-2xl text-xs text-purple-700 dark:text-purple-200 font-bold italic">
                     {{ $t('party.points.hint') }}
+                </div>
+            </div>
+
+            <!-- Settings Tab (Leader Only) -->
+            <div v-if="activeTab === 'settings' && isLeader" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="l2-panel p-6 rounded-3xl border-gray-800 bg-white/60 dark:bg-black/40 shadow-xl">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ $t('cp.settings.logo_section') }}</div>
+                            <div class="flex flex-col items-center">
+                                <div class="w-32 h-32 rounded-3xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-black/60 flex items-center justify-center overflow-hidden mb-4 relative group">
+                                    <img v-if="logoPreview || cp.logo_url" :src="logoPreview || cp.logo_url" class="w-full h-full object-cover">
+                                    <div v-else class="text-4xl text-gray-300">⚔️</div>
+                                    <label class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                                        <input type="file" class="hidden" accept="image/*" @change="onLogoChange">
+                                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    </label>
+                                </div>
+                                <p class="text-[10px] text-gray-500 font-bold text-center uppercase tracking-widest leading-relaxed">{{ $t('cp.settings.logo_tip') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="l2-panel p-6 rounded-3xl border-gray-800 bg-white/60 dark:bg-black/40 shadow-xl text-center">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('party.invite.title') }}</div>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">{{ $t('party.invite.description') }}</p>
+                            <button @click="copyInviteLink" class="w-full py-4 rounded-2xl bg-gray-900 border border-gray-700 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-3">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                                {{ $t('party.invite.copy_btn') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <div class="l2-panel p-8 rounded-[2rem] border-gray-800 bg-white/60 dark:bg-black/40 shadow-2xl">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                {{ $t('cp.settings.general_title') }}
+                            </div>
+                            
+                            <div class="space-y-8">
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{{ $t('form.cp_name') }}</label>
+                                    <input v-model="cpSettingsForm.name" type="text" class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-2xl focus:ring-purple-600 h-14 px-6 font-bold shadow-inner dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
+                                    <div v-if="cpSettingsForm.errors.name" class="mt-2 text-[10px] text-red-500 font-bold uppercase tracking-widest">{{ cpSettingsForm.errors.name }}</div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{{ $t('form.server') }}</label>
+                                    <input v-model="cpSettingsForm.server" type="text" class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-2xl focus:ring-purple-600 h-14 px-6 font-bold shadow-inner dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
+                                    <div v-if="cpSettingsForm.errors.server" class="mt-2 text-[10px] text-red-500 font-bold uppercase tracking-widest">{{ cpSettingsForm.errors.server }}</div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{{ $t('form.chronicle') }}</label>
+                                    <div class="w-full bg-gray-100/80 border border-gray-200 text-gray-400 dark:text-gray-600 rounded-2xl px-6 h-14 flex items-center font-bold dark:bg-gray-800/20 dark:border-gray-700">
+                                        {{ cp.chronicle }}
+                                    </div>
+                                    <p class="mt-3 text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-loose">{{ $t('cp.settings.chronicle_locked_tip') }}</p>
+                                </div>
+
+                                <div class="pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-end">
+                                    <button 
+                                        @click="submitCpSettings" 
+                                        :disabled="cpSettingsForm.processing"
+                                        class="px-10 py-4 bg-gradient-to-tr from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition shadow-xl shadow-purple-950/50 disabled:opacity-30 active:scale-95 translate-y-0 hover:-translate-y-1"
+                                    >
+                                        {{ $t('common.save_changes') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1969,6 +2223,99 @@ watch(buySearch, throttle(async (val) => {
                 <button @click="buyStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
                 <button @click="submitBuyStock" :disabled="buyForm.items.length === 0 || !buyForm.adena_spent" class="flex-[2] py-4 bg-gradient-to-tr from-amber-700 to-orange-600 hover:from-amber-600 hover:to-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-amber-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Management: User Edit Modal -->
+    <div v-if="showUserEditModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+        <div class="l2-panel w-full max-w-md rounded-3xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-blue-900 to-indigo-900 p-5 flex justify-between items-center border-b border-blue-500/20">
+                <div>
+                    <div class="text-[10px] text-white/70 font-black uppercase tracking-widest mb-1">{{ $t('system.users.actions.edit_role_cp') }}</div>
+                    <div class="text-xl font-cinzel text-white uppercase tracking-widest">{{ selectedUserForManagement?.name }}</div>
+                </div>
+                <button @click="showUserEditModal = false" class="text-white/50 hover:text-white transition-all hover:scale-110 active:scale-95">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form @submit.prevent="submitUserEdit" class="p-6 space-y-6">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('common.role') }}</label>
+                    <select v-model="userEditForm.role_id" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-blue-600 h-12 px-4 font-bold dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                    </select>
+                </div>
+
+                <div v-if="isAdmin">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('common.const_party') }}</label>
+                    <select v-model="userEditForm.cp_id" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-blue-600 h-12 px-4 font-bold dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <option :value="null">{{ $t('common.none') }}</option>
+                        <option v-for="c in cps" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                    <button type="button" @click="showUserEditModal = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-2xl font-bold uppercase tracking-widest text-xs transition active:scale-95">
+                        {{ $t('common.cancel') }}
+                    </button>
+                    <button type="submit" :disabled="userEditForm.processing" class="flex-[2] py-4 bg-gradient-to-tr from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-blue-950/50 active:scale-95 disabled:opacity-30">
+                        {{ $t('common.save') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Management: User Adena Adjustment Modal -->
+    <div v-if="showUserAdenaModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+        <div class="l2-panel w-full max-w-md rounded-3xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-purple-900 to-indigo-900 p-5 flex justify-between items-center border-b border-purple-500/20">
+                <div>
+                    <div class="text-[10px] text-white/70 font-black uppercase tracking-widest mb-1">{{ $t('system.users.actions.manage_adena') }}</div>
+                    <div class="text-xl font-cinzel text-white uppercase tracking-widest">{{ selectedUserForManagement?.name }}</div>
+                </div>
+                <button @click="showUserAdenaModal = false" class="text-white/50 hover:text-white transition-all hover:scale-110 active:scale-95">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form @submit.prevent="submitUserAdena" class="p-6 space-y-6">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('common.amount') }} ({{ $t('system.users.adena_adjustment_hint') }})</label>
+                    <input v-model="userAdenaForm.amount" type="number" step="1" required class="w-full h-16 bg-white/80 border border-purple-400/60 text-purple-900 rounded-2xl text-center font-cinzel text-3xl tracking-widest focus:ring-purple-600 dark:bg-black/60 dark:border-purple-700/60 dark:text-purple-300">
+                    <div class="text-center mt-2 font-cinzel text-sm text-purple-400" v-if="userAdenaForm.amount">{{ formatAdenaFull(userAdenaForm.amount) }} adena</div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('common.description') }}</label>
+                    <textarea v-model="userAdenaForm.description" required class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 p-4 font-bold dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 placeholder:italic placeholder:font-normal" :placeholder="$t('system.users.adena_description_placeholder')"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('common.screenshot_optional') }}</label>
+                    <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
+                        <div v-if="!userAdenaForm.image_proof" class="flex flex-col items-center justify-center py-4">
+                            <svg class="w-6 h-6 mb-2 text-gray-500 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <p class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                        </div>
+                        <div v-else class="text-emerald-500 flex flex-col items-center">
+                            <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span class="text-[10px] font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
+                        </div>
+                        <input type="file" @input="userAdenaForm.image_proof = $event.target.files[0]" class="hidden" accept="image/*">
+                    </label>
+                </div>
+
+                <div class="flex gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                    <button type="button" @click="showUserAdenaModal = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-2xl font-bold uppercase tracking-widest text-xs transition active:scale-95">
+                        {{ $t('common.cancel') }}
+                    </button>
+                    <button type="submit" :disabled="userAdenaForm.processing" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 active:scale-95 disabled:opacity-30">
+                        {{ $t('common.save') }}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </template>

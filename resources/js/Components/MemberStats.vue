@@ -144,7 +144,56 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
 
 <template>
     <div class="space-y-6">
-        <h2 class="text-2xl text-gray-900 dark:text-gray-200 font-bold l2-title">{{ $t('member.title') }}</h2>
+        <h2 class="text-2xl text-gray-900 dark:text-gray-200 font-bold l2-title mb-6">{{ $t('member.title') }}</h2>
+
+        <!-- CP KPIs for Members -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="l2-panel p-6 rounded-3xl border-purple-500/15 bg-gradient-to-br from-purple-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💰</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80 mb-2">{{ $t('party.vault.adena_in_warehouse') }}</div>
+                <div class="text-3xl font-cinzel text-gray-900 dark:text-white" v-tooltip="formatAdenaFull(stats.warehouse_adena || 0)">{{ formatAdenaShort(stats.warehouse_adena || 0) }}</div>
+                <div class="mt-2 text-[10px] text-purple-500 font-bold uppercase tracking-widest">{{ $t('common.warehouse') }}</div>
+            </div>
+
+            <div class="l2-panel p-6 rounded-3xl border-emerald-500/15 bg-gradient-to-br from-emerald-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💎</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80 mb-2">{{ $t('cp.metrics.adena_net') }}</div>
+                <div class="text-3xl font-cinzel text-emerald-700 dark:text-emerald-400" v-tooltip="formatAdenaFull(stats.warehouse_adena_net || 0)">{{ formatAdenaShort(stats.warehouse_adena_net || 0) }}</div>
+                <div class="mt-2 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">{{ $t('common.liquid_assets') }}</div>
+            </div>
+
+            <div v-if="insights.cpAdenaOwed != null" class="l2-panel p-6 rounded-3xl border-orange-500/15 bg-gradient-to-br from-orange-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💸</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-orange-700 dark:text-orange-300/80 mb-2">{{ $t('cp.metrics.adena_to_pay') }}</div>
+                <div class="text-3xl font-cinzel text-orange-600 dark:text-orange-500" v-tooltip="formatAdenaFull(insights.cpAdenaOwed || 0)">{{ formatAdenaShort(insights.cpAdenaOwed || 0) }}</div>
+                <div class="mt-2 text-[10px] text-orange-500 font-bold uppercase tracking-widest">{{ $t('common.pending_debt') }}</div>
+            </div>
+
+            <div v-if="insights.cpAdenaPaid != null" class="l2-panel p-6 rounded-3xl border-blue-500/15 bg-gradient-to-br from-blue-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🤝</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80 mb-2">{{ $t('cp.metrics.adena_paid') }}</div>
+                <div class="text-3xl font-cinzel text-blue-700 dark:text-blue-400" v-tooltip="formatAdenaFull(insights.cpAdenaPaid || 0)">{{ formatAdenaShort(insights.cpAdenaPaid || 0) }}</div>
+                <div class="mt-2 text-[10px] text-blue-500 font-bold uppercase tracking-widest">{{ $t('common.total_distributed') }}</div>
+            </div>
+        </div>
+
+        <!-- Hero Action Section for Members -->
+        <div class="l2-panel mb-8 p-8 rounded-3xl border-purple-500/20 bg-gradient-to-r from-purple-900/10 via-blue-900/10 to-transparent backdrop-blur flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+             <div class="absolute inset-0 bg-[url('/img/l2-pattern.png')] opacity-[0.03] pointer-events-none"></div>
+             <div class="relative">
+                <h3 class="font-cinzel text-2xl text-gray-900 dark:text-white tracking-[0.1em] uppercase mb-1">{{ $t('cp.hero.title', { name: currentUser?.name }) }}</h3>
+                <p class="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">{{ $t('cp.hero.subtitle') }}</p>
+             </div>
+             <div class="flex items-center gap-4 relative">
+                <Link v-if="!isPending" :href="route('loot.index')" class="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-white/70 hover:bg-white text-gray-900 text-xs font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition-all hover:scale-105 active:scale-95 shadow-xl">
+                    <span class="mr-2">🕒</span> {{ $t('member.pending') }}: {{ stats.pending_reports || 0 }}
+                </Link>
+                <button v-if="!isPending" @click="openLootModal" class="inline-flex items-center justify-center h-14 px-10 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-sm font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-purple-900/30">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+                    {{ $t('member.actions.report_session') }}
+                </button>
+             </div>
+        </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
             <div class="xl:col-span-8 space-y-6">
@@ -157,20 +206,11 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                                 <span v-if="currentCp?.server" class="ml-2 text-[10px] font-black uppercase tracking-widest text-blue-700/80 dark:text-blue-300/80">{{ currentCp.server }}</span>
                                 <span v-if="currentCp?.chronicle" class="ml-2 text-[10px] font-black uppercase tracking-widest text-purple-700/70 dark:text-purple-300/80">{{ currentCp.chronicle }}</span>
                             </div>
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">
-                                {{ $t('member.pending') }}: <span class="text-gray-900 dark:text-white">{{ stats.pending_reports || 0 }}</span> • {{ $t('member.reports') }}: <span class="text-gray-900 dark:text-white">{{ stats.total_reports || 0 }}</span>
-                            </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <Link v-if="!isPending" :href="route('party.index')" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition">
                                 {{ $t('member.actions.members_balances') }}
                             </Link>
-                            <Link v-if="!isPending" :href="route('loot.index')" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 dark:from-purple-600/40 dark:to-blue-600/40 dark:hover:from-purple-600/55 dark:hover:to-blue-600/55 text-white text-[10px] leading-none font-black uppercase tracking-widest border border-purple-500/30 transition">
-                                {{ $t('nav.loot') }} ({{ stats.pending_reports || 0 }})
-                            </Link>
-                            <button v-if="!isPending" @click="openLootModal" class="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition">
-                                {{ $t('member.actions.report_session') }}
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -276,21 +316,6 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         <div class="p-4 rounded-xl border border-gray-200 bg-white/70 dark:border-gray-800 dark:bg-black/30">
                             <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('member.summary.paid') }}</div>
                             <div class="text-2xl font-cinzel text-emerald-700 dark:text-green-400 mt-1" v-tooltip="formatAdenaFull(stats.personal_adena_paid || 0)">{{ formatAdenaShort(stats.personal_adena_paid || 0) }}</div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('nav.cp_vault') }}</span>
-                            <span class="font-black text-gray-900 dark:text-white" v-tooltip="formatAdenaFull(stats.warehouse_adena || 0)">{{ formatAdenaShort(stats.warehouse_adena || 0) }}</span>
-                        </div>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.summary.cp_owed') }}</span>
-                            <span class="font-black text-orange-600 dark:text-orange-500" v-tooltip="formatAdenaFull(insights.cpAdenaOwed || 0)">{{ formatAdenaShort(insights.cpAdenaOwed || 0) }}</span>
-                        </div>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('member.summary.cp_paid') }}</span>
-                            <span class="font-black text-emerald-700 dark:text-green-400" v-tooltip="formatAdenaFull(insights.cpAdenaPaid || 0)">{{ formatAdenaShort(insights.cpAdenaPaid || 0) }}</span>
                         </div>
                     </div>
                 </div>

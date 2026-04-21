@@ -62,6 +62,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $authUser ? clone $authUser->load('role', 'cp') : null,
+                'isImpersonating' => $request->session()->has('impersonated_by'),
             ],
             'app' => [
                 'name' => (string) config('app.name', 'AdenaLedger'),

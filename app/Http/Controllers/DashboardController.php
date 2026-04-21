@@ -42,23 +42,49 @@ class DashboardController extends Controller
             $stats['total_items'] = Item::count();
             $stats['total_points_global'] = PointsLog::sum('points');
 
+            $stats['active_users_24h'] = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subDay())
+                ->distinct('user_id')
+                ->count('user_id');
+
+            $stats['active_users_1h'] = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subHour())
+                ->distinct('user_id')
+                ->count('user_id');
+
+            $stats['total_visits_24h'] = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subDay())->count();
+
             $cps = ConstParty::with('leader')->withCount('members')->orderBy('name')->get();
 
-            // Simple chart data: Reports created in the last 7 days
-            $days = collect(range(6, 0))->map(fn ($day) => now()->subDays($day)->format('Y-m-d'));
-            $reportActivity = LootReport::where('created_at', '>=', now()->subDays(7))
+            // Refined chart data: Visits vs Reports (last 14 days)
+            $days = collect(range(13, 0))->map(fn ($day) => now()->subDays($day)->format('Y-m-d'));
+            
+            $visitActivity = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subDays(14))
+                ->selectRaw('DATE(created_at) as date, count(*) as count')
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            $reportActivity = LootReport::where('created_at', '>=', now()->subDays(14))
                 ->selectRaw('DATE(created_at) as date, count(*) as count')
                 ->groupBy('date')
                 ->pluck('count', 'date');
 
             $chartData = [
-                'labels' => $days->map(fn ($d) => date('D', strtotime($d))),
+                'labels' => $days->map(fn ($d) => date('d M', strtotime($d))),
                 'datasets' => [
+                    [
+                        'label' => 'Visitas Totales',
+                        'data' => $days->map(fn ($d) => $visitActivity->get($d, 0)),
+                        'borderColor' => '#8b5cf6',
+                        'backgroundColor' => 'rgba(139, 92, 246, 0.1)',
+                        'fill' => true,
+                        'tension' => 0.4,
+                    ],
                     [
                         'label' => 'Drops Reportados',
                         'data' => $days->map(fn ($d) => $reportActivity->get($d, 0)),
                         'borderColor' => '#3b82f6',
-                        'backgroundColor' => 'rgba(59, 130, 246, 0.25)',
+                        'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                        'fill' => true,
+                        'tension' => 0.4,
                     ],
                 ],
             ];
@@ -223,6 +249,8 @@ class DashboardController extends Controller
                 ->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])
                 ->sum('adena'));
             $cpAdenaOwed = max(0, $cpAdenaGained - $cpAdenaPaid);
+
+            $stats['warehouse_adena_net'] = $stats['warehouse_adena'] - $cpAdenaOwed;
 
             $since = now()->subDays(7);
 

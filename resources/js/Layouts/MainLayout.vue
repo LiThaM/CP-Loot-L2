@@ -36,6 +36,46 @@ const setLocale = (nextLocale) => {
     router.post(route('locale.set'), { locale: val }, { preserveScroll: true });
 };
 
+const handleLanguageAutomation = () => {
+    const pref = user.value?.language_preference ?? 'system';
+    if (pref !== 'system') {
+        // User has an explicit preference — sync session if needed
+        if (pref !== locale.value) setLocale(pref);
+        return;
+    }
+    // 'system': detect from browser
+    const browserLang = (navigator.language || 'en').split('-')[0];
+    const targetLocale = ['es', 'en'].includes(browserLang) ? browserLang : 'en';
+    if (targetLocale !== locale.value) {
+        setLocale(targetLocale);
+    }
+};
+
+const handleThemeAutomation = () => {
+    const pref = user.value?.theme_preference ?? 'system';
+
+    if (pref === 'light') {
+        darkMode.value = false;
+        document.documentElement.classList.remove('dark');
+        return;
+    }
+    if (pref === 'dark') {
+        darkMode.value = true;
+        document.documentElement.classList.add('dark');
+        return;
+    }
+    // 'system': follow OS
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateTheme = (isDark) => {
+        darkMode.value = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { dark: isDark } }));
+    };
+    
+    updateTheme(mediaQuery.matches);
+    mediaQuery.addEventListener('change', (e) => updateTheme(e.matches));
+};
+
 const showingNavigationDropdown = ref(false);
 const darkMode = ref(false);
 const alertsOpen = ref(false);
@@ -154,16 +194,9 @@ const openLootModal = () => {
 onMounted(() => {
     emitter.on('open-loot-modal', openLootModal);
     emitter.on('toast', showToast);
-    const pref = localStorage.getItem('theme');
-    if (pref === 'dark') {
-        darkMode.value = true;
-    } else if (pref === 'light') {
-        darkMode.value = false;
-    } else {
-        darkMode.value = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    document.documentElement.classList.toggle('dark', darkMode.value);
-    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { dark: darkMode.value } }));
+    
+    handleLanguageAutomation();
+    handleThemeAutomation();
 });
 
 onUnmounted(() => {
@@ -414,6 +447,25 @@ watch(() => alerts.value.items, (items) => {
                 </div>
             </div>
         </div>
+
+        <!-- Impersonation Banner -->
+        <div v-if="$page.props.auth.isImpersonating" class="sticky top-0 z-[100] bg-gradient-to-r from-red-600 to-amber-600 dark:from-red-900 dark:to-amber-900 text-white px-4 py-2 shadow-xl border-b border-white/20">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl animate-pulse">🎭</span>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 leading-none mb-1">{{ $t('nav.impersonation.active') }}</div>
+                        <div class="text-xs font-bold truncate">{{ $t('nav.impersonation.viewing_as', { name: user.name }) }}</div>
+                    </div>
+                </div>
+                <button 
+                    @click="router.post(route('admin.impersonate.leave'))"
+                    class="px-4 py-2 bg-white text-red-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition shadow-lg active:scale-95"
+                >
+                    {{ $t('nav.impersonation.leave') }}
+                </button>
+            </div>
+        </div>
         <!-- Main Navbar (Top) -->
         <nav class="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 shadow-md sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -427,6 +479,7 @@ watch(() => alerts.value.items, (items) => {
                     <div class="hidden lg:flex items-center space-x-8">
                         <template v-if="isAdmin">
                             <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.dashboard') }}</Link>
+                            <Link :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">{{ $t('nav.members') }}</Link>
                             <Link :href="route('system.items.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.items.index')}">{{ $t('nav.items') }}</Link>
                             <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">{{ $t('nav.translations') }}</Link>
                             <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
@@ -438,45 +491,11 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">{{ $t('nav.cp_vault') }}</Link>
                             <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">{{ $t('nav.warehouse') }}</Link>
                             <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">{{ $t('nav.items_db') }}</Link>
-                            <Link v-if="canAuditCp" :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">{{ $t('nav.members') }}</Link>
                             <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
                         </template>
                     </div>
 
                     <div v-if="user" class="flex items-center space-x-3 relative">
-                        <div :class="darkMode ? 'border-white/10 bg-gray-950/80 shadow-black/20' : 'border-gray-200 bg-white/80 shadow-lg shadow-purple-500/5'" class="flex items-center h-10 rounded-xl border backdrop-blur-md p-1 transition-all">
-                            <button
-                                type="button"
-                                class="w-8 h-8 flex items-center justify-center text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                                :class="locale === 'es'
-                                    ? 'bg-gray-900 text-white shadow-lg dark:bg-white dark:text-gray-900'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'"
-                                @click="setLocale('es')"
-                            >
-                                {{ $t('lang.es') }}
-                            </button>
-                            <button
-                                type="button"
-                                class="w-8 h-8 flex items-center justify-center text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                                :class="locale === 'en'
-                                    ? 'bg-gray-900 text-white shadow-lg dark:bg-white dark:text-gray-900'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-900/70'"
-                                @click="setLocale('en')"
-                            >
-                                {{ $t('lang.en') }}
-                            </button>
-                        </div>
-
-                        <button @click="toggleDark" class="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 shadow-lg shadow-purple-500/5 dark:shadow-black/20 transition duration-300 group/theme" :title="$t('nav.theme')">
-                            <!-- Show Moon when Light to transition to Dark -->
-                            <svg v-if="!darkMode" class="w-5 h-5 text-indigo-600 transition-transform duration-500 group-hover/theme:rotate-12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
-                            <!-- Show Sun when Dark to transition to Light -->
-                            <svg v-else class="w-5 h-5 text-yellow-400 transition-transform duration-500 group-hover/theme:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                            </svg>
-                        </button>
 
                         <div class="relative">
                             <button @click="alertsOpen = !alertsOpen" class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition relative">
@@ -510,7 +529,6 @@ watch(() => alerts.value.items, (items) => {
                             </button>
                             <div v-if="userMenuOpen" class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl py-2">
                                 <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.profile') }}</Link>
-                                <button type="button" @click="showSupportModal = true; userMenuOpen = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.support') }}</button>
                                 <button type="button" @click="showDonationModal = true; userMenuOpen = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.donations') }}</button>
                                 <button @click="router.post(route('logout'))" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.logout') }}</button>
                             </div>

@@ -301,17 +301,13 @@ const formatAdenaFull = (val) => {
 
 const entryAmountText = (report, entry) => {
     if (!isAdenaEntry(entry)) return `x${formatQty(entry?.amount)}`;
-    const amount = formatAdenaShort(entry?.amount);
-    if (report?.event_type === 'ADENA_PAYOUT') return `-${amount}`;
-    if (report?.event_type === 'ADENA_GRANT') return `+${amount}`;
+    const amount = formatAdenaShort(Math.abs(entry?.amount || 0));
     return `x${amount}`;
 };
 
 const entryAmountTitle = (report, entry) => {
     if (!isAdenaEntry(entry)) return null;
     const amount = formatAdenaFull(Math.abs(entry?.amount ?? 0));
-    if (report?.event_type === 'ADENA_PAYOUT') return `-${amount}`;
-    if (report?.event_type === 'ADENA_GRANT') return `+${amount}`;
     return `x${amount}`;
 };
 
@@ -323,9 +319,16 @@ const showPointsResolve = computed(() => {
 
 const entryAmountClass = (report, entry) => {
     if (!isAdenaEntry(entry)) return 'text-gray-700 dark:text-gray-200';
-    if (report?.event_type === 'ADENA_PAYOUT') return 'text-red-500';
-    if (report?.event_type === 'ADENA_GRANT') return 'text-green-400';
-    return 'text-red-500';
+    const type = String(report?.event_type || '').toUpperCase();
+    const amount = Number(entry?.amount || 0);
+    
+    const gains = ['FARM', 'BOSS', 'EPIC', 'SIEGE', 'ADENA_GRANT', 'SELL', 'VENTA', 'RETURN', 'ADMIN_ADJUST_IN', 'ADENA_GAIN'];
+    const losses = ['ADENA_PAYOUT', 'WAREHOUSE_CRAFT_CONSUME', 'ADMIN_ADJUST_OUT', 'CRAFT', 'ADENA_OFFSET', 'BUY', 'COMPRA'];
+    
+    if (losses.includes(type) || amount < 0) return 'text-red-500';
+    if (gains.includes(type) || amount > 0) return 'text-emerald-600 dark:text-emerald-400';
+    
+    return 'text-emerald-600 dark:text-emerald-400';
 };
 
 const getItemToneClass = (item) => {

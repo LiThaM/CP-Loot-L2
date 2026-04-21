@@ -133,15 +133,21 @@ const toggleTheme = () => {
 };
 
 onMounted(() => {
-    const pref = localStorage.getItem('theme');
-    if (pref === 'dark') {
-        darkMode.value = true;
-    } else if (pref === 'light') {
-        darkMode.value = false;
-    } else {
-        darkMode.value = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
+    // Automate Theme
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkMode.value = mediaQuery.matches;
     document.documentElement.classList.toggle('dark', darkMode.value);
+    
+    mediaQuery.addEventListener('change', e => {
+        darkMode.value = e.matches;
+        document.documentElement.classList.toggle('dark', e.matches);
+    });
+
+    // Automate Language
+    const browserLang = navigator.language.split('-')[0];
+    if (['en', 'es'].includes(browserLang) && appLocale.value !== browserLang) {
+        setLocale(browserLang);
+    }
 });
 
 // Particles init
@@ -199,7 +205,25 @@ const handleMouseLeave = () => {
 </script>
 
 <template>
-    <Head :title="appName" />
+    <Head>
+        <title>{{ appName }} - {{ $t('app.tagline') }}</title>
+        <meta name="description" :content="$t('welcome.seo.description')" />
+        <meta name="keywords" content="Lineage 2, L2, Const Party, Loot Manager, Adena Ledger, CP Management, Raid Boss, DKP, Crafting Tree" />
+        
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website" />
+        <meta property="og:url" :content="route('home')" />
+        <meta property="og:title" :content="appName + ' - ' + $t('app.tagline')" />
+        <meta property="og:description" :content="$t('welcome.seo.description')" />
+        <meta property="og:image" content="/images/bg_cinematic.png" />
+
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" :content="route('home')" />
+        <meta property="twitter:title" :content="appName + ' - ' + $t('app.tagline')" />
+        <meta property="twitter:description" :content="$t('welcome.seo.description')" />
+        <meta property="twitter:image" content="/images/bg_cinematic.png" />
+    </Head>
     <div :class="darkMode ? 'bg-gray-950 text-gray-200' : 'bg-gray-50 text-gray-900'" class="min-h-screen font-sans selection:bg-purple-500/30 selection:text-purple-900 relative transition-colors duration-500 overflow-hidden">
         
         <!-- Cinematic Full-screen Background -->
@@ -236,29 +260,6 @@ const handleMouseLeave = () => {
                         </div>
                     </Link>
 
-                    <div class="flex items-center gap-3">
-                        <!-- Language Switcher -->
-                        <div :class="darkMode ? 'border-white/10 bg-gray-950/80 shadow-black/20' : 'border-gray-200 bg-white/80 shadow-lg shadow-purple-500/5'" class="flex items-center h-10 rounded-xl border backdrop-blur-md p-1 transition-all">
-                            <button type="button" class="w-8 h-8 flex items-center justify-center text-sm rounded-lg transition-all duration-300" :class="appLocale === 'es' ? 'bg-purple-600 shadow-[0_0_10px_rgba(147,51,234,0.3)] text-white' : 'opacity-50 hover:opacity-100' + (darkMode ? ' text-white' : ' text-gray-900')" @click="setLocale('es')" title="Español">
-                                🇪🇸
-                            </button>
-                            <button type="button" class="w-8 h-8 flex items-center justify-center text-sm rounded-lg transition-all duration-300" :class="appLocale === 'en' ? 'bg-purple-600 shadow-[0_0_10px_rgba(147,51,234,0.3)] text-white' : 'opacity-50 hover:opacity-100' + (darkMode ? ' text-white' : ' text-gray-900')" @click="setLocale('en')" title="English">
-                                🇬🇧
-                            </button>
-                        </div>
- 
-                        <!-- Theme Toggle -->
-                        <button @click="toggleTheme" :class="darkMode ? 'border-white/10 bg-gray-950/80 hover:border-purple-500 shadow-black/20' : 'border-gray-200 bg-white/80 hover:border-purple-400 shadow-lg shadow-purple-500/5'" class="w-10 h-10 flex items-center justify-center rounded-xl border backdrop-blur-md transition-all group/theme" :title="darkMode ? 'Light Mode' : 'Dark Mode'">
-                             <!-- Show Moon when Light to transition to Dark -->
-                            <svg v-if="!darkMode" class="w-5 h-5 text-indigo-500 transition-transform duration-500 group-hover/theme:rotate-12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
-                            <!-- Show Sun when Dark to transition to Light -->
-                            <svg v-else class="w-5 h-5 text-yellow-400 transition-transform duration-500 group-hover/theme:rotate-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                            </svg>
-                        </button>
-                    </div>
 
                         <div v-if="canLogin" class="hidden sm:flex items-center gap-3">
                             <Link
@@ -296,7 +297,7 @@ const handleMouseLeave = () => {
                         
                         <div :class="darkMode ? 'bg-black/60 border-purple-500/50 text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.3)]' : 'bg-white/90 border-purple-200 text-purple-700 shadow-md shadow-purple-500/5'" class="inline-flex items-center justify-center mx-auto gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-6 backdrop-blur-xl transition-all">
                             <span class="w-3 h-3 rounded-full bg-purple-400 animate-pulse shadow-[0_0_10px_rgba(192,132,252,0.8)]"></span>
-                            Premium Lineage 2 Tool
+                            {{ $t('welcome.hero.badge') }}
                         </div>
                         
                         <h1 :class="darkMode ? 'from-white via-slate-200 to-gray-500 drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)]' : 'from-indigo-900 via-purple-800 to-indigo-600 drop-shadow-sm'" class="text-5xl sm:text-7xl lg:text-[6rem] xl:text-[7rem] font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-b font-cinzel leading-[1.05]">
@@ -323,7 +324,7 @@ const handleMouseLeave = () => {
                                     <span class="relative z-10">{{ $t('welcome.hero.cta.register') }}</span>
                                 </Link>
                                 <a href="#features" :class="darkMode ? 'bg-black/60 border-white/20 text-white hover:bg-black/80 hover:border-white/40 shadow-[0_10px_30px_rgba(0,0,0,0.5)]' : 'bg-white/60 border-gray-200 text-gray-900 hover:bg-gray-100/80 hover:border-gray-300 shadow-md'" class="items-center justify-center px-8 py-[18px] rounded-xl font-black tracking-widest uppercase transition-all backdrop-blur-md text-center flex-1 whitespace-nowrap min-w-[220px]">
-                                    Learn More
+                                    {{ $t('welcome.hero.cta.learn_more') }}
                                 </a>
                             </template>
                         </div>
@@ -334,7 +335,7 @@ const handleMouseLeave = () => {
                 <section id="features" class="scroll-mt-24 pt-12">
                     <div class="text-center mb-16" v-motion-slide-visible-bottom>
                         <h2 :class="darkMode ? 'from-yellow-200 to-yellow-600' : 'from-yellow-600 to-yellow-900'" class="text-3xl sm:text-4xl md:text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r font-cinzel inline-block">
-                            System Features
+                            {{ $t('welcome.features.title') }}
                         </h2>
                         <div class="h-1 w-24 bg-gradient-to-r from-purple-600 to-yellow-500 mx-auto mt-6 rounded-full shadow-[0_0_10px_#9333ea]"></div>
                     </div>

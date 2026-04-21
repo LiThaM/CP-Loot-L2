@@ -65,7 +65,17 @@ const chartOptions = computed(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-        legend: { display: false },
+        legend: { 
+            display: true,
+            position: 'top',
+            labels: {
+                boxWidth: 8,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                color: themeIsDark.value ? '#94a3b8' : '#475569',
+                font: { family: 'Inter', size: 10, weight: 'bold' }
+            }
+        },
         tooltip: {
             backgroundColor: themeIsDark.value ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.92)',
             titleFont: { family: 'Cinzel', size: 14 },
@@ -151,34 +161,59 @@ const rejectRequest = async (req) => {
 
 <template>
     <div class="space-y-8 animate-in fade-in duration-700">
-        <!-- Global KPIs -->
+        <!-- Global Engagement & Analytics -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">📈</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Tráfico (24h)</div>
+                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_visits_24h }}</div>
+                <div class="mt-2 text-[10px] text-purple-500 font-bold uppercase tracking-widest">Visitas Totales</div>
+            </div>
+
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🟢</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">DAU (24h)</div>
+                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.active_users_24h }}</div>
+                <div class="mt-2 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Usuarios Únicos</div>
+            </div>
+
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
+                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">⚡</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">En Tiempo Real (1h)</div>
+                <div class="text-4xl font-cinzel text-indigo-600 dark:text-indigo-400 font-black">{{ stats.active_users_1h }}</div>
+                <div class="mt-2 text-[10px] text-indigo-500 font-bold uppercase tracking-widest">Sesiones Activas</div>
+            </div>
+
+            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
                 <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🛡️</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_cps') }}</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">CPs Registradas</div>
                 <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_cps }}</div>
-                <div class="mt-2 text-[10px] text-green-500 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_cps_hint') }}</div>
+                <div class="mt-2 text-[10px] text-blue-500 font-bold uppercase tracking-widest">Total Operativos</div>
             </div>
+        </div>
 
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">👥</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_members') }}</div>
-                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_members }}</div>
-                <div class="mt-2 text-[10px] text-orange-500 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_members_hint') }}</div>
+        <!-- System Totals -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl">👥</div>
+                <div>
+                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Usuarios Totales</div>
+                    <div class="text-xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_members }}</div>
+                </div>
             </div>
-
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">⚔️</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_reports') }}</div>
-                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_reports }}</div>
-                <div class="mt-2 text-[10px] text-purple-700 dark:text-purple-300 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_reports_hint') }}</div>
+            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xl">⚔️</div>
+                <div>
+                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Reports de Loot</div>
+                    <div class="text-xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_reports }}</div>
+                </div>
             </div>
-
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💎</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{{ $t('admin.kpis.total_points') }}</div>
-                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_points_global }}</div>
-                <div class="mt-2 text-[10px] text-blue-500 font-bold uppercase tracking-widest">{{ $t('admin.kpis.total_points_hint') }}</div>
+            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-xl">💰</div>
+                <div>
+                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Adena Global</div>
+                    <div class="text-xl font-cinzel text-gray-900 dark:text-white">{{ (stats.total_points_global / 1000000).toFixed(1) }}M</div>
+                </div>
             </div>
         </div>
 
@@ -279,20 +314,32 @@ const rejectRequest = async (req) => {
                         <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cps.title') }}</h3>
                     </div>
                     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                        <Link 
+                        <div 
                             v-for="cp in cps" 
                             :key="cp.id"
-                            :href="route('admin.cp.view', cp.id)"
                             class="flex items-center p-3 bg-white/70 border border-gray-200 rounded-xl hover:border-purple-500/50 transition group dark:bg-gray-900/50 dark:border-gray-800"
                         >
-                            <div class="flex-1">
+                            <Link :href="route('admin.cp.view', cp.id)" class="flex-1">
                                 <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300 transition">{{ cp.name }}</div>
-                                <div class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{{ cp.members_count }} {{ $t('common.members') }}</div>
+                                <div class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
+                                    {{ cp.members_count }} {{ $t('common.members') }}
+                                    <span v-if="cp.leader" class="ml-1 opacity-60">· {{ cp.leader.name }}</span>
+                                </div>
+                            </Link>
+                            <div class="flex items-center gap-2">
+                                <div :class="getChronicleColor(cp.chronicle)" class="text-[8px] font-black border border-current px-2 py-0.5 rounded uppercase">
+                                    {{ cp.chronicle }}
+                                </div>
+                                <button 
+                                    v-if="cp.leader_id"
+                                    @click="router.post(route('admin.impersonate', cp.leader_id))"
+                                    class="p-1 px-2 rounded bg-purple-100 text-purple-700 text-[11px] font-black uppercase tracking-tight hover:bg-purple-600 hover:text-white transition dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-600 dark:hover:text-white"
+                                    title="Impersonar Líder"
+                                >
+                                    🎭
+                                </button>
                             </div>
-                            <div :class="getChronicleColor(cp.chronicle)" class="text-[8px] font-black border border-current px-2 py-0.5 rounded uppercase">
-                                {{ cp.chronicle }}
-                            </div>
-                        </Link>
+                        </div>
                     </div>
                 </div>
             </div>
