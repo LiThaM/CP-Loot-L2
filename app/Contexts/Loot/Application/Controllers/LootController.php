@@ -34,6 +34,7 @@ class LootController extends Controller
 
         $historySearch = trim((string) $request->query('history_search', ''));
         $historySort = strtolower((string) $request->query('history_sort', 'newest'));
+        $historyType = strtolower(trim((string) $request->query('history_type', 'all')));
         $historyPerPage = max(5, min(50, (int) $request->query('history_per_page', 10)));
         $historyPage = max(1, (int) $request->query('history_page', 1));
         $historyDir = $historySort === 'oldest' ? 'asc' : 'desc';
@@ -41,6 +42,14 @@ class LootController extends Controller
         $historyQuery = LootReport::with(['entries.item', 'requestedBy'])
             ->where('cp_id', $user->cp_id)
             ->whereIn('status', ['confirmed', 'rejected']);
+
+        if ($historyType !== '' && $historyType !== 'all') {
+            if ($historyType === 'craft') {
+                $historyQuery->whereIn('event_type', ['WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_CRAFT_PRODUCE']);
+            } else {
+                $historyQuery->where('event_type', strtoupper($historyType));
+            }
+        }
 
         if ($historySearch !== '') {
             $numericId = ctype_digit($historySearch) ? (int) $historySearch : null;
@@ -62,8 +71,29 @@ class LootController extends Controller
             ->orderBy('updated_at', $historyDir)
             ->paginate($historyPerPage, ['*'], 'history_page', $historyPage);
 
+        // Preload craft success for CONSUME reports (batch query to avoid N+1)
+        $collection = $historyPaginator->getCollection();
+        $consumeIds = $collection
+            ->where('event_type', 'WAREHOUSE_CRAFT_CONSUME')
+            ->pluck('id')
+            ->all();
+
+        $craftProduceMap = [];
+        if (! empty($consumeIds)) {
+            $candidateIds = array_map(fn ($id) => $id + 1, $consumeIds);
+            $produces = LootReport::whereIn('id', $candidateIds)
+                ->where('event_type', 'WAREHOUSE_CRAFT_PRODUCE')
+                ->where('cp_id', $user->cp_id)
+                ->get(['id'])
+                ->keyBy('id');
+
+            foreach ($consumeIds as $consumeId) {
+                $craftProduceMap[$consumeId] = $produces->has($consumeId + 1) ? ($consumeId + 1) : null;
+            }
+        }
+
         $historyPaginator->setCollection(
-            $historyPaginator->getCollection()->map(function ($report) {
+            $collection->map(function ($report) use ($craftProduceMap) {
                 $ids = is_array($report->recipient_ids) ? $report->recipient_ids : [];
                 $report->recipients = $ids ? User::whereIn('id', $ids)->get(['id', 'name']) : collect();
 
@@ -104,6 +134,12 @@ class LootController extends Controller
                     } else {
                         $report->origin = null;
                     }
+                }
+
+                if ($report->event_type === 'WAREHOUSE_CRAFT_CONSUME') {
+                    $produceId = $craftProduceMap[$report->id] ?? null;
+                    $report->craft_success = $produceId !== null;
+                    $report->craft_produce_report_id = $produceId;
                 }
 
                 return $report;

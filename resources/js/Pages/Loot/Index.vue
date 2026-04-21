@@ -30,6 +30,7 @@ const activeTab = ref('history');
 const vaultSearch = ref('');
 const vaultCategory = ref('all');
 const vaultSort = ref('newest');
+const vaultType = ref('all');
 const visibleEntriesByReportId = ref({});
 const historyItems = ref(Array.isArray(props.history) ? props.history : []);
 const historyPagination = ref(props.historyPagination || {
@@ -68,6 +69,7 @@ const fetchHistoryPage = (pageNum, { append = false } = {}) => {
         history_per_page: historyPagination.value?.per_page || 10,
         history_search: vaultSearch.value || '',
         history_sort: vaultSort.value || 'newest',
+        history_type: vaultType.value || 'all',
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -153,11 +155,11 @@ watch(() => resolveForm.event_type, (type) => {
     resolveForm.points_per_member = config ? config.points : 0;
 });
 
-watch([vaultSearch, vaultCategory, vaultSort, activeTab], () => {
+watch([vaultSearch, vaultCategory, vaultSort, vaultType, activeTab], () => {
     visibleEntriesByReportId.value = {};
 });
 
-watch([vaultSearch, vaultSort, activeTab], () => {
+watch([vaultSearch, vaultSort, vaultType, activeTab], () => {
     if (activeTab.value !== 'history') return;
     fetchHistoryPage(1, { append: false });
 });
@@ -504,6 +506,20 @@ onMounted(async () => {
                         <button @click="vaultCategory = 'etc'" :class="vaultCategory === 'etc' ? 'bg-emerald-600/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300' : 'bg-white/70 text-gray-700 border-gray-200 hover:bg-white hover:text-gray-900 dark:bg-black/30 dark:text-gray-400 dark:border-gray-800 dark:hover:bg-gray-900/40 dark:hover:text-gray-200'" class="h-11 px-4 rounded-xl border text-[10px] font-black uppercase tracking-widest transition">{{ $t('loot.category.etc') }}</button>
                     </div>
 
+                    <select v-if="activeTab === 'history'" v-model="vaultType" class="h-11 bg-white border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 text-xs font-bold px-3 dark:bg-black/40 dark:border-gray-800 dark:text-gray-200">
+                        <option value="all">{{ $t('common.all') }}</option>
+                        <option value="farm">{{ $t('loot.event_types.farm') }}</option>
+                        <option value="boss">{{ $t('loot.event_types.boss') }}</option>
+                        <option value="epic">{{ $t('loot.event_types.epic') }}</option>
+                        <option value="siege">{{ $t('loot.event_types.siege') }}</option>
+                        <option value="adena_payout">{{ $t('loot.event_types.adena_payout') }}</option>
+                        <option value="adena_grant">{{ $t('loot.event_types.adena_grant') }}</option>
+                        <option value="sell">{{ $t('loot.event_types.sell') }}</option>
+                        <option value="assign">{{ $t('loot.event_types.assign') }}</option>
+                        <option value="return">{{ $t('loot.event_types.return') }}</option>
+                        <option value="craft">{{ $t('loot.event_types.craft') }}</option>
+                    </select>
+
                     <select v-model="vaultSort" class="h-11 bg-white border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 text-xs font-bold px-3 dark:bg-black/40 dark:border-gray-800 dark:text-gray-200">
                         <option value="newest">{{ $t('loot.sort.newest') }}</option>
                         <option value="oldest">{{ $t('loot.sort.oldest') }}</option>
@@ -629,7 +645,10 @@ onMounted(async () => {
                         <div class="flex items-center w-full md:w-auto min-w-0">
                             <div class="text-3xl mr-4 px-3 py-1 bg-gray-100 dark:bg-gray-800/50 rounded-lg">{{ getEventIcon(report.event_type) }}</div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-xs font-black uppercase text-gray-900 dark:text-white tracking-widest">{{ $t('loot.event_types.' + report.event_type.toLowerCase()) }} {{ $t('loot.session') }}</div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-xs font-black uppercase text-gray-900 dark:text-white tracking-widest">{{ $t('loot.event_types.' + report.event_type.toLowerCase()) }} {{ $t('loot.session') }}</span>
+                                    <span v-if="report.event_type === 'WAREHOUSE_CRAFT_CONSUME'" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border" :class="report.craft_success ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400' : 'text-red-500 bg-red-500/10 border-red-500/30'">{{ report.craft_success ? $t('loot.craft_success') : $t('loot.craft_failed') }}</span>
+                                </div>
                                 <div class="text-[10px] text-gray-500 uppercase">{{ formatDateTime(report.updated_at) }}</div>
                                 <div v-if="report.origin" class="text-[10px] text-gray-500 uppercase min-w-0">
                                     {{ $t('loot.origin') }}:
@@ -710,7 +729,10 @@ onMounted(async () => {
                                     {{ $t('loot.registered_by') }}: {{ report.origin.requested_by }}
                                 </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.items') }}</div>
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }}</div>
+                                <span v-if="report.event_type === 'WAREHOUSE_CRAFT_CONSUME'" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border" :class="report.craft_success ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400' : 'text-red-500 bg-red-500/10 border-red-500/30'">{{ report.craft_success ? $t('loot.craft_success') : $t('loot.craft_failed') }}</span>
+                            </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <div v-for="entry in getReportFilteredEntries(report)" :key="entry.id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
                                     <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700">
