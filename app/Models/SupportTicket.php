@@ -23,11 +23,13 @@ class SupportTicket extends Model
         'ticket_number',
         'closed_at',
         'metadata',
+        'attachments',
     ];
 
     protected $casts = [
-        'metadata' => 'array',
-        'closed_at' => 'datetime',
+        'metadata'    => 'array',
+        'attachments' => 'array',
+        'closed_at'   => 'datetime',
     ];
 
     public function user(): BelongsTo

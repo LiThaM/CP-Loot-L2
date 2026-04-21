@@ -125,18 +125,18 @@ const submitSupport = () => {
                         <button type="button"
                                 class="px-2 py-1 text-base rounded-md transition-all duration-300"
                                 :class="appLocale === 'es' ? 'bg-purple-600 text-white' : 'opacity-50 hover:opacity-100'"
-                                @click="setLocale('es')" title="Español">🇪🇸</button>
+                                @click="setLocale('es')" :title="$t('lang.es')">🇪🇸</button>
                         <button type="button"
                                 class="px-2 py-1 text-base rounded-md transition-all duration-300"
                                 :class="appLocale === 'en' ? 'bg-purple-600 text-white' : 'opacity-50 hover:opacity-100'"
-                                @click="setLocale('en')" title="English">🇬🇧</button>
+                                @click="setLocale('en')" :title="$t('lang.en')">🇬🇧</button>
                     </div>
 
                     <!-- Theme toggle -->
                     <button @click="toggleTheme"
                             :class="darkMode ? 'border-white/10 bg-gray-950/80 hover:border-purple-500' : 'border-gray-200 bg-white/80 hover:border-purple-400'"
                             class="p-2 rounded-lg border backdrop-blur-md transition-all shadow-lg"
-                            :title="darkMode ? 'Light Mode' : 'Dark Mode'">
+                            :title="$t('nav.theme')">
                         <svg v-if="!darkMode" class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 3a1 1 0 011 1v1a1 1 0 11-2 0V4a1 1 0 011-1zm0 11a4 4 0 100-8 4 4 0 000 8zm7-4a1 1 0 010 2h-1a1 1 0 110-2h1zM4 10a1 1 0 000 2H3a1 1 0 110-2h1zm11.657-5.657a1 1 0 010 1.414L14.95 6.464a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM6.464 14.95a1 1 0 010 1.414l-.707.707A1 1 0 013.343 15.95l.707-.707a1 1 0 011.414 0zM16.657 15.657a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414zM6.464 5.05A1 1 0 105.05 6.464l-.707-.707A1 1 0 106.464 5.05z"/>
                         </svg>

@@ -6,6 +6,7 @@ use App\Models\SupportTicket;
 use App\Models\TicketReply;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -65,23 +66,23 @@ class TicketController extends Controller
             : ['bug', 'data_discrepancy'];
 
         $data = $request->validate([
-            'subject' => 'required|string|max:140',
-            'message' => 'required|string|max:5000',
-            'type'    => 'required|string|in:' . implode(',', $allowedTypes),
+            'subject'       => 'required|string|max:140',
+            'message'       => 'required|string|max:5000',
+            'type'          => 'required|string|in:' . implode(',', $allowedTypes),
+            'attachments'   => 'nullable|array|max:5',
+            'attachments.*' => 'file|mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov|max:20480',
         ]);
 
         // Determine assignment
         $assignedToUserId = null;
         if ($data['type'] === 'data_discrepancy') {
-            // Assign to CP leader
             $cp = $user->cp;
             if ($cp && $cp->leader_id) {
                 $assignedToUserId = $cp->leader_id;
             }
         }
-        // Bugs go to admin (assigned_to = null, admin sees all)
 
-        SupportTicket::create([
+        $ticket = SupportTicket::create([
             'user_id'              => $user->id,
             'subject'              => $data['subject'],
             'message'              => $data['message'],
@@ -92,14 +93,19 @@ class TicketController extends Controller
             'assigned_to_user_id'  => $assignedToUserId,
             'ticket_number'        => SupportTicket::generateTicketNumber(),
             'metadata'             => [
-                'user_id'  => $user->id,
-                'cp_id'    => $user->cp_id,
-                'role'     => $role,
-                'ip'       => $request->ip(),
+                'user_id' => $user->id,
+                'cp_id'   => $user->cp_id,
+                'role'    => $role,
+                'ip'      => $request->ip(),
             ],
         ]);
 
-        return redirect()->route('tickets.index')->with('success', 'Ticket creado correctamente.');
+        $stored = $this->storeAttachments($request, "tickets/{$ticket->id}");
+        if ($stored) {
+            $ticket->update(['attachments' => $stored]);
+        }
+
+        return redirect()->route('tickets.index')->with('success', __('tickets.flash.created'));
     }
 
     public function show(Request $request, SupportTicket $ticket): Response
@@ -125,14 +131,16 @@ class TicketController extends Controller
                 'status'        => $ticket->status,
                 'created_at'    => $ticket->created_at,
                 'closed_at'     => $ticket->closed_at,
+                'attachments'   => $ticket->attachments ?? [],
                 'creator'       => $ticket->user ? ['id' => $ticket->user->id, 'name' => $ticket->user->name] : null,
                 'assigned_to'   => $ticket->assignedTo ? ['id' => $ticket->assignedTo->id, 'name' => $ticket->assignedTo->name] : null,
                 'replies'       => $ticket->replies->map(fn ($r) => [
-                    'id'         => $r->id,
-                    'message'    => $r->message,
-                    'created_at' => $r->created_at,
-                    'user'       => ['id' => $r->user->id, 'name' => $r->user->name],
-                    'is_mine'    => $r->user_id === $user->id,
+                    'id'          => $r->id,
+                    'message'     => $r->message,
+                    'created_at'  => $r->created_at,
+                    'attachments' => $r->attachments ?? [],
+                    'user'        => ['id' => $r->user->id, 'name' => $r->user->name],
+                    'is_mine'     => $r->user_id === $user->id,
                 ]),
             ],
             'userRole'  => $role,
@@ -150,25 +158,32 @@ class TicketController extends Controller
         $this->authorizeView($user, $role, $ticket);
 
         if ($ticket->isClosed()) {
-            return back()->with('error', 'El ticket está cerrado.');
+            return back()->with('error', __('tickets.flash.already_closed'));
         }
 
         $data = $request->validate([
-            'message' => 'required|string|max:5000',
+            'message'       => 'required|string|max:5000',
+            'attachments'   => 'nullable|array|max:5',
+            'attachments.*' => 'file|mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov|max:20480',
         ]);
 
-        TicketReply::create([
+        $reply = TicketReply::create([
             'ticket_id' => $ticket->id,
             'user_id'   => $user->id,
             'message'   => $data['message'],
         ]);
 
-        // Reopen if closed (shouldn't happen but safety net)
+        $stored = $this->storeAttachments($request, "tickets/{$ticket->id}/replies/{$reply->id}");
+        if ($stored) {
+            $reply->update(['attachments' => $stored]);
+        }
+
+        // Reopen if closed (safety net)
         if ($ticket->status === 'closed') {
             $ticket->update(['status' => 'open', 'closed_at' => null]);
         }
 
-        return back()->with('success', 'Respuesta enviada.');
+        return back()->with('success', __('tickets.flash.replied'));
     }
 
     public function close(Request $request, SupportTicket $ticket): RedirectResponse
@@ -182,7 +197,7 @@ class TicketController extends Controller
 
         $ticket->update(['status' => 'closed', 'closed_at' => now()]);
 
-        return back()->with('success', 'Ticket cerrado.');
+        return back()->with('success', __('tickets.flash.closed'));
     }
 
     public function reopen(Request $request, SupportTicket $ticket): RedirectResponse
@@ -196,10 +211,33 @@ class TicketController extends Controller
 
         $ticket->update(['status' => 'open', 'closed_at' => null]);
 
-        return back()->with('success', 'Ticket reabierto.');
+        return back()->with('success', __('tickets.flash.reopened'));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private function storeAttachments(Request $request, string $folder): array
+    {
+        if (! $request->hasFile('attachments')) {
+            return [];
+        }
+
+        $stored = [];
+        foreach ($request->file('attachments') as $file) {
+            $ext  = $file->getClientOriginalExtension();
+            $name = uniqid('att_', true) . '.' . $ext;
+            $path = $file->storeAs($folder, $name, 'public');
+            if ($path) {
+                $stored[] = [
+                    'path' => $path,
+                    'name' => $file->getClientOriginalName(),
+                    'mime' => $file->getMimeType(),
+                ];
+            }
+        }
+
+        return $stored;
+    }
 
     private function authorizeView($user, string $role, SupportTicket $ticket): void
     {
@@ -208,13 +246,11 @@ class TicketController extends Controller
         }
 
         if ($role === 'cp_leader') {
-            // Leader can view tickets assigned to them or bugs they created
             if ($ticket->assigned_to_user_id === $user->id) return;
             if ($ticket->user_id === $user->id && $ticket->type === 'bug') return;
             abort(403);
         }
 
-        // Members can only view their own tickets
         if ($ticket->user_id !== $user->id) {
             abort(403);
         }
