@@ -1,1 +1,0 @@
-import{A as e,b as t}from"./app-C_tXLb5f.js";import{t as n}from"./_plugin-vue_export-helper-CSBScHBl.js";var r={},i={src:`/images/logo.png`,alt:`Adena Ledger Logo`};function a(n,r){return e(),t(`img`,i)}var o=n(r,[[`render`,a]]);export{o as t};
