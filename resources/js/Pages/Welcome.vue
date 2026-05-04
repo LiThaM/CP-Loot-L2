@@ -2,9 +2,10 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { useSwal } from '../utils/swal';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import Swal from 'sweetalert2';
 import { loadFull } from "tsparticles";
+import axios from 'axios';
 
 defineProps({
     canLogin: {
@@ -36,6 +37,74 @@ const showCpRequestModal = ref(false);
 const showDonationModal = ref(false);
 const mobileMenuOpen = ref(false);
 const scrolledPastHero = ref(false);
+
+// Recipe Explorer
+const recipeQuery = ref('');
+const recipeResults = ref([]);
+const recipeLoading = ref(false);
+const recipeSelected = ref(null);
+const recipeTree = ref(null);
+const recipeTreeLoading = ref(false);
+const recipeDropdownOpen = ref(false);
+let recipeSearchTimeout = null;
+
+const searchRecipes = (q) => {
+    clearTimeout(recipeSearchTimeout);
+    const val = q.trim();
+    if (val.length < 2) { recipeResults.value = []; recipeDropdownOpen.value = false; return; }
+    recipeLoading.value = true;
+    recipeSearchTimeout = setTimeout(async () => {
+        try {
+            const { data } = await axios.get('/api/public/recipes/search', { params: { q: val } });
+            recipeResults.value = data;
+            recipeDropdownOpen.value = data.length > 0;
+        } catch { recipeResults.value = []; }
+        recipeLoading.value = false;
+    }, 300);
+};
+
+watch(recipeQuery, searchRecipes);
+
+const selectRecipe = async (recipe) => {
+    recipeSelected.value = recipe;
+    recipeDropdownOpen.value = false;
+    recipeQuery.value = '';
+    recipeTree.value = null;
+    recipeTreeLoading.value = true;
+    try {
+        const { data } = await axios.get(`/api/public/recipes/${recipe.id}/tree`, { params: { depth: 4 } });
+        recipeTree.value = data;
+    } catch { recipeTree.value = null; }
+    recipeTreeLoading.value = false;
+};
+
+const clearRecipe = () => {
+    recipeSelected.value = null;
+    recipeTree.value = null;
+};
+
+const flattenTree = (nodes, depth = 0) => {
+    const result = [];
+    for (const node of (nodes || [])) {
+        result.push({ ...node, depth });
+        if (node.children?.length) result.push(...flattenTree(node.children, depth + 1));
+    }
+    return result;
+};
+
+const getLeaves = (nodes) => {
+    const leaves = [];
+    const walk = (list) => {
+        for (const n of list) {
+            if (!n.children?.length) leaves.push(n);
+            else walk(n.children);
+        }
+    };
+    walk(nodes || []);
+    return leaves;
+};
+
+const formatNumber = (n) => n?.toLocaleString() ?? '0';
 
 const handleScroll = () => {
     scrolledPastHero.value = window.scrollY > 400;
@@ -527,6 +596,148 @@ const handleMouseLeave = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Recipe Explorer -->
+                <section class="glass-card p-5 sm:p-8 lg:p-10 relative overflow-hidden" v-motion-slide-visible-bottom>
+                    <div class="absolute -left-16 -top-16 w-56 h-56 bg-amber-500/8 rounded-full blur-[60px]"></div>
+                    <div class="relative z-10">
+                        <div class="text-center mb-6 sm:mb-8">
+                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400 mb-2">RECIPE EXPLORER</div>
+                            <h2 :class="darkMode ? 'text-white drop-shadow-md' : 'text-gray-900'" class="text-xl sm:text-2xl md:text-3xl tracking-widest font-cinzel">
+                                Crafting Tree
+                            </h2>
+                            <p :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="mt-2 text-sm max-w-md mx-auto">
+                                Search any recipe and explore the full material dependency tree
+                            </p>
+                        </div>
+
+                        <!-- Search -->
+                        <div class="max-w-lg mx-auto relative mb-6">
+                            <div class="relative">
+                                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" :class="darkMode ? 'text-gray-500' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <input
+                                    v-model="recipeQuery"
+                                    type="text"
+                                    placeholder="Blue Wolf Helmet, Doom Plate Armor, Enria..."
+                                    class="form-input-gaming pl-11 pr-10"
+                                    @focus="recipeResults.length && (recipeDropdownOpen = true)"
+                                    @blur="setTimeout(() => recipeDropdownOpen = false, 200)"
+                                />
+                                <svg v-if="recipeLoading" class="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin" :class="darkMode ? 'text-purple-400' : 'text-purple-600'" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            </div>
+                            <!-- Dropdown -->
+                            <transition enter-active-class="transition duration-150 ease-out" enter-from-class="opacity-0 -translate-y-1" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-100 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+                                <div v-if="recipeDropdownOpen && recipeResults.length" class="absolute z-30 w-full mt-2 rounded-xl border backdrop-blur-xl overflow-hidden shadow-2xl max-h-72 overflow-y-auto custom-scrollbar" :class="darkMode ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-gray-200'">
+                                    <button v-for="r in recipeResults" :key="r.id" type="button" @mousedown.prevent="selectRecipe(r)" class="w-full px-4 py-3 flex items-center gap-3 transition-colors text-left" :class="darkMode ? 'hover:bg-white/5 border-b border-white/5 last:border-0' : 'hover:bg-gray-50 border-b border-gray-100 last:border-0'">
+                                        <img v-if="r.output_item?.image_url" :src="r.output_item.image_url" :alt="r.name" class="w-8 h-8 rounded-lg object-cover border" :class="darkMode ? 'border-white/10' : 'border-gray-200'" />
+                                        <div v-else class="w-8 h-8 rounded-lg flex items-center justify-center text-amber-400" :class="darkMode ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-sm font-bold truncate">{{ r.name }}</div>
+                                            <div class="text-[10px] text-gray-500 flex items-center gap-2">
+                                                <span class="uppercase font-bold tracking-wider">{{ r.chronicle }}</span>
+                                                <span>{{ r.materials_count }} mats</span>
+                                            </div>
+                                        </div>
+                                        <div class="text-xs font-mono font-bold" :class="r.success_rate >= 100 ? 'text-green-400' : 'text-yellow-400'">{{ r.success_rate }}%</div>
+                                    </button>
+                                </div>
+                            </transition>
+                        </div>
+
+                        <!-- Selected Recipe Detail -->
+                        <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+                            <div v-if="recipeSelected" class="max-w-3xl mx-auto">
+                                <!-- Recipe Header -->
+                                <div class="flex items-start sm:items-center justify-between gap-4 mb-5 flex-col sm:flex-row">
+                                    <div class="flex items-center gap-3">
+                                        <img v-if="recipeSelected.output_item?.image_url" :src="recipeSelected.output_item.image_url" class="w-12 h-12 rounded-xl border shadow-lg" :class="darkMode ? 'border-white/10' : 'border-gray-200'" />
+                                        <div>
+                                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-lg font-black tracking-widest">{{ recipeSelected.name }}</div>
+                                            <div class="flex items-center gap-3 text-xs text-gray-500">
+                                                <span class="uppercase font-bold tracking-wider px-2 py-0.5 rounded" :class="darkMode ? 'bg-purple-500/10 text-purple-300' : 'bg-purple-50 text-purple-700'">{{ recipeSelected.chronicle }}</span>
+                                                <span class="font-mono font-bold" :class="recipeSelected.success_rate >= 100 ? 'text-green-400' : 'text-yellow-400'">{{ recipeSelected.success_rate }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" @click="clearRecipe" class="text-gray-500 hover:text-gray-300 transition p-1">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+
+                                <!-- Loading -->
+                                <div v-if="recipeTreeLoading" class="text-center py-10">
+                                    <svg class="w-8 h-8 animate-spin mx-auto mb-3" :class="darkMode ? 'text-purple-400' : 'text-purple-600'" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    <div class="text-sm text-gray-500">Loading crafting tree...</div>
+                                </div>
+
+                                <!-- Tree Content -->
+                                <div v-else-if="recipeTree" class="space-y-4">
+                                    <!-- Outputs -->
+                                    <div v-if="recipeTree.outputs?.length" class="p-3 rounded-xl border" :class="darkMode ? 'bg-green-500/5 border-green-500/20' : 'bg-green-50 border-green-200'">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-green-400 mb-2">Output</div>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div v-for="o in recipeTree.outputs" :key="o.item_id" class="flex items-center gap-2 px-3 py-1.5 rounded-lg" :class="darkMode ? 'bg-black/20' : 'bg-white/60'">
+                                                <img v-if="o.image_url" :src="o.image_url" class="w-6 h-6 rounded" />
+                                                <span class="text-sm font-bold" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ o.name }}</span>
+                                                <span v-if="o.quantity > 1" class="text-xs text-gray-500">x{{ o.quantity }}</span>
+                                                <span v-if="o.chance" class="text-[10px] font-mono text-yellow-400">({{ (o.chance * 100).toFixed(1) }}%)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recipe info bar -->
+                                    <div class="flex flex-wrap gap-3 text-xs">
+                                        <div v-if="recipeTree.recipe.mp_cost" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" :class="darkMode ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20' : 'bg-blue-50 text-blue-700 border border-blue-200'">
+                                            <span class="font-black uppercase tracking-wider">MP</span> {{ formatNumber(recipeTree.recipe.mp_cost) }}
+                                        </div>
+                                        <div v-if="recipeTree.recipe.adena_fee" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" :class="darkMode ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'">
+                                            <span class="font-black uppercase tracking-wider">Fee</span> {{ formatNumber(recipeTree.recipe.adena_fee) }} adena
+                                        </div>
+                                    </div>
+
+                                    <!-- Materials Tree -->
+                                    <div class="rounded-xl border overflow-hidden" :class="darkMode ? 'border-white/5' : 'border-gray-200'">
+                                        <div class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest" :class="darkMode ? 'bg-white/5 text-gray-400 border-b border-white/5' : 'bg-gray-50 text-gray-600 border-b border-gray-200'">
+                                            Materials Tree
+                                        </div>
+                                        <div class="divide-y" :class="darkMode ? 'divide-white/5' : 'divide-gray-100'">
+                                            <div v-for="(node, i) in flattenTree(recipeTree.nodes)" :key="i" class="flex items-center gap-2 px-4 py-2.5 transition-colors" :class="darkMode ? 'hover:bg-white/[0.02]' : 'hover:bg-gray-50'">
+                                                <div :style="{ paddingLeft: node.depth * 20 + 'px' }" class="flex items-center gap-2 flex-1 min-w-0">
+                                                    <svg v-if="node.depth > 0" class="w-3 h-3 flex-shrink-0" :class="darkMode ? 'text-white/10' : 'text-gray-300'" fill="currentColor" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                                                    <img v-if="node.image_url" :src="node.image_url" class="w-6 h-6 rounded flex-shrink-0" />
+                                                    <div v-else class="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center" :class="node.is_recipe ? 'bg-amber-500/10 text-amber-400' : (darkMode ? 'bg-white/5 text-gray-500' : 'bg-gray-100 text-gray-400')">
+                                                        <svg v-if="node.is_recipe" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+                                                        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    </div>
+                                                    <span class="text-sm truncate" :class="[
+                                                        node.is_recipe ? 'text-amber-400 font-bold italic' : (darkMode ? 'text-gray-200' : 'text-gray-800'),
+                                                        node.depth === 0 ? 'font-bold' : 'font-medium'
+                                                    ]">{{ node.name || 'Unknown' }}</span>
+                                                    <span v-if="node.craft_recipe_id" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" :class="darkMode ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20' : 'bg-purple-50 text-purple-600'">craftable</span>
+                                                </div>
+                                                <span class="text-xs font-mono font-bold flex-shrink-0" :class="darkMode ? 'text-yellow-400' : 'text-yellow-600'">x{{ node.need }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Base Materials Summary -->
+                                    <div v-if="getLeaves(recipeTree.nodes).length" class="rounded-xl border p-4" :class="darkMode ? 'border-white/5 bg-black/20' : 'border-gray-200 bg-gray-50'">
+                                        <div class="text-[10px] font-black uppercase tracking-widest mb-3" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">Base Materials (leaves)</div>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div v-for="leaf in getLeaves(recipeTree.nodes)" :key="leaf.item_id" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs" :class="darkMode ? 'bg-white/5 border border-white/5' : 'bg-white border border-gray-200'">
+                                                <img v-if="leaf.image_url" :src="leaf.image_url" class="w-5 h-5 rounded" />
+                                                <span :class="darkMode ? 'text-gray-200' : 'text-gray-800'" class="font-medium">{{ leaf.name }}</span>
+                                                <span class="font-mono font-bold" :class="darkMode ? 'text-yellow-400' : 'text-yellow-600'">x{{ leaf.need }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </transition>
                     </div>
                 </section>
 

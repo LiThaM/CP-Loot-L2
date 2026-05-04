@@ -1,5 +1,6 @@
 <?php
 
+use App\Contexts\Loot\Application\Controllers\PublicCraftingController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,13 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
+});
+
+// Public Recipe Explorer (no auth required)
+Route::prefix('api/public')->middleware('throttle:30,1')->group(function () {
+    Route::get('/recipes/search', [PublicCraftingController::class, 'search'])->name('public.recipes.search');
+    Route::get('/recipes/{recipe}/tree', [PublicCraftingController::class, 'tree'])->name('public.recipes.tree');
+    Route::get('/recipes/chronicles', [PublicCraftingController::class, 'chronicles'])->name('public.recipes.chronicles');
 });
 
 Route::post('/locale', function (\Illuminate\Http\Request $request) {
