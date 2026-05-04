@@ -275,7 +275,17 @@ const handleMouseLeave = () => {
                     </Link>
 
                     <!-- Desktop Nav -->
-                    <div v-if="canLogin" class="hidden md:flex items-center gap-3">
+                    <div v-if="canLogin" class="hidden md:flex items-center gap-2">
+                        <!-- Theme toggle -->
+                        <button type="button" @click="toggleTheme" class="p-2.5 rounded-lg border backdrop-blur-md transition-all" :class="darkMode ? 'bg-black/30 border-white/10 text-gray-400 hover:text-yellow-400 hover:border-yellow-500/30' : 'bg-white/60 border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-300'">
+                            <svg v-if="darkMode" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+                            <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                        </button>
+                        <!-- Language toggle -->
+                        <button type="button" @click="setLocale(appLocale === 'es' ? 'en' : 'es')" class="px-2.5 py-2 rounded-lg border backdrop-blur-md transition-all text-[10px] font-black tracking-widest uppercase" :class="darkMode ? 'bg-black/30 border-white/10 text-gray-400 hover:text-white hover:border-white/30' : 'bg-white/60 border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300'">
+                            {{ appLocale === 'es' ? 'EN' : 'ES' }}
+                        </button>
+                        <div class="w-px h-6 mx-1" :class="darkMode ? 'bg-white/10' : 'bg-gray-200'"></div>
                         <button type="button" @click="showCpRequestModal = true" class="px-5 py-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-black tracking-widest uppercase hover:bg-yellow-500/20 hover:border-yellow-500/50 transition-all text-xs backdrop-blur-md">
                             {{ $t('welcome.section.cp_cta.btn') }}
                         </button>
@@ -320,6 +330,17 @@ const handleMouseLeave = () => {
                     leave-to-class="opacity-0 -translate-y-2"
                 >
                     <div v-if="mobileMenuOpen && canLogin" class="md:hidden mt-4 rounded-2xl backdrop-blur-xl border p-4 flex flex-col gap-3" :class="darkMode ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-gray-200'">
+                        <!-- Theme + Language row -->
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="toggleTheme" class="flex-1 py-2.5 rounded-xl border backdrop-blur-md transition-all text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-2" :class="darkMode ? 'bg-black/20 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
+                                <svg v-if="darkMode" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+                                <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                                {{ darkMode ? 'Light' : 'Dark' }}
+                            </button>
+                            <button type="button" @click="setLocale(appLocale === 'es' ? 'en' : 'es')" class="py-2.5 px-6 rounded-xl border backdrop-blur-md transition-all text-xs font-bold tracking-widest uppercase" :class="darkMode ? 'bg-black/20 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'">
+                                {{ appLocale === 'es' ? 'EN' : 'ES' }}
+                            </button>
+                        </div>
                         <button type="button" @click="showCpRequestModal = true; mobileMenuOpen = false" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-yellow-600/20 to-amber-600/20 border border-yellow-500/40 text-yellow-400 font-black tracking-widest uppercase text-sm text-center flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/></svg>
                             {{ $t('welcome.section.cp_cta.btn') }}
@@ -353,15 +374,28 @@ const handleMouseLeave = () => {
 
                 <!-- Hero Section -->
                 <section class="relative min-h-[65vh] sm:min-h-[75vh] flex flex-col justify-center items-center text-center w-full">
+                    <!-- Floating decorative orbs -->
+                    <div class="absolute inset-0 overflow-hidden pointer-events-none z-20">
+                        <div class="hero-orb w-72 h-72 -top-20 -left-20 bg-purple-600/8 animate-float-slow"></div>
+                        <div class="hero-orb w-96 h-96 -bottom-32 -right-24 bg-yellow-500/6 animate-float-slower"></div>
+                        <div class="hero-orb w-48 h-48 top-1/3 right-10 bg-indigo-500/5 animate-float-medium hidden lg:block"></div>
+                    </div>
 
                     <div class="relative z-30 max-w-5xl mx-auto w-full flex flex-col justify-center items-center" v-motion :initial="{ opacity: 0, scale: 0.95, y: 30 }" :enter="{ opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 50, damping: 20, delay: 200 } }">
 
-                        <div :class="darkMode ? 'bg-black/60 border-purple-500/50 text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.3)]' : 'bg-white/90 border-purple-200 text-purple-700 shadow-md shadow-purple-500/5'" class="inline-flex items-center justify-center mx-auto gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-6 backdrop-blur-xl transition-all">
-                            <span class="w-3 h-3 rounded-full bg-purple-400 animate-pulse shadow-[0_0_10px_rgba(192,132,252,0.8)]"></span>
+                        <!-- 3D Interactive Logo -->
+                        <div ref="chestWrapper" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave" class="mb-8 cursor-default hidden sm:block" v-motion :initial="{ opacity: 0, y: -20 }" :enter="{ opacity: 1, y: 0, transition: { delay: 100 } }">
+                            <div :style="tiltStyle" class="w-24 h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 shadow-2xl" :class="darkMode ? 'border-purple-500/30 shadow-purple-500/20' : 'border-purple-300 shadow-purple-300/30'">
+                                <ApplicationLogo class="w-full h-full object-cover" />
+                            </div>
+                        </div>
+
+                        <div :class="darkMode ? 'bg-black/60 border-purple-500/50 text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.3)]' : 'bg-white/90 border-purple-200 text-purple-700 shadow-md shadow-purple-500/5'" class="inline-flex items-center justify-center mx-auto gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-6 backdrop-blur-xl transition-all border">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse shadow-[0_0_10px_rgba(192,132,252,0.8)]"></span>
                             {{ $t('welcome.hero.badge') }}
                         </div>
 
-                        <h1 :class="darkMode ? 'from-white via-slate-200 to-gray-500 drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)]' : 'from-indigo-900 via-purple-800 to-indigo-600 drop-shadow-sm'" class="text-4xl sm:text-6xl lg:text-[6rem] xl:text-[7rem] font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-b font-cinzel leading-[1.05]">
+                        <h1 :class="darkMode ? 'from-white via-slate-200 to-gray-500 drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)]' : 'from-indigo-900 via-purple-800 to-indigo-600 drop-shadow-sm'" class="text-4xl sm:text-6xl lg:text-[5.5rem] xl:text-[6.5rem] font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-b font-cinzel leading-[1.05]">
                             {{ $t('welcome.hero.title', { appName }) }}
                         </h1>
 
@@ -401,66 +435,103 @@ const handleMouseLeave = () => {
                     </div>
                 </section>
 
+                <!-- Section Divider -->
+                <div class="section-divider"></div>
+
                 <!-- Features Grid -->
-                <section id="features" class="scroll-mt-24 pt-8 sm:pt-12">
+                <section id="features" class="scroll-mt-24">
                     <div class="text-center mb-10 sm:mb-16" v-motion-slide-visible-bottom>
+                        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400 mb-3">{{ $t('welcome.features.title') }}</div>
                         <h2 :class="darkMode ? 'from-yellow-200 to-yellow-600' : 'from-yellow-600 to-yellow-900'" class="text-2xl sm:text-4xl md:text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r font-cinzel inline-block">
                             {{ $t('welcome.features.title') }}
                         </h2>
                         <div class="h-1 w-24 bg-gradient-to-r from-purple-600 to-yellow-500 mx-auto mt-4 sm:mt-6 rounded-full shadow-[0_0_10px_#9333ea]"></div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="100">
-                            <div class="w-14 h-14 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-6 text-yellow-400 group-hover:scale-110 group-hover:bg-yellow-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+                        <div class="feature-card-wrapper group" v-motion-slide-visible-bottom :delay="100">
+                            <div class="glass-card feature-card relative overflow-hidden">
+                                <div class="feature-card-glow bg-yellow-500/5 group-hover:bg-yellow-500/10"></div>
+                                <div class="relative z-10">
+                                    <div class="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-5 text-yellow-400 group-hover:scale-110 group-hover:bg-yellow-500/20 group-hover:shadow-[0_0_25px_rgba(234,179,8,0.25)] transition-all duration-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.adena.kicker') }}</div>
+                                    <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-xl font-black tracking-widest mb-2">{{ $t('welcome.features.adena.title') }}</div>
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.adena.text') }}</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.adena.kicker') }}</div>
-                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-2xl font-black tracking-widest mb-3">{{ $t('welcome.features.adena.title') }}</div>
-                            <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.adena.text') }}</div>
                         </div>
-                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="200">
-                            <div class="w-14 h-14 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        <div class="feature-card-wrapper group" v-motion-slide-visible-bottom :delay="200">
+                            <div class="glass-card feature-card relative overflow-hidden">
+                                <div class="feature-card-glow bg-purple-500/5 group-hover:bg-purple-500/10"></div>
+                                <div class="relative z-10">
+                                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-5 text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:shadow-[0_0_25px_rgba(168,85,247,0.25)] transition-all duration-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                    </div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.loot.kicker') }}</div>
+                                    <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-xl font-black tracking-widest mb-2">{{ $t('welcome.features.loot.title') }}</div>
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.loot.text') }}</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.loot.kicker') }}</div>
-                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-2xl font-black tracking-widest mb-3">{{ $t('welcome.features.loot.title') }}</div>
-                            <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.loot.text') }}</div>
                         </div>
-                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="300">
-                            <div class="w-14 h-14 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6 text-blue-400 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <div class="feature-card-wrapper group" v-motion-slide-visible-bottom :delay="300">
+                            <div class="glass-card feature-card relative overflow-hidden">
+                                <div class="feature-card-glow bg-blue-500/5 group-hover:bg-blue-500/10"></div>
+                                <div class="relative z-10">
+                                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5 text-blue-400 group-hover:scale-110 group-hover:bg-blue-500/20 group-hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] transition-all duration-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                    </div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.warehouse.kicker') }}</div>
+                                    <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-xl font-black tracking-widest mb-2">{{ $t('welcome.features.warehouse.title') }}</div>
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.warehouse.text') }}</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.warehouse.kicker') }}</div>
-                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-2xl font-black tracking-widest mb-3">{{ $t('welcome.features.warehouse.title') }}</div>
-                            <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.warehouse.text') }}</div>
                         </div>
-                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="400">
-                            <div class="w-14 h-14 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <div class="feature-card-wrapper group" v-motion-slide-visible-bottom :delay="400">
+                            <div class="glass-card feature-card relative overflow-hidden">
+                                <div class="feature-card-glow bg-amber-500/5 group-hover:bg-amber-500/10"></div>
+                                <div class="relative z-10">
+                                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-5 text-amber-500 group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:shadow-[0_0_25px_rgba(245,158,11,0.25)] transition-all duration-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.crafting.kicker') }}</div>
+                                    <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-xl font-black tracking-widest mb-2">{{ $t('welcome.features.crafting.title') }}</div>
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.crafting.text') }}</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.crafting.kicker') }}</div>
-                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-2xl font-black tracking-widest mb-3">{{ $t('welcome.features.crafting.title') }}</div>
-                            <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.crafting.text') }}</div>
                         </div>
-                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="500">
-                            <div class="w-14 h-14 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6 text-red-400 group-hover:scale-110 group-hover:bg-red-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <div class="feature-card-wrapper group" v-motion-slide-visible-bottom :delay="500">
+                            <div class="glass-card feature-card relative overflow-hidden">
+                                <div class="feature-card-glow bg-red-500/5 group-hover:bg-red-500/10"></div>
+                                <div class="relative z-10">
+                                    <div class="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-5 text-red-400 group-hover:scale-110 group-hover:bg-red-500/20 group-hover:shadow-[0_0_25px_rgba(239,68,68,0.25)] transition-all duration-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                    </div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.roles.kicker') }}</div>
+                                    <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-xl font-black tracking-widest mb-2">{{ $t('welcome.features.roles.title') }}</div>
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.roles.text') }}</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.roles.kicker') }}</div>
-                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-2xl font-black tracking-widest mb-3">{{ $t('welcome.features.roles.title') }}</div>
-                            <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.roles.text') }}</div>
                         </div>
-                        <div class="glass-card feature-card group" v-motion-slide-visible-bottom :delay="600">
-                            <div class="w-14 h-14 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-green-400 group-hover:scale-110 group-hover:bg-green-500/20 transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div class="feature-card-wrapper group" v-motion-slide-visible-bottom :delay="600">
+                            <div class="glass-card feature-card relative overflow-hidden">
+                                <div class="feature-card-glow bg-green-500/5 group-hover:bg-green-500/10"></div>
+                                <div class="relative z-10">
+                                    <div class="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-5 text-green-400 group-hover:scale-110 group-hover:bg-green-500/20 group-hover:shadow-[0_0_25px_rgba(34,197,94,0.25)] transition-all duration-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.audit.kicker') }}</div>
+                                    <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-xl font-black tracking-widest mb-2">{{ $t('welcome.features.audit.title') }}</div>
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.audit.text') }}</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">{{ $t('welcome.features.audit.kicker') }}</div>
-                            <div :class="darkMode ? 'text-white' : 'text-gray-900'" class="text-2xl font-black tracking-widest mb-3">{{ $t('welcome.features.audit.title') }}</div>
-                            <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm leading-relaxed">{{ $t('welcome.features.audit.text') }}</div>
                         </div>
                     </div>
                 </section>
+
+                <!-- Section Divider -->
+                <div class="section-divider"></div>
 
                 <!-- Register CP - Full Width Prominent Banner -->
                 <section class="relative rounded-3xl overflow-hidden border-2 transition-all" :class="darkMode ? 'border-yellow-500/30 shadow-[0_0_40px_rgba(234,179,8,0.08)]' : 'border-yellow-400/40 shadow-lg'" v-motion-slide-visible-bottom>
@@ -503,6 +574,9 @@ const handleMouseLeave = () => {
                     </div>
                 </section>
 
+                <!-- Section Divider -->
+                <div class="section-divider"></div>
+
                 <!-- How it works -->
                 <section class="glass-card p-6 sm:p-10 lg:p-14 relative overflow-hidden" v-motion-slide-visible-bottom>
                     <div class="absolute -right-20 -top-20 w-64 h-64 bg-purple-600/10 rounded-full blur-[60px]"></div>
@@ -519,21 +593,29 @@ const handleMouseLeave = () => {
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                            <div :class="darkMode ? 'bg-black/30 border-white/5' : 'bg-white/60 border-purple-100/50 shadow-sm'" class="p-5 sm:p-6 rounded-2xl hover:bg-white/5 transition-all duration-300 group text-center sm:text-left">
-                                <span :class="darkMode ? 'text-white/5' : 'text-indigo-950/10'" class="text-3xl sm:text-4xl font-black font-cinzel block sm:float-right group-hover:text-purple-500/20 transition-colors mb-2 sm:mb-0">01</span>
-                                <div class="text-base sm:text-lg font-black tracking-widest text-yellow-500">{{ $t('welcome.section.how_it_works.steps.1.title') }}</div>
-                                <div :class="darkMode ? 'text-gray-400' : 'text-indigo-900/60 font-bold'" class="mt-1 text-sm">{{ $t('welcome.section.how_it_works.steps.1.text') }}</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3 items-stretch">
+                            <div :class="darkMode ? 'bg-black/30 border border-white/5' : 'bg-white/60 border border-purple-100/50 shadow-sm'" class="p-5 sm:p-6 rounded-2xl hover:bg-white/5 transition-all duration-300 group text-center relative">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-amber-600 flex items-center justify-center mx-auto mb-4 font-cinzel font-black text-white text-sm shadow-[0_0_15px_rgba(234,179,8,0.3)]">1</div>
+                                <div class="text-base font-black tracking-widest text-yellow-500 mb-1">{{ $t('welcome.section.how_it_works.steps.1.title') }}</div>
+                                <div :class="darkMode ? 'text-gray-400' : 'text-indigo-900/60 font-bold'" class="text-sm leading-relaxed">{{ $t('welcome.section.how_it_works.steps.1.text') }}</div>
+                                <!-- Connector arrow (desktop only) -->
+                                <div class="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 z-10">
+                                    <svg class="w-6 h-6" :class="darkMode ? 'text-purple-500/30' : 'text-purple-300'" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                                </div>
                             </div>
-                            <div :class="darkMode ? 'bg-black/30 border-white/5' : 'bg-white/60 border-purple-100/50 shadow-sm'" class="p-5 sm:p-6 rounded-2xl hover:bg-white/5 transition-all duration-300 group text-center sm:text-left">
-                                <span :class="darkMode ? 'text-white/5' : 'text-indigo-950/10'" class="text-3xl sm:text-4xl font-black font-cinzel block sm:float-right group-hover:text-purple-500/20 transition-colors mb-2 sm:mb-0">02</span>
-                                <div class="text-base sm:text-lg font-black tracking-widest text-yellow-500">{{ $t('welcome.section.how_it_works.steps.2.title') }}</div>
-                                <div :class="darkMode ? 'text-gray-400' : 'text-indigo-900/60 font-bold'" class="mt-1 text-sm">{{ $t('welcome.section.how_it_works.steps.2.text') }}</div>
+                            <div :class="darkMode ? 'bg-black/30 border border-white/5' : 'bg-white/60 border border-purple-100/50 shadow-sm'" class="p-5 sm:p-6 rounded-2xl hover:bg-white/5 transition-all duration-300 group text-center relative">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 font-cinzel font-black text-white text-sm shadow-[0_0_15px_rgba(168,85,247,0.3)]">2</div>
+                                <div class="text-base font-black tracking-widest text-yellow-500 mb-1">{{ $t('welcome.section.how_it_works.steps.2.title') }}</div>
+                                <div :class="darkMode ? 'text-gray-400' : 'text-indigo-900/60 font-bold'" class="text-sm leading-relaxed">{{ $t('welcome.section.how_it_works.steps.2.text') }}</div>
+                                <!-- Connector arrow (desktop only) -->
+                                <div class="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 z-10">
+                                    <svg class="w-6 h-6" :class="darkMode ? 'text-purple-500/30' : 'text-purple-300'" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                                </div>
                             </div>
-                            <div :class="darkMode ? 'bg-black/30 border-white/5' : 'bg-white/60 border-purple-100/50 shadow-sm'" class="p-5 sm:p-6 rounded-2xl hover:bg-white/5 transition-all duration-300 group text-center sm:text-left">
-                                <span :class="darkMode ? 'text-white/5' : 'text-indigo-950/10'" class="text-3xl sm:text-4xl font-black font-cinzel block sm:float-right group-hover:text-purple-500/20 transition-colors mb-2 sm:mb-0">03</span>
-                                <div class="text-base sm:text-lg font-black tracking-widest text-yellow-500">{{ $t('welcome.section.how_it_works.steps.3.title') }}</div>
-                                <div :class="darkMode ? 'text-gray-400' : 'text-indigo-900/60 font-bold'" class="mt-1 text-sm">{{ $t('welcome.section.how_it_works.steps.3.text') }}</div>
+                            <div :class="darkMode ? 'bg-black/30 border border-white/5' : 'bg-white/60 border border-purple-100/50 shadow-sm'" class="p-5 sm:p-6 rounded-2xl hover:bg-white/5 transition-all duration-300 group text-center">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-4 font-cinzel font-black text-white text-sm shadow-[0_0_15px_rgba(34,197,94,0.3)]">3</div>
+                                <div class="text-base font-black tracking-widest text-yellow-500 mb-1">{{ $t('welcome.section.how_it_works.steps.3.title') }}</div>
+                                <div :class="darkMode ? 'text-gray-400' : 'text-indigo-900/60 font-bold'" class="text-sm leading-relaxed">{{ $t('welcome.section.how_it_works.steps.3.text') }}</div>
                             </div>
                         </div>
                     </div>
@@ -739,39 +821,71 @@ const handleMouseLeave = () => {
     font-family: 'Cinzel', serif;
 }
 
-/* Animations */
-@keyframes levitate {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
+/* ===== Floating Animations ===== */
+@keyframes float-slow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(15px, -20px) scale(1.02); }
+    66% { transform: translate(-10px, 10px) scale(0.98); }
 }
-.chest-levitate img {
-    animation: levitate 5s ease-in-out infinite;
+@keyframes float-slower {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-20px, -15px) scale(1.03); }
+}
+@keyframes float-medium {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(10px, -25px); }
 }
 
-/* Glass Cards */
+.animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
+.animate-float-slower { animation: float-slower 18s ease-in-out infinite; }
+.animate-float-medium { animation: float-medium 10s ease-in-out infinite; }
+
+.hero-orb {
+    @apply absolute rounded-full blur-[80px] pointer-events-none;
+}
+
+/* ===== Section Dividers ===== */
+.section-divider {
+    @apply mx-auto;
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.3), rgba(234, 179, 8, 0.3), transparent);
+}
+
+/* ===== Glass Cards ===== */
 .glass-card {
-    @apply bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl shadow-[0_4px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.5)];
+    @apply bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-2xl sm:rounded-3xl shadow-[0_4px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.5)];
 }
 
-/* Base Inputs */
+/* ===== Feature Cards ===== */
+.feature-card-wrapper {
+    @apply transition-transform duration-300;
+}
+.feature-card-wrapper:hover {
+    transform: translateY(-4px);
+}
+.feature-card {
+    @apply transition-all duration-300 p-5 sm:p-7 h-full;
+}
+.feature-card:hover {
+    @apply border-purple-500/30;
+    box-shadow: 0 8px 32px rgba(168, 85, 247, 0.12);
+}
+.feature-card-glow {
+    @apply absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[50px] transition-all duration-500 pointer-events-none;
+}
+
+/* ===== Inputs ===== */
 .form-input-gaming {
     @apply w-full bg-white/60 dark:bg-black/40 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all p-3 text-sm placeholder-gray-400 dark:placeholder-gray-600;
 }
 
-/* Badges & Chips */
+/* ===== Badges & Chips ===== */
 .gaming-chip {
-    @apply px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-default;
-}
-.chronicle-badge {
-    @apply px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-700 dark:text-purple-300;
+    @apply px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-default;
 }
 
-/* Feature Cards logic */
-.feature-card {
-    @apply hover:border-purple-500/40 hover:shadow-[0_10px_40px_rgba(168,85,247,0.15)] transition-all duration-300 p-6 sm:p-8 lg:p-10;
-}
-
-/* Buttons */
+/* ===== Buttons ===== */
 .btn-gaming {
     @apply relative overflow-hidden bg-gradient-to-r from-purple-700 to-indigo-600 text-white font-black tracking-widest uppercase rounded-lg border border-purple-500/30 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 disabled:grayscale transition-all;
 }
@@ -782,28 +896,24 @@ const handleMouseLeave = () => {
 .btn-gaming:hover::before {
     @apply left-[150%];
 }
-
 .btn-gaming-large {
     @apply btn-gaming px-6 sm:px-8 py-4 sm:py-5 text-sm sm:text-base rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.4)];
 }
-
 .ghost-btn {
     @apply bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-indigo-950/70 dark:text-gray-300 font-black tracking-widest uppercase rounded-lg hover:bg-black/10 dark:hover:bg-white/10 hover:text-indigo-950 dark:hover:text-white transition-all;
 }
 
-/* Scrollbar specific handling for modals */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.2); 
-    border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(168, 85, 247, 0.4); 
-    border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(168, 85, 247, 0.6); 
+/* ===== Scrollbar ===== */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.4); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.6); }
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+    .animate-float-slow,
+    .animate-float-slower,
+    .animate-float-medium { animation: none; }
+    .feature-card-wrapper:hover { transform: none; }
 }
 </style>
