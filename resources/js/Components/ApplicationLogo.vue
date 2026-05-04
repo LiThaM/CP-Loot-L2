@@ -1,35 +1,20 @@
 <template>
     <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" v-bind="$attrs">
-        <rect width="40" height="40" rx="8" fill="url(#logo-bg)"/>
-        <!-- Shield/ledger shape -->
-        <path d="M20 6L10 11v9c0 7.18 4.28 13.9 10 16 5.72-2.1 10-8.82 10-16v-9L20 6z" fill="url(#logo-shield)" opacity="0.15"/>
-        <path d="M20 8L12 12v8c0 6.15 3.56 11.88 8 13.72V8z" fill="url(#logo-left)" opacity="0.25"/>
-        <!-- Adena coin symbol -->
-        <circle cx="20" cy="19" r="7" stroke="url(#logo-ring)" stroke-width="1.5" fill="none"/>
-        <circle cx="20" cy="19" r="4.5" stroke="url(#logo-ring)" stroke-width="1" fill="none" opacity="0.5"/>
-        <!-- A lettermark -->
-        <path d="M17.5 23L20 14l2.5 9M18.3 21h3.4" stroke="url(#logo-letter)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <defs>
-            <linearGradient id="logo-bg" x1="0" y1="0" x2="40" y2="40">
-                <stop stop-color="#1a1025"/>
-                <stop offset="1" stop-color="#0f0a18"/>
-            </linearGradient>
-            <linearGradient id="logo-shield" x1="10" y1="6" x2="30" y2="36">
-                <stop stop-color="#a855f7"/>
-                <stop offset="1" stop-color="#7c3aed"/>
-            </linearGradient>
-            <linearGradient id="logo-left" x1="12" y1="8" x2="20" y2="34">
-                <stop stop-color="#a855f7"/>
-                <stop offset="1" stop-color="#6d28d9"/>
-            </linearGradient>
-            <linearGradient id="logo-ring" x1="13" y1="12" x2="27" y2="26">
-                <stop stop-color="#c084fc"/>
-                <stop offset="1" stop-color="#f59e0b"/>
-            </linearGradient>
-            <linearGradient id="logo-letter" x1="17" y1="14" x2="23" y2="23">
-                <stop stop-color="#e9d5ff"/>
-                <stop offset="1" stop-color="#fbbf24"/>
-            </linearGradient>
-        </defs>
+        <rect width="40" height="40" rx="10" :fill="light ? '#f5f3ff' : '#16111f'"/>
+        <path d="M9 12h10v18H9a1 1 0 01-1-1V13a1 1 0 011-1z" :fill="light ? '#7c3aed' : '#c084fc'" :opacity="light ? 0.12 : 0.15"/>
+        <path d="M19 12h10a1 1 0 011 1v16a1 1 0 01-1 1H19V12z" :fill="light ? '#7c3aed' : '#c084fc'" :opacity="light ? 0.06 : 0.08"/>
+        <line x1="19" y1="12" x2="19" y2="30" :stroke="light ? '#7c3aed' : '#c084fc'" stroke-width="1.5" :opacity="light ? 0.4 : 0.5"/>
+        <line x1="12" y1="17" x2="17" y2="17" :stroke="light ? '#7c3aed' : '#c084fc'" stroke-width="1" :opacity="light ? 0.25 : 0.3"/>
+        <line x1="12" y1="20" x2="16" y2="20" :stroke="light ? '#7c3aed' : '#c084fc'" stroke-width="1" :opacity="light ? 0.25 : 0.3"/>
+        <line x1="12" y1="23" x2="17" y2="23" :stroke="light ? '#7c3aed' : '#c084fc'" stroke-width="1" :opacity="light ? 0.25 : 0.3"/>
+        <circle cx="27" cy="16" r="6" :fill="light ? '#f5f3ff' : '#16111f'" :stroke="light ? '#d97706' : '#fbbf24'" stroke-width="1.5"/>
+        <circle cx="27" cy="16" r="3.5" :stroke="light ? '#d97706' : '#fbbf24'" stroke-width="0.8" opacity="0.4"/>
+        <path d="M26 14v4m-1-1h2" :stroke="light ? '#d97706' : '#fbbf24'" stroke-width="1.2" stroke-linecap="round"/>
     </svg>
 </template>
+
+<script setup>
+defineProps({
+    light: { type: Boolean, default: false },
+});
+</script>
