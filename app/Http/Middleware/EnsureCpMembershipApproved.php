@@ -15,6 +15,39 @@ class EnsureCpMembershipApproved
             return $next($request);
         }
 
+        // Check if CP is disabled
+        $cp = $user->cp;
+        if ($cp && ! $cp->is_active) {
+            $message = 'Tu CP ha sido desactivada por un administrador. Contacta a soporte.';
+            $allowedRouteNames = [
+                'excluded',
+                'profile.edit',
+                'profile.update',
+                'logout',
+                'tickets.index',
+                'tickets.store',
+                'tickets.show',
+                'tickets.reply',
+                'verification.notice',
+                'verification.verify',
+                'verification.send',
+                'password.confirm',
+                'password.update',
+            ];
+            $redirectRouteName = 'excluded';
+
+            $routeName = $request->route()?->getName();
+            if ($routeName && in_array($routeName, $allowedRouteNames, true)) {
+                return $next($request);
+            }
+
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            return redirect()->route($redirectRouteName)->with('error', $message);
+        }
+
         $status = $user->membership_status ?? 'approved';
 
         if ($status === 'pending') {

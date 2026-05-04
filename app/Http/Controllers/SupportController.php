@@ -14,14 +14,15 @@ class SupportController extends Controller
 {
     public function contact(Request $request): RedirectResponse
     {
+        $authUser = $request->user();
+        $emailRule = $authUser ? 'nullable|string|email|max:255' : 'required|string|email|max:255';
+
         $data = $request->validate([
             'subject' => 'required|string|max:140',
             'message' => 'required|string|max:5000',
-            'email' => 'nullable|string|email|max:255',
+            'email' => $emailRule,
             'name' => 'nullable|string|max:255',
         ]);
-
-        $authUser = $request->user();
 
         $metadata = [
             'type' => 'support',
