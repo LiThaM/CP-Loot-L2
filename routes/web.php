@@ -111,6 +111,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/admin/cp', [ConstPartyController::class, 'store'])->name('admin.cp.store');
+    Route::post('/admin/cp/{cp}/toggle-active', [ConstPartyController::class, 'toggleActive'])->name('admin.cp.toggleActive');
+    Route::delete('/admin/cp/{cp}', [ConstPartyController::class, 'destroy'])->name('admin.cp.destroy');
     Route::post('/admin/cp-requests/{cpRequest}/approve', [SupportController::class, 'approveCpRequest'])->name('admin.cp-requests.approve');
     Route::post('/admin/cp-requests/{cpRequest}/reject', [SupportController::class, 'rejectCpRequest'])->name('admin.cp-requests.reject');
 

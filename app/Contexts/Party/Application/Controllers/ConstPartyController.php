@@ -2,9 +2,11 @@
 
 namespace App\Contexts\Party\Application\Controllers;
 
+use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ConstPartyController extends Controller
@@ -67,5 +69,40 @@ class ConstPartyController extends Controller
         }
 
         return back()->with('success', 'Ajustes de la Const Party actualizados correctamente.');
+    }
+
+    public function toggleActive(Request $request, ConstParty $cp)
+    {
+        if ($request->user()->role->name !== 'admin') {
+            abort(403);
+        }
+
+        $cp->update(['is_active' => ! $cp->is_active]);
+
+        $status = $cp->is_active ? 'activada' : 'desactivada';
+
+        return back()->with('success', "CP {$cp->name} {$status}.");
+    }
+
+    public function destroy(Request $request, ConstParty $cp)
+    {
+        if ($request->user()->role->name !== 'admin') {
+            abort(403);
+        }
+
+        $memberCount = User::where('cp_id', $cp->id)
+            ->where('membership_status', '!=', 'banned')
+            ->count();
+
+        if ($memberCount > 0) {
+            return back()->withErrors(['cp' => "No se puede eliminar la CP \"{$cp->name}\" porque tiene {$memberCount} miembros. Desactívala primero."]);
+        }
+
+        DB::transaction(function () use ($cp) {
+            User::where('cp_id', $cp->id)->update(['cp_id' => null]);
+            $cp->delete();
+        });
+
+        return redirect()->route('dashboard')->with('success', "CP \"{$cp->name}\" eliminada.");
     }
 }

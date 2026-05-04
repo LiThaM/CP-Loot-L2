@@ -36,11 +36,14 @@ class DashboardController extends Controller
         $supportTickets = [];
 
         if ($role === 'admin') {
-            $stats['total_cps'] = ConstParty::count();
-            $stats['total_members'] = User::where('membership_status', '!=', 'banned')->count();
+            $stats['total_cps'] = ConstParty::where('is_active', true)->count();
+            $stats['total_cps_all'] = ConstParty::count();
+            $stats['total_members'] = User::whereNotNull('cp_id')->where('membership_status', '!=', 'banned')->count();
+            $stats['total_users'] = User::count();
             $stats['total_reports'] = LootReport::where('status', 'confirmed')->count();
             $stats['total_items'] = Item::count();
-            $stats['total_points_global'] = PointsLog::sum('points');
+            $stats['total_adena_distributed'] = (int) PointsLog::where('action_type', 'ADENA_GAIN')->sum('adena');
+            $stats['total_points_global'] = (int) PointsLog::sum('points');
 
             $stats['active_users_24h'] = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subDay())
                 ->distinct('user_id')

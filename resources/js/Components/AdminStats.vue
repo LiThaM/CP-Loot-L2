@@ -132,6 +132,44 @@ const submitCp = () => {
     });
 };
 
+const toggleCpActive = async (cp) => {
+    const action = cp.is_active ? 'desactivar' : 'activar';
+    const ok = await confirmAction(
+        `${action.charAt(0).toUpperCase() + action.slice(1)} CP`,
+        `¿Seguro que quieres ${action} la CP "${cp.name}"?`,
+        `Sí, ${action}`,
+        'Cancelar',
+    );
+    if (!ok) return;
+    router.post(route('admin.cp.toggleActive', cp.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => swalToast(`CP ${cp.is_active ? 'desactivada' : 'activada'}`, 'success'),
+    });
+};
+
+const deleteCp = async (cp) => {
+    const ok = await confirmAction(
+        'Eliminar CP',
+        `¿Seguro que quieres eliminar la CP "${cp.name}"? Esta acción no se puede deshacer. Solo se puede eliminar si no tiene miembros.`,
+        'Sí, eliminar',
+        'Cancelar',
+    );
+    if (!ok) return;
+    router.delete(route('admin.cp.destroy', cp.id), {
+        preserveScroll: true,
+        onSuccess: () => swalToast('CP eliminada', 'success'),
+        onError: (errors) => swalToast(errors.cp || 'No se pudo eliminar', 'error'),
+    });
+};
+
+const formatAdena = (n) => {
+    if (!n) return '0';
+    if (n >= 1000000000) return (n / 1000000000).toFixed(1) + 'B';
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+};
+
 const approveRequest = async (req) => {
     const ok = await confirmAction(
         t('admin.confirm.approve_title'),
@@ -186,33 +224,40 @@ const rejectRequest = async (req) => {
 
             <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
                 <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🛡️</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">CPs Registradas</div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">CPs Activas</div>
                 <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_cps }}</div>
-                <div class="mt-2 text-[10px] text-blue-500 font-bold uppercase tracking-widest">Total Operativos</div>
+                <div class="mt-2 text-[10px] text-blue-500 font-bold uppercase tracking-widest">de {{ stats.total_cps_all }} totales</div>
             </div>
         </div>
 
         <!-- System Totals -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl">👥</div>
+                <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-lg">👥</div>
+                <div>
+                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Miembros en CPs</div>
+                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ stats.total_members }}</div>
+                </div>
+            </div>
+            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800/50 flex items-center justify-center text-lg">🧑</div>
                 <div>
                     <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Usuarios Totales</div>
-                    <div class="text-xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_members }}</div>
+                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ stats.total_users }}</div>
                 </div>
             </div>
             <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xl">⚔️</div>
+                <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-lg">⚔️</div>
                 <div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Reports de Loot</div>
-                    <div class="text-xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_reports }}</div>
+                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Reports Confirmados</div>
+                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ stats.total_reports }}</div>
                 </div>
             </div>
             <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-xl">💰</div>
+                <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-lg">💰</div>
                 <div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Adena Global</div>
-                    <div class="text-xl font-cinzel text-gray-900 dark:text-white">{{ (stats.total_points_global / 1000000).toFixed(1) }}M</div>
+                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Adena Distribuida</div>
+                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ formatAdena(stats.total_adena_distributed) }}</div>
                 </div>
             </div>
         </div>
@@ -314,30 +359,44 @@ const rejectRequest = async (req) => {
                         <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cps.title') }}</h3>
                     </div>
                     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                        <div 
-                            v-for="cp in cps" 
+                        <div
+                            v-for="cp in cps"
                             :key="cp.id"
-                            class="flex items-center p-3 bg-white/70 border border-gray-200 rounded-xl hover:border-purple-500/50 transition group dark:bg-gray-900/50 dark:border-gray-800"
+                            class="flex items-center p-3 border rounded-xl transition group"
+                            :class="cp.is_active === false ? 'bg-red-50/50 border-red-200/50 opacity-60 dark:bg-red-950/10 dark:border-red-500/10' : 'bg-white/70 border-gray-200 hover:border-purple-500/50 dark:bg-gray-900/50 dark:border-gray-800'"
                         >
-                            <Link :href="route('admin.cp.view', cp.id)" class="flex-1">
-                                <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300 transition">{{ cp.name }}</div>
+                            <Link :href="route('admin.cp.view', cp.id)" class="flex-1 min-w-0">
+                                <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300 transition truncate flex items-center gap-1.5">
+                                    {{ cp.name }}
+                                    <span v-if="cp.is_active === false" class="text-[8px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 normal-case tracking-normal">inactiva</span>
+                                </div>
                                 <div class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
                                     {{ cp.members_count }} {{ $t('common.members') }}
                                     <span v-if="cp.leader" class="ml-1 opacity-60">· {{ cp.leader.name }}</span>
                                 </div>
                             </Link>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
                                 <div :class="getChronicleColor(cp.chronicle)" class="text-[8px] font-black border border-current px-2 py-0.5 rounded uppercase">
                                     {{ cp.chronicle }}
                                 </div>
-                                <button 
+                                <button
                                     v-if="cp.leader_id"
                                     @click="router.post(route('admin.impersonate', cp.leader_id))"
-                                    class="p-1 px-2 rounded bg-purple-100 text-purple-700 text-[11px] font-black uppercase tracking-tight hover:bg-purple-600 hover:text-white transition dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-600 dark:hover:text-white"
+                                    class="p-1 px-2 rounded bg-purple-100 text-purple-700 text-[10px] hover:bg-purple-600 hover:text-white transition dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-600 dark:hover:text-white"
                                     title="Impersonar Líder"
-                                >
-                                    🎭
-                                </button>
+                                >🎭</button>
+                                <button
+                                    @click.stop="toggleCpActive(cp)"
+                                    class="p-1 px-2 rounded text-[10px] transition"
+                                    :class="cp.is_active === false ? 'bg-green-100 text-green-700 hover:bg-green-600 hover:text-white dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-600 dark:hover:text-white' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-600 hover:text-white dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-600 dark:hover:text-white'"
+                                    :title="cp.is_active === false ? 'Activar CP' : 'Desactivar CP'"
+                                >{{ cp.is_active === false ? '✅' : '⏸️' }}</button>
+                                <button
+                                    v-if="cp.members_count === 0"
+                                    @click.stop="deleteCp(cp)"
+                                    class="p-1 px-2 rounded bg-red-100 text-red-700 text-[10px] hover:bg-red-600 hover:text-white transition dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white"
+                                    title="Eliminar CP (vacía)"
+                                >🗑️</button>
                             </div>
                         </div>
                     </div>
