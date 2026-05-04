@@ -132,15 +132,7 @@ class AdenaActionController extends Controller
             abort(403, 'No perteneces a ninguna CP.');
         }
 
-        // Calcular adena adeudada para validar
-        $gained = PointsLog::where('user_id', $user->id)->where('action_type', 'ADENA_GAIN')->sum('adena');
-        $paid = abs(PointsLog::where('user_id', $user->id)->whereIn('action_type', ['ADENA_PAYOUT', 'ADENA_OFFSET'])->sum('adena'));
-        $owed = max(0, $gained - $paid);
-
         $amount = (int) $request->amount;
-        if ($amount > $owed) {
-            abort(422, 'No puedes donar más de lo que la CP te debe.');
-        }
 
         DB::transaction(function () use ($user, $amount) {
             PointsLog::create([

@@ -196,24 +196,27 @@ const unbanUser = async (user) => {
     }
 };
 
-const donateAdena = async (maxAmount) => {
+const donateAdena = async () => {
     const { value: amount } = await showAlert({
         title: t('party.donation.modal_title'),
-        text: t('party.donation.modal_text', { max: formatAdenaShort(maxAmount) }),
+        text: t('party.donation.modal_text_free'),
         input: 'number',
         inputAttributes: {
             min: 1,
-            max: maxAmount,
-            step: 1
+            step: 1,
+            placeholder: '1000000',
         },
-        inputValue: maxAmount,
+        inputValue: '',
         showCancelButton: true,
         confirmButtonText: t('common.donate'),
         cancelButtonText: t('common.cancel'),
+        inputValidator: (value) => {
+            if (!value || parseInt(value) < 1) return t('party.donation.validation_min');
+        },
     });
 
     if (amount) {
-        router.post(route('adena.donate'), { amount }, {
+        router.post(route('adena.donate'), { amount: parseInt(amount) }, {
             preserveScroll: true,
             onSuccess: () => showToast(t('party.donation.success')),
         });
@@ -1110,9 +1113,9 @@ watch(buySearch, throttle(async (val) => {
                             <div class="col-span-5 flex items-center justify-end gap-3 px-4">
                                 <!-- Member Donation Button (Current User) -->
                                 <button
-                                    v-if="member.id === $page.props.auth.user.id && member.adena_owed > 0"
+                                    v-if="member.id === $page.props.auth.user.id"
                                     class="px-3 py-2 rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-950/20 active:scale-95 transition-all"
-                                    @click.stop="donateAdena(member.adena_owed)"
+                                    @click.stop="donateAdena()"
                                     :title="$t('party.donation.btn_title')"
                                 >
                                     💝 {{ $t('party.donation.btn_label') }}
