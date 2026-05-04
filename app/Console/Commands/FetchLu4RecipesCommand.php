@@ -336,8 +336,17 @@ class FetchLu4RecipesCommand extends Command
         if ($preferFullFetch || ! $existing || ! $existing->name || $existing->name === 'Unknown') {
             $fetched = $itemScraper->fetchItem($externalId);
             if ($fetched) {
+                // Preserve variant qualifiers (e.g. "Foundation") from the recipe
+                // page name, since the item's own page doesn't include them.
+                $incomingName = $fields['name'] ?? null;
+                $fetchedName = $fetched['name'] ?? null;
+                $resolvedName = $fetchedName ?? $incomingName;
+                if ($incomingName && $fetchedName && stripos($incomingName, 'Foundation') !== false && stripos($fetchedName, 'Foundation') === false) {
+                    $resolvedName = $incomingName;
+                }
+
                 $fields = array_merge($fields, [
-                    'name' => $fetched['name'] ?? ($fields['name'] ?? null),
+                    'name' => $resolvedName,
                     'grade' => $fetched['grade'] ?? null,
                     'category' => $fetched['category'] ?? ($fields['category'] ?? null),
                     'icon_name' => $fetched['icon_name'] ?? ($fields['icon_name'] ?? null),
