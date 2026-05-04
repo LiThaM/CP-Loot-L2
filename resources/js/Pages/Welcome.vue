@@ -154,8 +154,8 @@ onMounted(() => {
                         </div>
 
                         <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]" :class="darkMode ? 'text-white' : 'text-gray-900'">
-                            Track loot fairly.
-                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-amber-400">Zero drama.</span>
+                            {{ $t('welcome.hero.title_line1') }}
+                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-amber-400">{{ $t('welcome.hero.title_line2') }}</span>
                         </h1>
 
                         <p class="mt-6 text-base sm:text-lg leading-relaxed max-w-xl mx-auto" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">
@@ -178,8 +178,8 @@ onMounted(() => {
 
                         <div class="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">
                             <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> {{ $t('footer.free') }}</span>
-                            <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Full audit trail</span>
-                            <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Multi-chronicle</span>
+                            <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> {{ $t('welcome.hero.chip_audit') }}</span>
+                            <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> {{ $t('welcome.hero.chip_multi') }}</span>
                         </div>
                     </div>
                 </div>
@@ -193,22 +193,22 @@ onMounted(() => {
                             <div class="w-10 h-10 rounded-xl mx-auto mb-4 flex items-center justify-center" :class="darkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-500'">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                             </div>
-                            <h3 class="font-bold text-sm mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">The Problem</h3>
-                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">Spreadsheets break. Members argue. Nobody trusts the loot was split fairly. Sound familiar?</p>
+                            <h3 class="font-bold text-sm mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.narrative.problem_title') }}</h3>
+                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('welcome.narrative.problem_text') }}</p>
                         </div>
                         <div class="card-base p-6 sm:p-8 text-center border-2" :class="darkMode ? 'border-purple-500/20' : 'border-purple-200'">
                             <div class="w-10 h-10 rounded-xl mx-auto mb-4 flex items-center justify-center" :class="darkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-500'">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
-                            <h3 class="font-bold text-sm mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">The Solution</h3>
-                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">Every drop, every split, every adena tracked with photo proof. Transparent, automated, tamper-proof.</p>
+                            <h3 class="font-bold text-sm mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.narrative.solution_title') }}</h3>
+                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('welcome.narrative.solution_text') }}</p>
                         </div>
                         <div class="card-base p-6 sm:p-8 text-center">
                             <div class="w-10 h-10 rounded-xl mx-auto mb-4 flex items-center justify-center" :class="darkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-500'">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                             </div>
-                            <h3 class="font-bold text-sm mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">The Result</h3>
-                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">No more arguments. CP leaders manage the war, not Excel. Members see exactly what they earned.</p>
+                            <h3 class="font-bold text-sm mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.narrative.result_title') }}</h3>
+                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('welcome.narrative.result_text') }}</p>
                         </div>
                     </div>
                 </div>
@@ -219,7 +219,7 @@ onMounted(() => {
                 <div class="max-w-6xl mx-auto px-4 sm:px-6">
                     <div class="text-center mb-12">
                         <p class="text-xs font-bold uppercase tracking-widest mb-2" :class="darkMode ? 'text-purple-400' : 'text-purple-600'">{{ $t('welcome.features.title') }}</p>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">Everything your CP needs</h2>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.features.heading') }}</h2>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                         <div v-for="(f, i) in [
