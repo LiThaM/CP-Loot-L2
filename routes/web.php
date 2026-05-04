@@ -16,6 +16,10 @@ Route::get('/', function () {
 });
 
 // Public Recipe Explorer (no auth required)
+Route::get('/recipes', function () {
+    return Inertia::render('Recipes');
+})->name('recipes');
+
 Route::prefix('api/public')->middleware('throttle:30,1')->group(function () {
     Route::get('/recipes/search', [PublicCraftingController::class, 'search'])->name('public.recipes.search');
     Route::get('/recipes/{recipe}/tree', [PublicCraftingController::class, 'tree'])->name('public.recipes.tree');
