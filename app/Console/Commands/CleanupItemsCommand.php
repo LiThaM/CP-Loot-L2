@@ -47,12 +47,13 @@ class CleanupItemsCommand extends Command
         foreach ($bad as $item) {
             $refCounts = $this->referenceCounts((int) $item->id);
             $refs = array_sum($refCounts);
+            $hasBadName = $this->isBadName($item->name);
 
             $action = 'none';
-            if ($refs === 0 && $deleteUnref) {
+            if ($hasBadName && $refs === 0 && $deleteUnref) {
                 $action = $apply ? 'delete' : 'delete(dry)';
                 $toDelete[] = (int) $item->id;
-            } elseif ($refs > 0 && $fixRef) {
+            } elseif ($fixRef) {
                 $action = $apply ? 'fix' : 'fix(dry)';
                 $toFix[] = (int) $item->id;
             }
@@ -91,8 +92,7 @@ class CleanupItemsCommand extends Command
             if (count($toFix) > 0) {
                 $items = Item::whereIn('id', $toFix)->get();
                 foreach ($items as $item) {
-                    $name = trim((string) ($item->name ?? ''));
-                    $isBadName = $name === '' || preg_match('/^[_\-—0]+$/', $name);
+                    $isBadName = $this->isBadName($item->name);
                     $externalId = (int) ($item->external_id ?? 0);
                     $fallback = $externalId > 0 ? "Unknown item #{$externalId}" : "Unknown item (id {$item->id})";
 
@@ -132,6 +132,13 @@ class CleanupItemsCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function isBadName(?string $name): bool
+    {
+        $name = trim((string) ($name ?? ''));
+
+        return $name === '' || (bool) preg_match('/^[_\-—0]+$/', $name);
     }
 
     /**
