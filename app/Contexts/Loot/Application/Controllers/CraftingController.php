@@ -99,16 +99,59 @@ class CraftingController extends Controller
         try {
             DB::transaction(function () use ($user, $cp, $recipe, $shouldProduce, $outputItemId) {
                 $warehouseAmountsByItemId = $this->warehouseAmountsByItemId((int) $cp->id);
- 
-                // Check Materials
+                $chronicle = $cp->chronicle ?: 'IL';
+                $craftableMap = $this->craftableRecipeIdByItemId($chronicle);
+
+                // Build the list of what to actually consume (direct + auto-crafted sub-materials)
+                $toConsume = []; // item_id => amount
+
                 foreach ($recipe->materials as $mat) {
                     $need = (int) ($mat->quantity ?? 1);
                     $have = (int) ($warehouseAmountsByItemId[$mat->item_id] ?? 0);
-                    if ($have < $need) {
-                        throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$mat->item_id.':'.$need.':'.$have);
+
+                    if ($have >= $need) {
+                        // Enough in warehouse, consume directly
+                        $toConsume[$mat->item_id] = ($toConsume[$mat->item_id] ?? 0) + $need;
+                    } else {
+                        // Not enough - try to auto-craft the shortfall
+                        $shortfall = $need - $have;
+
+                        // Consume whatever we have of the intermediate material
+                        if ($have > 0) {
+                            $toConsume[$mat->item_id] = ($toConsume[$mat->item_id] ?? 0) + $have;
+                        }
+
+                        $subRecipeId = $craftableMap[(int) $mat->item_id] ?? null;
+                        if (! $subRecipeId) {
+                            throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$mat->item_id.':'.$need.':'.$have);
+                        }
+
+                        $subRecipe = Recipe::whereKey($subRecipeId)->with('materials')->first();
+                        if (! $subRecipe || $subRecipe->materials->isEmpty()) {
+                            throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$mat->item_id.':'.$need.':'.$have);
+                        }
+
+                        $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
+                        $craftsNeeded = (int) ceil($shortfall / $outputQty);
+
+                        // Check and accumulate sub-materials needed
+                        foreach ($subRecipe->materials as $subMat) {
+                            $subNeed = (int) ($subMat->quantity ?? 1) * $craftsNeeded;
+                            $subHave = (int) ($warehouseAmountsByItemId[$subMat->item_id] ?? 0);
+
+                            // Account for sub-materials already earmarked for consumption
+                            $alreadyConsuming = $toConsume[$subMat->item_id] ?? 0;
+                            $subAvailable = $subHave - $alreadyConsuming;
+
+                            if ($subAvailable < $subNeed) {
+                                throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$subMat->item_id.':'.$subNeed.':'.$subAvailable);
+                            }
+
+                            $toConsume[$subMat->item_id] = ($toConsume[$subMat->item_id] ?? 0) + $subNeed;
+                        }
                     }
                 }
- 
+
                 // Check Recipe Item
                 if ($recipe->recipe_item_id) {
                     $haveRecipe = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
@@ -116,7 +159,7 @@ class CraftingController extends Controller
                         throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$recipe->recipe_item_id.':1:'.$haveRecipe);
                     }
                 }
- 
+
                 $consumeReport = LootReport::create([
                     'cp_id' => $cp->id,
                     'requested_by_id' => $user->id,
@@ -125,17 +168,20 @@ class CraftingController extends Controller
                     'image_proof' => null,
                     'recipient_ids' => null,
                 ]);
- 
-                // Consume materials
-                foreach ($recipe->materials as $mat) {
+
+                // Consume all materials (direct + auto-crafted sub-materials)
+                foreach ($toConsume as $itemId => $amount) {
+                    if ($amount <= 0) {
+                        continue;
+                    }
                     LootEntry::create([
                         'loot_report_id' => $consumeReport->id,
-                        'item_id' => $mat->item_id,
-                        'amount' => (int) ($mat->quantity ?? 1),
+                        'item_id' => $itemId,
+                        'amount' => $amount,
                     ]);
                 }
- 
-                // Consume recipe
+
+                // Consume recipe scroll
                 if ($recipe->recipe_item_id) {
                     LootEntry::create([
                         'loot_report_id' => $consumeReport->id,
