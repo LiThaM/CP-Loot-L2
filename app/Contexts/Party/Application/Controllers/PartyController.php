@@ -112,12 +112,18 @@ class PartyController extends Controller
 
         $craftableRecipeIdByItemId = $this->craftableRecipeIdByItemId((string) ($cp->chronicle ?: 'IL'));
 
+        // Batch-load all sub-recipes for craftable materials (for craft_potential calculation)
+        $subRecipeIds = collect($craftableRecipeIdByItemId)->unique()->values()->all();
+        $subRecipesById = ! empty($subRecipeIds)
+            ? Recipe::whereIn('id', $subRecipeIds)->with('materials.item')->get()->keyBy('id')
+            : collect();
+
         $cpRecipes = CpRecipe::query()
             ->where('cp_id', $user->cp_id)
             ->with(['recipe.outputItem', 'recipe.outputs.item', 'recipe.materials.item', 'recipe.recipeItem'])
             ->orderBy('priority')
             ->get()
-            ->map(function (CpRecipe $cpRecipe) use ($warehouseAmountsByItemId, $craftableRecipeIdByItemId) {
+            ->map(function (CpRecipe $cpRecipe) use ($warehouseAmountsByItemId, $craftableRecipeIdByItemId, $subRecipesById) {
                 $recipe = $cpRecipe->recipe;
                 $materials = $recipe?->materials ?? collect();
                 $outputs = $recipe?->outputs ?? collect();
@@ -137,6 +143,45 @@ class PartyController extends Controller
                 })->map(function (array $m) use ($craftableRecipeIdByItemId) {
                     $m['craft_recipe_id'] = $craftableRecipeIdByItemId[(int) $m['item_id']] ?? null;
                     $m['craftable'] = $m['craft_recipe_id'] !== null;
+
+                    return $m;
+                })->map(function (array $m) use ($warehouseAmountsByItemId, $subRecipesById) {
+                    $m['craft_potential'] = 0;
+                    $m['craft_potential_limited_by'] = null;
+
+                    if (($m['missing'] ?? 0) <= 0 || ! ($m['craft_recipe_id'] ?? null)) {
+                        return $m;
+                    }
+
+                    $subRecipe = $subRecipesById[$m['craft_recipe_id']] ?? null;
+                    if (! $subRecipe || $subRecipe->materials->isEmpty()) {
+                        return $m;
+                    }
+
+                    $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
+                    $minCrafts = PHP_INT_MAX;
+                    $bottleneck = null;
+
+                    foreach ($subRecipe->materials as $subMat) {
+                        $subNeed = (int) ($subMat->quantity ?? 1);
+                        if ($subNeed <= 0) {
+                            continue;
+                        }
+                        $subHave = (int) ($warehouseAmountsByItemId[$subMat->item_id] ?? 0);
+                        $possible = intdiv($subHave, $subNeed);
+                        if ($possible < $minCrafts) {
+                            $minCrafts = $possible;
+                            $bottleneck = $subMat->item?->name;
+                        }
+                    }
+
+                    if ($minCrafts === PHP_INT_MAX) {
+                        $minCrafts = 0;
+                    }
+
+                    $canProduce = $minCrafts * $outputQty;
+                    $m['craft_potential'] = min($canProduce, $m['missing']);
+                    $m['craft_potential_limited_by'] = $bottleneck;
 
                     return $m;
                 })->values();

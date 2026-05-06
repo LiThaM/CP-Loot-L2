@@ -1591,6 +1591,11 @@ watch(buySearch, throttle(async (val) => {
                                         <div class="text-sm font-cinzel" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
                                             {{ formatNumber(mat.missing || 0) }}
                                         </div>
+                                        <div v-if="(mat.craft_potential || 0) > 0" class="mt-1" :title="mat.craft_potential_limited_by ? $t('craft.limited_by', { material: mat.craft_potential_limited_by }) : ''">
+                                            <div class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-black uppercase tracking-widest dark:bg-cyan-900/30 dark:text-cyan-200">
+                                                {{ $t('craft.can_craft', { count: formatNumber(mat.craft_potential) }) }}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
