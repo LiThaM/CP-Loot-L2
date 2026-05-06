@@ -29,6 +29,8 @@ const treeLoading = ref(false);
 
 // Calculator: user-inputted "have" amounts keyed by item_id
 const haveAmounts = reactive({});
+// Which craftable items to expand in the calculator (user toggles)
+const expandedCraftables = reactive({});
 
 const doSearch = () => {
     clearTimeout(searchTimeout);
@@ -56,6 +58,7 @@ const selectRecipe = async (recipe) => {
     query.value = '';
     tree.value = null;
     Object.keys(haveAmounts).forEach(k => delete haveAmounts[k]);
+    Object.keys(expandedCraftables).forEach(k => delete expandedCraftables[k]);
     treeLoading.value = true;
     try {
         const { data } = await axios.get(`/api/public/recipes/${recipe.id}/tree`, { params: { depth: 4 } });
@@ -79,15 +82,29 @@ const flattenTree = (nodes, depth = 0) => {
     return out;
 };
 
+const toggleCraftable = (itemId) => {
+    expandedCraftables[itemId] = !expandedCraftables[itemId];
+};
+
 const getLeaves = (nodes) => {
     const leaves = [];
-    const walk = (list) => { for (const n of list) { if (!n.children?.length) leaves.push(n); else walk(n.children); } };
+    const walk = (list) => {
+        for (const n of list) {
+            // If node has children AND user toggled it expanded, recurse into children
+            if (n.children?.length && expandedCraftables[n.item_id]) {
+                walk(n.children);
+            } else {
+                // Treat as leaf (either no children or user chose not to expand)
+                leaves.push(n);
+            }
+        }
+    };
     walk(nodes || []);
     // Aggregate by item_id
     const map = {};
     for (const l of leaves) {
         if (map[l.item_id]) map[l.item_id].need += l.need;
-        else map[l.item_id] = { ...l };
+        else map[l.item_id] = { ...l, craftable: !!(l.children?.length) };
     }
     return Object.values(map);
 };
@@ -118,14 +135,14 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                 <div class="flex items-center gap-4">
                     <span class="text-xs font-black tracking-[0.2em] uppercase text-amber-400 flex items-center gap-1.5">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Recipe Explorer
+                        {{ $t('recipes.header.title') }}
                     </span>
                     <Link v-if="$page.props.auth?.user" :href="route('dashboard')" class="px-4 py-2 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs font-bold tracking-widest uppercase hover:bg-purple-600/30 transition-all">
-                        Dashboard
+                        {{ $t('welcome.hero.cta.dashboard') }}
                     </Link>
                     <template v-else>
                         <Link :href="route('login')" class="px-4 py-2 rounded-lg border border-white/10 text-gray-300 text-xs font-bold tracking-widest uppercase hover:bg-white/5 transition-all">
-                            Login
+                            {{ $t('welcome.hero.cta.login') }}
                         </Link>
                     </template>
                 </div>
@@ -135,14 +152,14 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
         <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <!-- Search Section -->
             <div class="text-center mb-8">
-                <h1 class="text-2xl sm:text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 font-cinzel">Crafting Calculator</h1>
-                <p class="mt-2 text-sm text-gray-400 max-w-md mx-auto">Search a recipe, see the full crafting tree, and input your materials to calculate what you need</p>
+                <h1 class="text-2xl sm:text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 font-cinzel">{{ $t('recipes.search.title') }}</h1>
+                <p class="mt-2 text-sm text-gray-400 max-w-md mx-auto">{{ $t('recipes.search.subtitle') }}</p>
             </div>
 
             <div class="max-w-2xl mx-auto relative mb-10">
                 <div class="flex gap-2">
                     <select v-model="selectedChronicle" class="bg-black/40 border border-white/10 text-gray-300 rounded-xl focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm py-4 px-3 w-32 shrink-0">
-                        <option value="">All</option>
+                        <option value="">{{ $t('recipes.search.all') }}</option>
                         <option v-for="c in chronicles" :key="c" :value="c">{{ c }}</option>
                     </select>
                     <div class="relative flex-1">
@@ -164,7 +181,7 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                 <div class="text-sm font-bold text-white truncate">{{ r.name }}</div>
                                 <div class="text-[10px] text-gray-500 flex items-center gap-2">
                                     <span class="uppercase font-bold tracking-wider">{{ r.chronicle }}</span>
-                                    <span>{{ r.materials_count }} mats</span>
+                                    <span>{{ r.materials_count }} {{ $t('recipes.search.mats') }}</span>
                                 </div>
                             </div>
                             <div class="text-xs font-mono font-bold" :class="r.success_rate >= 100 ? 'text-green-400' : 'text-yellow-400'">{{ r.success_rate }}%</div>
@@ -184,19 +201,19 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                 <div class="text-xl font-black tracking-widest text-white">{{ selected.name }}</div>
                                 <div class="flex items-center gap-3 mt-1 text-xs">
                                     <span class="uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">{{ selected.chronicle }}</span>
-                                    <span class="font-mono font-bold" :class="selected.success_rate >= 100 ? 'text-green-400' : 'text-yellow-400'">{{ selected.success_rate }}% success</span>
+                                    <span class="font-mono font-bold" :class="selected.success_rate >= 100 ? 'text-green-400' : 'text-yellow-400'">{{ selected.success_rate }}% {{ $t('common.success_rate') }}</span>
                                 </div>
                             </div>
                         </div>
                         <button type="button" @click="clearRecipe" class="text-gray-500 hover:text-white transition px-3 py-2 rounded-lg hover:bg-white/5 text-xs font-bold tracking-widest uppercase">
-                            Clear
+                            {{ $t('common.clear') }}
                         </button>
                     </div>
 
                     <!-- Loading -->
                     <div v-if="treeLoading" class="text-center py-16">
                         <svg class="w-10 h-10 animate-spin mx-auto mb-4 text-amber-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        <div class="text-sm text-gray-500">Loading crafting tree...</div>
+                        <div class="text-sm text-gray-500">{{ $t('recipes.tree.loading') }}</div>
                     </div>
 
                     <template v-else-if="tree">
@@ -222,7 +239,7 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                 <!-- Materials Tree -->
                                 <div class="rounded-xl border border-white/5 overflow-hidden">
                                     <div class="px-4 py-2.5 bg-white/[0.03] border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                                        Materials Tree
+                                        {{ $t('recipes.tree.title') }}
                                     </div>
                                     <div class="divide-y divide-white/[0.03]">
                                         <div v-for="(node, i) in flattenTree(tree.nodes)" :key="i" class="flex items-center gap-2 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
@@ -234,7 +251,7 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                                     <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                                 </div>
                                                 <span class="text-sm truncate" :class="[node.is_recipe ? 'text-amber-400 font-bold italic' : 'text-gray-200', node.depth === 0 ? 'font-bold' : 'font-medium']">{{ node.name || 'Unknown' }}</span>
-                                                <span v-if="node.craft_recipe_id && node.children?.length" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">craftable</span>
+                                                <span v-if="node.craft_recipe_id && node.children?.length" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">{{ $t('recipes.tree.craftable') }}</span>
                                             </div>
                                             <span class="text-xs font-mono font-bold text-yellow-400 flex-shrink-0">x{{ node.need }}</span>
                                         </div>
@@ -247,18 +264,24 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                 <div class="rounded-xl border border-amber-500/20 overflow-hidden bg-amber-500/[0.03]">
                                     <div class="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                        <span class="text-[10px] font-black uppercase tracking-widest text-amber-400">Material Calculator</span>
+                                        <span class="text-[10px] font-black uppercase tracking-widest text-amber-400">{{ $t('recipes.calc.title') }}</span>
                                     </div>
                                     <div class="p-3 space-y-1.5 max-h-[60vh] overflow-y-auto">
-                                        <div v-for="leaf in getLeaves(tree.nodes)" :key="leaf.item_id" class="flex items-center gap-2 p-2.5 rounded-lg transition-colors" :class="getMissing(leaf.item_id, leaf.need) === 0 ? 'bg-green-500/5' : 'bg-black/20'">
-                                            <img v-if="leaf.image_url" :src="leaf.image_url" class="w-7 h-7 rounded flex-shrink-0" />
+                                        <div v-for="leaf in getLeaves(tree.nodes)" :key="leaf.item_id + '-' + (expandedCraftables[leaf.item_id] ? '1' : '0')" class="flex items-center gap-2 p-2.5 rounded-lg transition-colors" :class="getMissing(leaf.item_id, leaf.need) === 0 ? 'bg-green-500/5' : 'bg-black/20'">
+                                            <button v-if="leaf.craftable" @click="toggleCraftable(leaf.item_id)" class="w-7 h-7 rounded flex-shrink-0 flex items-center justify-center bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-colors" :title="$t('recipes.calc.expand_craft')">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                            </button>
+                                            <img v-else-if="leaf.image_url" :src="leaf.image_url" class="w-7 h-7 rounded flex-shrink-0" />
                                             <div v-else class="w-7 h-7 rounded bg-white/5 flex-shrink-0"></div>
                                             <div class="flex-1 min-w-0">
-                                                <div class="text-xs font-bold text-gray-200 truncate">{{ leaf.name }}</div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-xs font-bold truncate" :class="leaf.craftable ? 'text-purple-300' : 'text-gray-200'">{{ leaf.name }}</span>
+                                                    <span v-if="leaf.craftable" class="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">craft</span>
+                                                </div>
                                                 <div class="text-[10px] text-gray-500">
-                                                    Need: <span class="text-yellow-400 font-mono">{{ leaf.need }}</span>
+                                                    {{ $t('recipes.calc.need') }}: <span class="text-yellow-400 font-mono">{{ fmt(leaf.need) }}</span>
                                                     <span class="mx-1">|</span>
-                                                    Missing: <span class="font-mono" :class="getMissing(leaf.item_id, leaf.need) > 0 ? 'text-red-400' : 'text-green-400'">{{ getMissing(leaf.item_id, leaf.need) }}</span>
+                                                    {{ $t('recipes.calc.missing') }}: <span class="font-mono" :class="getMissing(leaf.item_id, leaf.need) > 0 ? 'text-red-400' : 'text-green-400'">{{ fmt(getMissing(leaf.item_id, leaf.need)) }}</span>
                                                 </div>
                                             </div>
                                             <input
@@ -275,23 +298,23 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
 
                                 <!-- Summary -->
                                 <div class="rounded-xl border border-white/5 p-4 bg-black/20">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">Summary</div>
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{{ $t('recipes.calc.summary') }}</div>
                                     <div class="space-y-2 text-sm">
                                         <div class="flex justify-between">
-                                            <span class="text-gray-400">Total base materials</span>
+                                            <span class="text-gray-400">{{ $t('recipes.calc.total_materials') }}</span>
                                             <span class="font-mono font-bold text-white">{{ getLeaves(tree.nodes).length }}</span>
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="text-gray-400">Completed</span>
+                                            <span class="text-gray-400">{{ $t('recipes.calc.completion') }}</span>
                                             <span class="font-mono font-bold text-green-400">{{ getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) === 0).length }}</span>
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="text-gray-400">Still missing</span>
+                                            <span class="text-gray-400">{{ $t('recipes.calc.missing') }}</span>
                                             <span class="font-mono font-bold text-red-400">{{ getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) > 0).length }}</span>
                                         </div>
                                         <div class="h-px bg-white/5 my-2"></div>
                                         <div class="flex justify-between">
-                                            <span class="text-gray-400">Progress</span>
+                                            <span class="text-gray-400">{{ $t('recipes.calc.progress') }}</span>
                                             <span class="font-mono font-bold text-amber-400">
                                                 {{ Math.round(getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) === 0).length / Math.max(1, getLeaves(tree.nodes).length) * 100) }}%
                                             </span>
@@ -315,7 +338,7 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                 <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                     <svg class="w-10 h-10 text-amber-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                <p class="text-gray-500 text-sm max-w-sm mx-auto">Start typing a recipe name above to explore crafting trees and calculate materials</p>
+                <p class="text-gray-500 text-sm max-w-sm mx-auto">{{ $t('recipes.empty_state') }}</p>
             </div>
         </main>
     </div>
