@@ -102,54 +102,51 @@ class CraftingController extends Controller
                 $chronicle = $cp->chronicle ?: 'IL';
                 $craftableMap = $this->craftableRecipeIdByItemId($chronicle);
 
-                // Build the list of what to actually consume (direct + auto-crafted sub-materials)
+                // Build the list of what to actually consume, resolving sub-crafts recursively
                 $toConsume = []; // item_id => amount
+                $available = []; // item_id => remaining available (warehouse - already earmarked)
+                foreach ($warehouseAmountsByItemId as $id => $amt) {
+                    $available[(int) $id] = (int) $amt;
+                }
 
-                foreach ($recipe->materials as $mat) {
-                    $need = (int) ($mat->quantity ?? 1);
-                    $have = (int) ($warehouseAmountsByItemId[$mat->item_id] ?? 0);
+                $resolveMaterial = function (int $itemId, int $need) use (&$resolveMaterial, &$toConsume, &$available, $craftableMap): void {
+                    $have = $available[$itemId] ?? 0;
 
                     if ($have >= $need) {
-                        // Enough in warehouse, consume directly
-                        $toConsume[$mat->item_id] = ($toConsume[$mat->item_id] ?? 0) + $need;
-                    } else {
-                        // Not enough - try to auto-craft the shortfall
-                        $shortfall = $need - $have;
-
-                        // Consume whatever we have of the intermediate material
-                        if ($have > 0) {
-                            $toConsume[$mat->item_id] = ($toConsume[$mat->item_id] ?? 0) + $have;
-                        }
-
-                        $subRecipeId = $craftableMap[(int) $mat->item_id] ?? null;
-                        if (! $subRecipeId) {
-                            throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$mat->item_id.':'.$need.':'.$have);
-                        }
-
-                        $subRecipe = Recipe::whereKey($subRecipeId)->with('materials')->first();
-                        if (! $subRecipe || $subRecipe->materials->isEmpty()) {
-                            throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$mat->item_id.':'.$need.':'.$have);
-                        }
-
-                        $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
-                        $craftsNeeded = (int) ceil($shortfall / $outputQty);
-
-                        // Check and accumulate sub-materials needed
-                        foreach ($subRecipe->materials as $subMat) {
-                            $subNeed = (int) ($subMat->quantity ?? 1) * $craftsNeeded;
-                            $subHave = (int) ($warehouseAmountsByItemId[$subMat->item_id] ?? 0);
-
-                            // Account for sub-materials already earmarked for consumption
-                            $alreadyConsuming = $toConsume[$subMat->item_id] ?? 0;
-                            $subAvailable = $subHave - $alreadyConsuming;
-
-                            if ($subAvailable < $subNeed) {
-                                throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$subMat->item_id.':'.$subNeed.':'.$subAvailable);
-                            }
-
-                            $toConsume[$subMat->item_id] = ($toConsume[$subMat->item_id] ?? 0) + $subNeed;
-                        }
+                        $toConsume[$itemId] = ($toConsume[$itemId] ?? 0) + $need;
+                        $available[$itemId] -= $need;
+                        return;
                     }
+
+                    // Use what's available, then auto-craft the rest
+                    $shortfall = $need - $have;
+                    if ($have > 0) {
+                        $toConsume[$itemId] = ($toConsume[$itemId] ?? 0) + $have;
+                        $available[$itemId] = 0;
+                    }
+
+                    $subRecipeId = $craftableMap[$itemId] ?? null;
+                    if (! $subRecipeId) {
+                        throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$itemId.':'.$need.':'.max(0, $have));
+                    }
+
+                    $subRecipe = Recipe::whereKey($subRecipeId)->with('materials')->first();
+                    if (! $subRecipe || $subRecipe->materials->isEmpty()) {
+                        throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$itemId.':'.$need.':'.max(0, $have));
+                    }
+
+                    $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
+                    $craftsNeeded = (int) ceil($shortfall / $outputQty);
+
+                    // Recursively resolve each sub-material
+                    foreach ($subRecipe->materials as $subMat) {
+                        $subNeed = (int) ($subMat->quantity ?? 1) * $craftsNeeded;
+                        $resolveMaterial((int) $subMat->item_id, $subNeed);
+                    }
+                };
+
+                foreach ($recipe->materials as $mat) {
+                    $resolveMaterial((int) $mat->item_id, (int) ($mat->quantity ?? 1));
                 }
 
                 // Check Recipe Item
