@@ -21,7 +21,7 @@ class ConstPartyController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:const_parties,name',
             'server' => 'nullable|string|max:255',
-            'chronicle' => 'required|string|in:C1,C2,C3,C4,C5,IL,HB,Classic,LU4',
+            'chronicle' => 'required|string|in:C1,C2,C3,C4,C5,IL,CT1,GF,HB,Classic,LU4',
         ]);
 
         $inviteCode = Str::random(12);

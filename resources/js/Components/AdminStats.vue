@@ -444,6 +444,8 @@ const rejectRequest = async (req) => {
                                 <option value="C4">{{ $t('chronicles.c4') }}</option>
                                 <option value="C5">{{ $t('chronicles.c5') }}</option>
                                 <option value="IL">{{ $t('chronicles.il') }}</option>
+                                <option value="CT1">{{ $t('chronicles.ct1') }}</option>
+                                <option value="GF">{{ $t('chronicles.gf') }}</option>
                                 <option value="HB">{{ $t('chronicles.hb') }}</option>
                                 <option value="LU4">{{ $t('chronicles.lu4') }}</option>
                                 <option value="Classic">{{ $t('chronicles.classic') }}</option>

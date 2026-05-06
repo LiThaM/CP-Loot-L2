@@ -160,6 +160,6 @@ class SupportController extends Controller
 
     private function chronicles(): array
     {
-        return ['C1', 'C2', 'C3', 'C4', 'C5', 'IL', 'HB', 'Classic', 'LU4'];
+        return ['C1', 'C2', 'C3', 'C4', 'C5', 'IL', 'CT1', 'GF', 'HB', 'Classic', 'LU4'];
     }
 }
