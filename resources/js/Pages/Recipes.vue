@@ -234,7 +234,7 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                                     <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                                 </div>
                                                 <span class="text-sm truncate" :class="[node.is_recipe ? 'text-amber-400 font-bold italic' : 'text-gray-200', node.depth === 0 ? 'font-bold' : 'font-medium']">{{ node.name || 'Unknown' }}</span>
-                                                <span v-if="node.craft_recipe_id" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">craftable</span>
+                                                <span v-if="node.craft_recipe_id && node.children?.length" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">craftable</span>
                                             </div>
                                             <span class="text-xs font-mono font-bold text-yellow-400 flex-shrink-0">x{{ node.need }}</span>
                                         </div>

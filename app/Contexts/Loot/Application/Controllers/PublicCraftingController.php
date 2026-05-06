@@ -59,9 +59,8 @@ class PublicCraftingController extends Controller
 
         $chronicle = $recipe->chronicle ?: 'IL';
         $craftableMap = $this->craftableRecipeIdByItemId($chronicle);
-        $visited = [];
 
-        $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $craftableMap, &$visited) {
+        $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $craftableMap) {
             return $this->buildNode(
                 itemId: (int) $mat->item_id,
                 name: $mat->item?->name,
@@ -70,7 +69,7 @@ class PublicCraftingController extends Controller
                 craftableMap: $craftableMap,
                 depth: $depth,
                 chronicle: $chronicle,
-                visited: $visited,
+                ancestors: [],
             );
         })->values();
 
@@ -162,20 +161,21 @@ class PublicCraftingController extends Controller
         array $craftableMap,
         int $depth,
         string $chronicle,
-        array &$visited,
+        array $ancestors = [],
     ): array {
         $craftRecipeId = $craftableMap[$itemId] ?? null;
         $children = [];
 
-        if ($depth > 0 && $craftRecipeId && ! in_array($craftRecipeId, $visited, true)) {
-            $visited[] = $craftRecipeId;
+        // Expand if depth allows and not a circular dependency (same recipe in current branch)
+        if ($depth > 0 && $craftRecipeId && ! in_array($craftRecipeId, $ancestors, true)) {
             $craftRecipe = Recipe::whereKey($craftRecipeId)
                 ->where('chronicle', $chronicle)
                 ->with(['materials.item'])
                 ->first();
 
             if ($craftRecipe) {
-                $children = $craftRecipe->materials->map(function ($mat) use ($need, $depth, $chronicle, $craftableMap, &$visited) {
+                $branchAncestors = array_merge($ancestors, [$craftRecipeId]);
+                $children = $craftRecipe->materials->map(function ($mat) use ($need, $depth, $chronicle, $craftableMap, $branchAncestors) {
                     return $this->buildNode(
                         itemId: (int) $mat->item_id,
                         name: $mat->item?->name,
@@ -184,7 +184,7 @@ class PublicCraftingController extends Controller
                         craftableMap: $craftableMap,
                         depth: $depth - 1,
                         chronicle: $chronicle,
-                        visited: $visited,
+                        ancestors: $branchAncestors,
                     );
                 })->values()->all();
             }

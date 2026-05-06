@@ -207,9 +207,7 @@ class CraftingController extends Controller
 
         $amounts = $this->warehouseAmountsByItemId((int) $user->cp_id);
         $craftableRecipeIdByItemId = $this->craftableRecipeIdByItemId($chronicle);
-        $visitedRecipeIds = [];
-
-        $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $amounts, $craftableRecipeIdByItemId, &$visitedRecipeIds) {
+        $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $amounts, $craftableRecipeIdByItemId) {
             return $this->treeNodeForMaterial(
                 itemId: (int) $mat->item_id,
                 name: $mat->item?->name,
@@ -220,7 +218,7 @@ class CraftingController extends Controller
                 depth: $depth,
                 chronicle: $chronicle,
                 amounts: $amounts,
-                visitedRecipeIds: $visitedRecipeIds,
+                ancestors: [],
             );
         })->values();
  
@@ -410,21 +408,22 @@ class CraftingController extends Controller
         int $depth,
         string $chronicle,
         array $amounts,
-        array &$visitedRecipeIds,
+        array $ancestors = [],
     ): array {
         $missing = max(0, $need - $have);
         $craftRecipeId = $craftableRecipeIdByItemId[$itemId] ?? null;
         $children = [];
 
-        if ($depth > 0 && $missing > 0 && $craftRecipeId && ! in_array($craftRecipeId, $visitedRecipeIds, true)) {
-            $visitedRecipeIds[] = $craftRecipeId;
+        // Expand if depth allows and not a circular dependency in current branch
+        if ($depth > 0 && $missing > 0 && $craftRecipeId && ! in_array($craftRecipeId, $ancestors, true)) {
             $craftRecipe = Recipe::whereKey($craftRecipeId)
                 ->where('chronicle', $chronicle)
                 ->with(['materials.item'])
                 ->first();
 
             if ($craftRecipe) {
-                $children = $craftRecipe->materials->map(function ($mat) use ($missing, $depth, $chronicle, $amounts, $craftableRecipeIdByItemId, &$visitedRecipeIds) {
+                $branchAncestors = array_merge($ancestors, [$craftRecipeId]);
+                $children = $craftRecipe->materials->map(function ($mat) use ($missing, $depth, $chronicle, $amounts, $craftableRecipeIdByItemId, $branchAncestors) {
                     $childNeed = (int) ($mat->quantity ?? 1) * max(1, $missing);
                     $childHave = (int) ($amounts[$mat->item_id] ?? 0);
 
@@ -438,7 +437,7 @@ class CraftingController extends Controller
                         depth: $depth - 1,
                         chronicle: $chronicle,
                         amounts: $amounts,
-                        visitedRecipeIds: $visitedRecipeIds,
+                        ancestors: $branchAncestors,
                     );
                 })->values()->all();
             }

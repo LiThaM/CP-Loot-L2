@@ -1581,7 +1581,7 @@ watch(buySearch, throttle(async (val) => {
                                             <div v-if="mat.is_recipe" class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-black uppercase tracking-widest dark:bg-indigo-900/30 dark:text-indigo-200">
                                                 {{ $t('craft.recipe_fallback') }}
                                             </div>
-                                            <div v-else-if="mat.craftable" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
+                                            <div v-else-if="mat.craftable && (mat.children || []).length > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
                                                 {{ $t('craft.craftable') }}
                                             </div>
                                         </div>
