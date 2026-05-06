@@ -27,10 +27,9 @@ const selected = ref(null);
 const tree = ref(null);
 const treeLoading = ref(false);
 
-// Calculator: user-inputted "have" amounts keyed by item_id
-const haveAmounts = reactive({});
-// Which craftable items to expand in the calculator (user toggles)
-const expandedCraftables = reactive({});
+// Calculator state
+const haveAmounts = reactive({});   // how many the user already has per item_id
+const craftAmounts = reactive({});  // how many to craft per craftable item_id
 
 const doSearch = () => {
     clearTimeout(searchTimeout);
@@ -58,7 +57,7 @@ const selectRecipe = async (recipe) => {
     query.value = '';
     tree.value = null;
     Object.keys(haveAmounts).forEach(k => delete haveAmounts[k]);
-    Object.keys(expandedCraftables).forEach(k => delete expandedCraftables[k]);
+    Object.keys(craftAmounts).forEach(k => delete craftAmounts[k]);
     treeLoading.value = true;
     try {
         const { data } = await axios.get(`/api/public/recipes/${recipe.id}/tree`, { params: { depth: 4 } });
@@ -82,31 +81,100 @@ const flattenTree = (nodes, depth = 0) => {
     return out;
 };
 
-const toggleCraftable = (itemId) => {
-    expandedCraftables[itemId] = !expandedCraftables[itemId];
-};
-
-const getLeaves = (nodes) => {
-    const leaves = [];
+// Extract per-item craft recipes from tree: { itemId: { ratios: [{itemId, qty}], name, image_url } }
+const buildCraftableMap = (nodes) => {
+    const map = {};
     const walk = (list) => {
         for (const n of list) {
-            // If node has children AND user toggled it expanded, recurse into children
-            if (n.children?.length && expandedCraftables[n.item_id]) {
+            if (n.children?.length && n.craft_recipe_id && !n.is_recipe) {
+                if (!map[n.item_id]) {
+                    // Derive per-unit ratios from first occurrence
+                    const parentNeed = n.need || 1;
+                    map[n.item_id] = {
+                        name: n.name,
+                        image_url: n.image_url,
+                        ratios: n.children.filter(c => !c.is_recipe).map(c => ({
+                            item_id: c.item_id,
+                            qty: Math.round(c.need / parentNeed) || 1,
+                            name: c.name,
+                            image_url: c.image_url,
+                            craftable: !!(c.children?.length),
+                        })),
+                    };
+                }
                 walk(n.children);
-            } else {
-                // Treat as leaf (either no children or user chose not to expand)
-                leaves.push(n);
             }
         }
     };
     walk(nodes || []);
-    // Aggregate by item_id
-    const map = {};
-    for (const l of leaves) {
-        if (map[l.item_id]) map[l.item_id].need += l.need;
-        else map[l.item_id] = { ...l, craftable: !!(l.children?.length) };
+    return map;
+};
+
+// Resolve the final needed resources based on craft amounts
+const getNeededResources = (nodes) => {
+    if (!nodes) return [];
+    const craftMap = buildCraftableMap(nodes);
+
+    // Start with direct materials (top-level nodes, excluding recipe item)
+    const needs = {};
+    for (const n of nodes) {
+        if (n.is_recipe) continue;
+        const id = n.item_id;
+        if (!needs[id]) needs[id] = { item_id: id, name: n.name, image_url: n.image_url, need: 0, craftable: !!craftMap[id] };
+        needs[id].need += n.need;
     }
-    return Object.values(map);
+
+    // Resolve craft operations: for each craftable item with craft count > 0,
+    // subtract crafted amount and add sub-materials
+    const resolve = () => {
+        let changed = false;
+        for (const [itemId, info] of Object.entries(craftMap)) {
+            const toCraft = parseInt(craftAmounts[itemId]) || 0;
+            if (toCraft <= 0) continue;
+            if (!needs[itemId]) continue;
+
+            const actual = Math.min(toCraft, needs[itemId].need);
+            if (actual <= 0) continue;
+
+            // Subtract crafted amount from needed
+            needs[itemId].need -= actual;
+            changed = true;
+
+            // Add sub-materials
+            for (const sub of info.ratios) {
+                const subNeed = sub.qty * actual;
+                if (!needs[sub.item_id]) {
+                    needs[sub.item_id] = { item_id: sub.item_id, name: sub.name, image_url: sub.image_url, need: 0, craftable: !!craftMap[sub.item_id] };
+                }
+                needs[sub.item_id].need += subNeed;
+            }
+        }
+        return changed;
+    };
+
+    // Iterate until stable (handles nested crafting)
+    let safety = 20;
+    while (resolve() && --safety > 0) { /* keep resolving */ }
+
+    // Filter out items with 0 need
+    return Object.values(needs).filter(n => n.need > 0);
+};
+
+// Get craftable items with their max craftable amount
+const getCraftableItems = (nodes) => {
+    if (!nodes) return [];
+    const craftMap = buildCraftableMap(nodes);
+    const resources = getNeededResources(nodes);
+    const needMap = {};
+    for (const r of resources) needMap[r.item_id] = r.need;
+
+    return Object.entries(craftMap).map(([itemId, info]) => ({
+        item_id: parseInt(itemId),
+        name: info.name,
+        image_url: info.image_url,
+        max: needMap[parseInt(itemId)] || 0,
+        current: parseInt(craftAmounts[parseInt(itemId)]) || 0,
+    })).filter(c => c.max > 0 || c.current > 0);
 };
 
 const getMissing = (itemId, need) => {
@@ -261,36 +329,53 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
 
                             <!-- RIGHT: Calculator -->
                             <div class="space-y-5">
+                                <!-- Craft Options: choose how many to craft per craftable item -->
+                                <div v-if="getCraftableItems(tree.nodes).length" class="rounded-xl border border-purple-500/20 overflow-hidden bg-purple-500/[0.03]">
+                                    <div class="px-4 py-3 bg-purple-500/10 border-b border-purple-500/20 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        <span class="text-[10px] font-black uppercase tracking-widest text-purple-400">{{ $t('recipes.calc.craft_options') }}</span>
+                                    </div>
+                                    <div class="p-3 space-y-1 max-h-48 overflow-y-auto">
+                                        <div v-for="c in getCraftableItems(tree.nodes)" :key="c.item_id" class="flex items-center gap-2 p-2 rounded-lg bg-black/20">
+                                            <img v-if="c.image_url" :src="c.image_url" class="w-6 h-6 rounded flex-shrink-0" />
+                                            <div v-else class="w-6 h-6 rounded bg-white/5 flex-shrink-0"></div>
+                                            <span class="text-xs font-bold text-purple-300 truncate flex-1">{{ c.name }}</span>
+                                            <input
+                                                v-model="craftAmounts[c.item_id]"
+                                                type="number"
+                                                min="0"
+                                                :placeholder="'0'"
+                                                class="w-16 bg-black/40 border border-purple-500/20 rounded-lg text-center text-xs py-1.5 font-mono font-bold text-purple-300 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Needed Resources -->
                                 <div class="rounded-xl border border-amber-500/20 overflow-hidden bg-amber-500/[0.03]">
                                     <div class="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
                                         <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                                         <span class="text-[10px] font-black uppercase tracking-widest text-amber-400">{{ $t('recipes.calc.title') }}</span>
                                     </div>
-                                    <div class="p-3 space-y-1.5 max-h-[60vh] overflow-y-auto">
-                                        <div v-for="leaf in getLeaves(tree.nodes)" :key="leaf.item_id + '-' + (expandedCraftables[leaf.item_id] ? '1' : '0')" class="flex items-center gap-2 p-2.5 rounded-lg transition-colors" :class="getMissing(leaf.item_id, leaf.need) === 0 ? 'bg-green-500/5' : 'bg-black/20'">
-                                            <button v-if="leaf.craftable" @click="toggleCraftable(leaf.item_id)" class="w-7 h-7 rounded flex-shrink-0 flex items-center justify-center bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-colors" :title="$t('recipes.calc.expand_craft')">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                            </button>
-                                            <img v-else-if="leaf.image_url" :src="leaf.image_url" class="w-7 h-7 rounded flex-shrink-0" />
+                                    <div class="p-3 space-y-1.5 max-h-[50vh] overflow-y-auto">
+                                        <div v-for="res in getNeededResources(tree.nodes)" :key="res.item_id" class="flex items-center gap-2 p-2.5 rounded-lg transition-colors" :class="getMissing(res.item_id, res.need) === 0 ? 'bg-green-500/5' : 'bg-black/20'">
+                                            <img v-if="res.image_url" :src="res.image_url" class="w-7 h-7 rounded flex-shrink-0" />
                                             <div v-else class="w-7 h-7 rounded bg-white/5 flex-shrink-0"></div>
                                             <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-1.5">
-                                                    <span class="text-xs font-bold truncate" :class="leaf.craftable ? 'text-purple-300' : 'text-gray-200'">{{ leaf.name }}</span>
-                                                    <span v-if="leaf.craftable" class="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">craft</span>
-                                                </div>
+                                                <div class="text-xs font-bold text-gray-200 truncate">{{ res.name }}</div>
                                                 <div class="text-[10px] text-gray-500">
-                                                    {{ $t('recipes.calc.need') }}: <span class="text-yellow-400 font-mono">{{ fmt(leaf.need) }}</span>
+                                                    {{ $t('recipes.calc.need') }}: <span class="text-yellow-400 font-mono">{{ fmt(res.need) }}</span>
                                                     <span class="mx-1">|</span>
-                                                    {{ $t('recipes.calc.missing') }}: <span class="font-mono" :class="getMissing(leaf.item_id, leaf.need) > 0 ? 'text-red-400' : 'text-green-400'">{{ fmt(getMissing(leaf.item_id, leaf.need)) }}</span>
+                                                    {{ $t('recipes.calc.missing') }}: <span class="font-mono" :class="getMissing(res.item_id, res.need) > 0 ? 'text-red-400' : 'text-green-400'">{{ fmt(getMissing(res.item_id, res.need)) }}</span>
                                                 </div>
                                             </div>
                                             <input
-                                                v-model="haveAmounts[leaf.item_id]"
+                                                v-model="haveAmounts[res.item_id]"
                                                 type="number"
                                                 min="0"
                                                 :placeholder="'0'"
                                                 class="w-16 bg-black/40 border rounded-lg text-center text-xs py-1.5 font-mono font-bold focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all"
-                                                :class="getMissing(leaf.item_id, leaf.need) === 0 ? 'border-green-500/30 text-green-400' : 'border-white/10 text-white'"
+                                                :class="getMissing(res.item_id, res.need) === 0 ? 'border-green-500/30 text-green-400' : 'border-white/10 text-white'"
                                             />
                                         </div>
                                     </div>
@@ -302,27 +387,26 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                     <div class="space-y-2 text-sm">
                                         <div class="flex justify-between">
                                             <span class="text-gray-400">{{ $t('recipes.calc.total_materials') }}</span>
-                                            <span class="font-mono font-bold text-white">{{ getLeaves(tree.nodes).length }}</span>
+                                            <span class="font-mono font-bold text-white">{{ getNeededResources(tree.nodes).length }}</span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span class="text-gray-400">{{ $t('recipes.calc.completion') }}</span>
-                                            <span class="font-mono font-bold text-green-400">{{ getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) === 0).length }}</span>
+                                            <span class="font-mono font-bold text-green-400">{{ getNeededResources(tree.nodes).filter(r => getMissing(r.item_id, r.need) === 0).length }}</span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span class="text-gray-400">{{ $t('recipes.calc.missing') }}</span>
-                                            <span class="font-mono font-bold text-red-400">{{ getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) > 0).length }}</span>
+                                            <span class="font-mono font-bold text-red-400">{{ getNeededResources(tree.nodes).filter(r => getMissing(r.item_id, r.need) > 0).length }}</span>
                                         </div>
                                         <div class="h-px bg-white/5 my-2"></div>
                                         <div class="flex justify-between">
                                             <span class="text-gray-400">{{ $t('recipes.calc.progress') }}</span>
                                             <span class="font-mono font-bold text-amber-400">
-                                                {{ Math.round(getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) === 0).length / Math.max(1, getLeaves(tree.nodes).length) * 100) }}%
+                                                {{ Math.round(getNeededResources(tree.nodes).filter(r => getMissing(r.item_id, r.need) === 0).length / Math.max(1, getNeededResources(tree.nodes).length) * 100) }}%
                                             </span>
                                         </div>
                                     </div>
-                                    <!-- Progress bar -->
                                     <div class="mt-3 h-2 rounded-full bg-white/5 overflow-hidden">
-                                        <div class="h-full rounded-full bg-gradient-to-r from-amber-500 to-green-500 transition-all duration-500" :style="{ width: Math.round(getLeaves(tree.nodes).filter(l => getMissing(l.item_id, l.need) === 0).length / Math.max(1, getLeaves(tree.nodes).length) * 100) + '%' }"></div>
+                                        <div class="h-full rounded-full bg-gradient-to-r from-amber-500 to-green-500 transition-all duration-500" :style="{ width: Math.round(getNeededResources(tree.nodes).filter(r => getMissing(r.item_id, r.need) === 0).length / Math.max(1, getNeededResources(tree.nodes).length) * 100) + '%' }"></div>
                                     </div>
                                 </div>
                             </div>
