@@ -15,9 +15,11 @@ const appName = computed(() => page.props.app?.name || t('app.name'));
 
 // Search state
 const query = ref('');
+const selectedChronicle = ref('');
 const results = ref([]);
 const loading = ref(false);
 const dropdownOpen = ref(false);
+const chronicles = ['C1','C2','C3','C4','C5','IL','CT1','GF','HB','Classic','LU4'];
 let searchTimeout = null;
 
 // Selected recipe
@@ -28,14 +30,16 @@ const treeLoading = ref(false);
 // Calculator: user-inputted "have" amounts keyed by item_id
 const haveAmounts = reactive({});
 
-const searchRecipes = (q) => {
+const doSearch = () => {
     clearTimeout(searchTimeout);
-    const val = q.trim();
+    const val = query.value.trim();
     if (val.length < 2) { results.value = []; dropdownOpen.value = false; return; }
     loading.value = true;
+    const params = { q: val };
+    if (selectedChronicle.value) params.chronicle = selectedChronicle.value;
     searchTimeout = setTimeout(async () => {
         try {
-            const { data } = await axios.get('/api/public/recipes/search', { params: { q: val } });
+            const { data } = await axios.get('/api/public/recipes/search', { params });
             results.value = data;
             dropdownOpen.value = data.length > 0;
         } catch { results.value = []; }
@@ -43,7 +47,8 @@ const searchRecipes = (q) => {
     }, 300);
 };
 
-watch(query, searchRecipes);
+watch(query, doSearch);
+watch(selectedChronicle, doSearch);
 
 const selectRecipe = async (recipe) => {
     selected.value = recipe;
@@ -134,11 +139,17 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                 <p class="mt-2 text-sm text-gray-400 max-w-md mx-auto">Search a recipe, see the full crafting tree, and input your materials to calculate what you need</p>
             </div>
 
-            <div class="max-w-xl mx-auto relative mb-10">
-                <div class="relative">
-                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input v-model="query" type="text" placeholder="Blue Wolf Helmet, Doom Plate Armor, Enria..." class="w-full bg-black/40 border border-white/10 text-gray-100 rounded-xl focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all pl-12 pr-12 py-4 text-sm placeholder-gray-600" @focus="results.length && (dropdownOpen = true)" @blur="setTimeout(() => dropdownOpen = false, 200)" />
-                    <svg v-if="loading" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-amber-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <div class="max-w-2xl mx-auto relative mb-10">
+                <div class="flex gap-2">
+                    <select v-model="selectedChronicle" class="bg-black/40 border border-white/10 text-gray-300 rounded-xl focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-sm py-4 px-3 w-32 shrink-0">
+                        <option value="">All</option>
+                        <option v-for="c in chronicles" :key="c" :value="c">{{ c }}</option>
+                    </select>
+                    <div class="relative flex-1">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input v-model="query" type="text" placeholder="Blue Wolf Helmet, Doom Plate Armor, Enria..." class="w-full bg-black/40 border border-white/10 text-gray-100 rounded-xl focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-all pl-12 pr-12 py-4 text-sm placeholder-gray-600" @focus="results.length && (dropdownOpen = true)" @blur="setTimeout(() => dropdownOpen = false, 200)" />
+                        <svg v-if="loading" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-amber-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    </div>
                 </div>
 
                 <!-- Dropdown -->
