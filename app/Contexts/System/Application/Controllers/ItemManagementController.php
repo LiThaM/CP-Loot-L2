@@ -51,7 +51,7 @@ class ItemManagementController extends Controller
         return Inertia::render('System/Items/Index', [
             'items' => $items,
             'filters' => $request->only(['search', 'chronicle', 'grade', 'category']),
-            'chronicles' => ['c1', 'c2', 'c3', 'c4', 'c5', 'IL', 'hb', 'LU4', 'masterwork'],
+            'chronicles' => ['C1', 'C2', 'C3', 'C4', 'C5', 'IL', 'CT1', 'GF', 'HB', 'Classic', 'LU4'],
             'grades' => ['NG', 'D', 'C', 'B', 'A', 'S'],
             'categories' => ['Weapon', 'Armor', 'Jewelry', 'Material', 'Recipe', 'EtcItem'],
             'canEdit' => true,
@@ -89,7 +89,7 @@ class ItemManagementController extends Controller
         return Inertia::render('System/Items/Index', [
             'items' => $items,
             'filters' => $filters,
-            'chronicles' => ['c1', 'c2', 'c3', 'c4', 'c5', 'IL', 'hb', 'LU4', 'masterwork'],
+            'chronicles' => ['C1', 'C2', 'C3', 'C4', 'C5', 'IL', 'CT1', 'GF', 'HB', 'Classic', 'LU4'],
             'grades' => ['NG', 'D', 'C', 'B', 'A', 'S'],
             'categories' => ['Weapon', 'Armor', 'Jewelry', 'Material', 'Recipe', 'EtcItem'],
             'canEdit' => false,

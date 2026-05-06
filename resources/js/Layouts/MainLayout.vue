@@ -651,6 +651,8 @@ watch(() => alerts.value.items, (items) => {
                                 <option value="C4">C4</option>
                                 <option value="C5">C5</option>
                                 <option value="IL">IL</option>
+                                <option value="CT1">CT1</option>
+                                <option value="GF">GF</option>
                                 <option value="HB">HB</option>
                                 <option value="Classic">Classic</option>
                                 <option value="LU4">LU4</option>
