@@ -22,11 +22,15 @@ class CleanupItemsCommand extends Command
         $fixRef = (bool) $this->option('fix-referenced');
 
         $bad = Item::query()
-            ->whereNull('name')
-            ->orWhereRaw("TRIM(COALESCE(name, '')) = ''")
-            ->orWhereIn('name', ['-', '—'])
-            ->orWhereNull('external_id')
-            ->orWhere('external_id', '<=', 0)
+            ->where(function ($q) {
+                $q->whereNull('name')
+                    ->orWhereRaw("TRIM(COALESCE(name, '')) = ''")
+                    ->orWhereIn('name', ['-', '—', '_', '__', '0'])
+                    ->orWhereRaw("name REGEXP '^[_\\-—]+$'")
+                    ->orWhereNull('external_id')
+                    ->orWhere('external_id', '<=', 0)
+                    ->orWhere('image_url', 'like', '%/i64/.png%');
+            })
             ->orderBy('id')
             ->get();
 
@@ -88,7 +92,7 @@ class CleanupItemsCommand extends Command
                 $items = Item::whereIn('id', $toFix)->get();
                 foreach ($items as $item) {
                     $name = trim((string) ($item->name ?? ''));
-                    $isBadName = $name === '' || in_array($name, ['-', '—'], true);
+                    $isBadName = $name === '' || preg_match('/^[_\-—0]+$/', $name);
                     $externalId = (int) ($item->external_id ?? 0);
                     $fallback = $externalId > 0 ? "Unknown item #{$externalId}" : "Unknown item (id {$item->id})";
 
@@ -96,10 +100,12 @@ class CleanupItemsCommand extends Command
                     if ($isBadName) {
                         $updates['name'] = $fallback;
                     }
-                    if ((string) ($item->icon_name ?? '') === '-') {
+                    $iconName = (string) ($item->icon_name ?? '');
+                    if ($iconName === '' || $iconName === '-' || $iconName === '—') {
                         $updates['icon_name'] = null;
                     }
-                    if ((string) ($item->image_url ?? '') === 'https://wikipedia1.mw2.wiki/i64/.png') {
+                    $imageUrl = (string) ($item->image_url ?? '');
+                    if (str_contains($imageUrl, '/i64/.png') || $imageUrl === '') {
                         $updates['image_url'] = null;
                     }
                     if ($externalId <= 0) {
