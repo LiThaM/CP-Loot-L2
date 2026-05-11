@@ -1095,17 +1095,7 @@ watch(buySearch, throttle(async (val) => {
             </div>
 
             <!-- Members Tab -->
-            <div v-if="activeTab === 'members'" class="space-y-3">
-                <div v-if="isLeader" class="flex items-center justify-end">
-                    <button
-                        @click="resetDkpPoints"
-                        class="px-3 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest transition hover:bg-red-600 border border-gray-200 dark:border-gray-700 shadow-lg shadow-black/20"
-                        :title="$t('party.points.reset_btn_title')"
-                    >
-                        {{ $t('party.points.reset_btn_label') }}
-                    </button>
-                </div>
-                <div class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+            <div v-if="activeTab === 'members'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
                 <div class="divide-y divide-gray-200 dark:divide-gray-800">
                     <div v-for="(member, idx) in members" :key="member.id" class="bg-white/60 dark:bg-black/20">
                         <div class="grid grid-cols-12 items-center gap-4 p-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-900/40" @click="toggleExpandedMember(member.id)">
@@ -1326,7 +1316,6 @@ watch(buySearch, throttle(async (val) => {
                             </div>
                         </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -1735,9 +1724,18 @@ watch(buySearch, throttle(async (val) => {
             <!-- Config Tab (Leader Only) -->
             <div v-if="activeTab === 'config'" class="space-y-6">
                 <div class="l2-panel p-8 rounded-3xl border-gray-800">
-                    <div class="mb-8">
-                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('party.points.title') }}</h3>
-                        <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('party.points.subtitle') }}</p>
+                    <div class="mb-8 flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('party.points.title') }}</h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('party.points.subtitle') }}</p>
+                        </div>
+                        <button
+                            @click="resetDkpPoints"
+                            class="shrink-0 px-3 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest transition hover:bg-red-600 border border-gray-200 dark:border-gray-700 shadow-lg shadow-black/20"
+                            :title="$t('party.points.reset_btn_title')"
+                        >
+                            {{ $t('party.points.reset_btn_label') }}
+                        </button>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
