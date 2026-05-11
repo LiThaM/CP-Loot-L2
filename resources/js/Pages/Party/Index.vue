@@ -244,6 +244,20 @@ const approveMember = (memberId) => {
     });
 };
 
+const resetDkpPoints = async () => {
+    if (await confirmAction(
+        t('party.points.reset_swal_title'),
+        t('party.points.reset_swal_text'),
+        t('party.points.reset_swal_confirm'),
+        t('common.cancel'),
+    )) {
+        router.post(route('party.points.reset'), {}, {
+            preserveScroll: true,
+            onSuccess: () => showToast(t('party.points.reset_success')),
+        });
+    }
+};
+
 const warehouseFilter = ref('');
 
 const filteredWarehouseItems = computed(() => {
@@ -1081,7 +1095,17 @@ watch(buySearch, throttle(async (val) => {
             </div>
 
             <!-- Members Tab -->
-            <div v-if="activeTab === 'members'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+            <div v-if="activeTab === 'members'" class="space-y-3">
+                <div v-if="isLeader" class="flex items-center justify-end">
+                    <button
+                        @click="resetDkpPoints"
+                        class="px-3 py-2 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest transition hover:bg-red-600 border border-gray-200 dark:border-gray-700 shadow-lg shadow-black/20"
+                        :title="$t('party.points.reset_btn_title')"
+                    >
+                        {{ $t('party.points.reset_btn_label') }}
+                    </button>
+                </div>
+                <div class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
                 <div class="divide-y divide-gray-200 dark:divide-gray-800">
                     <div v-for="(member, idx) in members" :key="member.id" class="bg-white/60 dark:bg-black/20">
                         <div class="grid grid-cols-12 items-center gap-4 p-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-900/40" @click="toggleExpandedMember(member.id)">
@@ -1139,15 +1163,15 @@ watch(buySearch, throttle(async (val) => {
                                 </div>
 
                                 <!-- Consolidation: Management Actions -->
-                                <div class="flex items-center gap-1.5 ml-2 border-l border-gray-200 dark:border-gray-800 pl-3" v-if="(isAdmin || isLeader) && member.id !== $page.props.auth.user.id">
-                                    <button 
+                                <div class="flex items-center gap-1.5 ml-2 border-l border-gray-200 dark:border-gray-800 pl-3" v-if="isAdmin || isLeader">
+                                    <button
                                         @click.stop="openUserAdenaModal(member)"
                                         class="p-2 bg-gray-100 hover:bg-purple-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                                         :title="$t('system.users.actions.manage_adena')"
                                     >
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     </button>
-                                    <button 
+                                    <button
                                         @click.stop="openUserEditModal(member)"
                                         class="p-2 bg-gray-100 hover:bg-blue-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                                         :title="$t('system.users.actions.edit_role_cp')"
@@ -1155,7 +1179,7 @@ watch(buySearch, throttle(async (val) => {
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                     </button>
                                     <button
-                                        v-if="member.membership_status === 'banned'"
+                                        v-if="member.membership_status === 'banned' && member.id !== $page.props.auth.user.id"
                                         @click.stop="unbanUser(member)"
                                         class="p-2 bg-gray-100 hover:bg-green-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                                         :title="$t('system.users.actions.reactivate_user')"
@@ -1163,7 +1187,7 @@ watch(buySearch, throttle(async (val) => {
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     </button>
                                     <button
-                                        v-else
+                                        v-else-if="member.membership_status !== 'banned' && member.id !== $page.props.auth.user.id"
                                         @click.stop="banUser(member)"
                                         class="p-2 bg-gray-100 hover:bg-red-600 rounded-lg text-gray-800 hover:text-white transition shadow-lg shadow-black/20 border border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                                         :title="$t('system.users.actions.ban_user')"
@@ -1302,6 +1326,7 @@ watch(buySearch, throttle(async (val) => {
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
 

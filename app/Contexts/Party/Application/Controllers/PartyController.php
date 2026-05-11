@@ -298,7 +298,59 @@ class PartyController extends Controller
         return back()->with('success', 'Miembro aprobado.');
     }
 
+    public function resetPoints(Request $request)
+    {
+        $actor = $request->user();
 
+        if (! $actor->cp_id) {
+            abort(403);
+        }
+
+        $isLeader = (int) $actor->id === (int) ($actor->cp?->leader_id ?? 0);
+        $isAdmin = ($actor->role?->name ?? null) === 'admin';
+
+        if (! $isLeader && ! $isAdmin) {
+            abort(403);
+        }
+
+        $cpId = $actor->cp_id;
+
+        DB::transaction(function () use ($cpId, $actor) {
+            $affected = PointsLog::where('cp_id', $cpId)
+                ->where('points', '!=', 0)
+                ->update(['points' => 0]);
+
+            $audit = AuditLog::create([
+                'entity_type' => 'ConstParty',
+                'entity_id' => $cpId,
+                'user_id' => $actor->id,
+                'action' => 'DKP_RESET',
+                'old_values' => null,
+                'new_values' => ['rows_zeroed' => (int) $affected],
+            ]);
+
+            $memberIds = User::where('cp_id', $cpId)->pluck('id');
+            $now = now();
+            $summary = "{$actor->name} reinició los puntos DKP de la CP";
+            $rows = $memberIds->map(fn ($rid) => [
+                'audit_log_id' => $audit->id,
+                'recipient_user_id' => $rid,
+                'actor_user_id' => $actor->id,
+                'entity_type' => 'ConstParty',
+                'entity_id' => $cpId,
+                'action' => 'DKP_RESET',
+                'summary' => $summary,
+                'meta' => json_encode(['rows_zeroed' => (int) $affected]),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all();
+            if (! empty($rows)) {
+                DB::table('audit_alerts')->insert($rows);
+            }
+        });
+
+        return back()->with('success', 'Puntos DKP reiniciados.');
+    }
 
     public function myWarehouse(Request $request)
     {

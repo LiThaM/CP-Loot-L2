@@ -106,6 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/party', [PartyController::class, 'index'])->name('party.index');
     Route::get('/warehouse-cp', [PartyController::class, 'index'])->name('party.warehouse_cp')->defaults('tab', 'warehouse_cp');
     Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
+    Route::post('/party/points/reset', [PartyController::class, 'resetPoints'])->name('party.points.reset');
     Route::patch('/system/users/{user}/ban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'banMember'])->name('system.users.ban');
     Route::patch('/system/users/{user}/unban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'unbanMember'])->name('system.users.unban');
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
