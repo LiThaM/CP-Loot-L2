@@ -501,6 +501,18 @@ class TranslationSeeder extends Seeder
                 ['key' => 'party.points.current', 'value' => 'Actual'],
                 ['key' => 'party.points.pts', 'value' => 'pts'],
                 ['key' => 'party.points.hint', 'value' => 'Define puntos base por item.'],
+
+                ['key' => 'auth.login.title', 'value' => 'Entrar'],
+                ['key' => 'auth.login.subtitle', 'value' => 'Accede con tu cuenta'],
+                ['key' => 'auth.login.submit', 'value' => 'Entrar'],
+                ['key' => 'auth.login.remember', 'value' => 'Recordarme'],
+                ['key' => 'auth.login.forgot', 'value' => '¿Olvidaste tu contraseña?'],
+                ['key' => 'auth.register.title', 'value' => 'Registro'],
+                ['key' => 'auth.register.subtitle', 'value' => 'Crea tu cuenta'],
+                ['key' => 'auth.register.submit', 'value' => 'Registrarme'],
+                ['key' => 'auth.register.have_account', 'value' => 'Ya tengo cuenta'],
+                ['key' => 'auth.register.invite_code', 'value' => 'Código de invitación'],
+                ['key' => 'auth.register.character_name', 'value' => 'Nombre de personaje'],
             ],
             'en' => [
                 ['key' => 'app.name', 'value' => 'AdenaLedger'],
@@ -991,6 +1003,18 @@ class TranslationSeeder extends Seeder
                 ['key' => 'party.points.current', 'value' => 'Current'],
                 ['key' => 'party.points.pts', 'value' => 'pts'],
                 ['key' => 'party.points.hint', 'value' => 'Define base points per item.'],
+
+                ['key' => 'auth.login.title', 'value' => 'Sign in'],
+                ['key' => 'auth.login.subtitle', 'value' => 'Access with your account'],
+                ['key' => 'auth.login.submit', 'value' => 'Sign in'],
+                ['key' => 'auth.login.remember', 'value' => 'Remember me'],
+                ['key' => 'auth.login.forgot', 'value' => 'Forgot your password?'],
+                ['key' => 'auth.register.title', 'value' => 'Register'],
+                ['key' => 'auth.register.subtitle', 'value' => 'Create your account'],
+                ['key' => 'auth.register.submit', 'value' => 'Sign up'],
+                ['key' => 'auth.register.have_account', 'value' => 'I already have an account'],
+                ['key' => 'auth.register.invite_code', 'value' => 'Invite code'],
+                ['key' => 'auth.register.character_name', 'value' => 'Character name'],
             ],
         ];
 
@@ -1137,6 +1161,41 @@ class TranslationSeeder extends Seeder
 
     private function generateEnglishValue(string $key): string
     {
+        $special = [
+            'auth.login.title' => 'Sign in',
+            'auth.login.subtitle' => 'Access with your account',
+            'auth.login.submit' => 'Sign in',
+            'auth.login.remember' => 'Remember me',
+            'auth.login.forgot' => 'Forgot your password?',
+
+            'auth.register.title' => 'Register',
+            'auth.register.subtitle' => 'Create your account',
+            'auth.register.submit' => 'Sign up',
+            'auth.register.have_account' => 'I already have an account',
+            'auth.register.invite_code' => 'Invite code',
+            'auth.register.character_name' => 'Character name',
+
+            'auth.forgot.title' => 'Recover password',
+            'auth.forgot.description' => 'We will send you a link to reset your password.',
+            'auth.forgot.submit' => 'Send link',
+
+            'auth.reset.title' => 'Reset password',
+            'auth.reset.submit' => 'Reset',
+
+            'auth.confirm.title' => 'Confirm password',
+            'auth.confirm.description' => 'Confirm your password to continue.',
+            'auth.confirm.submit' => 'Confirm',
+
+            'auth.verify.title' => 'Verify email',
+            'auth.verify.description' => 'Thanks for signing up. Before getting started, verify your email.',
+            'auth.verify.resend' => 'Resend verification',
+            'auth.verify.sent' => 'Verification link sent.',
+        ];
+
+        if (isset($special[$key])) {
+            return $special[$key];
+        }
+
         $lastSegment = str_contains($key, '.') ? substr($key, strrpos($key, '.') + 1) : $key;
         $normalized = str_replace(['_', '-'], ' ', $lastSegment);
         $normalized = preg_replace('/\s+/', ' ', trim($normalized)) ?? $normalized;
