@@ -94,7 +94,7 @@ onMounted(() => {
                     <div class="w-8 h-8 rounded-lg overflow-hidden border" :class="darkMode ? 'border-white/10' : 'border-gray-200'">
                         <ApplicationLogo class="w-full h-full object-cover" />
                     </div>
-                    <span class="text-sm font-bold tracking-wide" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ appName }}</span>
+                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 tracking-wider font-cinzel">{{ appName }}</span>
                 </Link>
 
                 <!-- Desktop -->
