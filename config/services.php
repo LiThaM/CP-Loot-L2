@@ -18,6 +18,17 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
+    ],
+
+    'support' => [
+        'mail_to' => env('SUPPORT_MAIL_TO', 'support@adenaledger.com'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

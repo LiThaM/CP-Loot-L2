@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewTicketAdminNotification;
+use App\Mail\NewTicketReplyAdminNotification;
+use App\Mail\TicketAuthorConfirmation;
 use App\Models\SupportTicket;
 use App\Models\TicketReply;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -105,6 +110,8 @@ class TicketController extends Controller
             $ticket->update(['attachments' => $stored]);
         }
 
+        $this->sendTicketCreatedEmails($ticket);
+
         return redirect()->route('tickets.index')->with('success', __('tickets.flash.created'));
     }
 
@@ -182,6 +189,8 @@ class TicketController extends Controller
         if ($ticket->status === 'closed') {
             $ticket->update(['status' => 'open', 'closed_at' => null]);
         }
+
+        $this->sendTicketReplyEmail($ticket, $reply);
 
         return back()->with('success', __('tickets.flash.replied'));
     }
@@ -261,5 +270,44 @@ class TicketController extends Controller
         if ($role === 'admin') return true;
         if ($role === 'cp_leader' && $ticket->assigned_to_user_id === $user->id) return true;
         return false;
+    }
+
+    private function sendTicketCreatedEmails(SupportTicket $ticket): void
+    {
+        $supportTo = config('services.support.mail_to');
+
+        try {
+            if ($supportTo) {
+                Mail::to($supportTo)->send(new NewTicketAdminNotification($ticket));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Ticket admin notification failed: '.$e->getMessage(), ['ticket_id' => $ticket->id]);
+        }
+
+        $authorEmail = $ticket->email ?: $ticket->user?->email;
+        if ($authorEmail && (! $supportTo || $authorEmail !== $supportTo)) {
+            try {
+                Mail::to($authorEmail)->send(new TicketAuthorConfirmation($ticket));
+            } catch (\Throwable $e) {
+                Log::warning('Ticket author confirmation failed: '.$e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
+        }
+    }
+
+    private function sendTicketReplyEmail(SupportTicket $ticket, TicketReply $reply): void
+    {
+        $supportTo = config('services.support.mail_to');
+        if (! $supportTo) {
+            return;
+        }
+
+        try {
+            Mail::to($supportTo)->send(new NewTicketReplyAdminNotification($ticket, $reply));
+        } catch (\Throwable $e) {
+            Log::warning('Ticket reply notification failed: '.$e->getMessage(), [
+                'ticket_id' => $ticket->id,
+                'reply_id' => $reply->id,
+            ]);
+        }
     }
 }

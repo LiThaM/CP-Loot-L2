@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\CpRequest;
+use App\Mail\NewCpRequestAdminNotification;
+use App\Mail\NewTicketAdminNotification;
+use App\Mail\TicketAuthorConfirmation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -35,7 +39,7 @@ class SupportController extends Controller
         ];
 
         try {
-            \App\Models\SupportTicket::create([
+            $ticket = \App\Models\SupportTicket::create([
                 'user_id' => $authUser?->id,
                 'subject' => $data['subject'],
                 'message' => $data['message'],
@@ -45,12 +49,36 @@ class SupportController extends Controller
                 'status' => 'open',
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Support ticket create failed: '.$e->getMessage());
+            Log::error('Support ticket create failed: '.$e->getMessage());
 
             return back()->with('error', 'No se pudo enviar el mensaje. Inténtalo más tarde.');
         }
 
+        $this->sendSupportTicketEmails($ticket);
+
         return back()->with('success', 'Mensaje enviado. Lo revisaremos pronto.');
+    }
+
+    private function sendSupportTicketEmails(\App\Models\SupportTicket $ticket): void
+    {
+        $supportTo = config('services.support.mail_to');
+
+        try {
+            if ($supportTo) {
+                Mail::to($supportTo)->send(new NewTicketAdminNotification($ticket));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Support contact admin notification failed: '.$e->getMessage(), ['ticket_id' => $ticket->id]);
+        }
+
+        $authorEmail = $ticket->email ?: $ticket->user?->email;
+        if ($authorEmail && (! $supportTo || $authorEmail !== $supportTo)) {
+            try {
+                Mail::to($authorEmail)->send(new TicketAuthorConfirmation($ticket));
+            } catch (\Throwable $e) {
+                Log::warning('Support contact author confirmation failed: '.$e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
+        }
     }
 
     public function cpRequest(Request $request): RedirectResponse
@@ -74,8 +102,9 @@ class SupportController extends Controller
             'invite_code' => $inviteCode,
         ]);
 
+        $cpRequest = null;
         try {
-            CpRequest::create([
+            $cpRequest = CpRequest::create([
                 'cp_name' => $data['cp_name'],
                 'server' => $data['server'] ?? null,
                 'chronicle' => $data['chronicle'] ?? null,
@@ -86,10 +115,14 @@ class SupportController extends Controller
                 'approved_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('CP Request audit log failed: ' . $e->getMessage());
+            Log::error('CP Request audit log failed: ' . $e->getMessage());
         }
 
         $magicLink = route('register', ['invite' => $inviteCode]);
+
+        if ($cpRequest) {
+            $this->notifyCpRequestAdmin($cpRequest, $magicLink);
+        }
 
         return back()->with('success', [
             'message' => 'CP Creada exitosamente',
@@ -97,6 +130,22 @@ class SupportController extends Controller
             'invite_code' => $inviteCode,
             'cp_name' => $cp->name,
         ]);
+    }
+
+    private function notifyCpRequestAdmin(CpRequest $cpRequest, ?string $inviteLink): void
+    {
+        $supportTo = config('services.support.mail_to');
+        if (! $supportTo) {
+            return;
+        }
+
+        try {
+            Mail::to($supportTo)->send(new NewCpRequestAdminNotification($cpRequest, $inviteLink));
+        } catch (\Throwable $e) {
+            Log::warning('CP request admin notification failed: '.$e->getMessage(), [
+                'cp_request_id' => $cpRequest->id,
+            ]);
+        }
     }
 
     public function approveCpRequest(Request $request, CpRequest $cpRequest): RedirectResponse
