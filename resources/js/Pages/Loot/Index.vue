@@ -482,15 +482,13 @@ onMounted(async () => {
                         <button @click="activeTab = 'history'" :class="activeTab === 'history' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">{{ $t('loot.tabs.history') }}</button>
                         <button
                             @click="activeTab = 'pending'"
-                            :class="[
-                                activeTab === 'pending' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300',
-                                isLeader && pendingLootCount > 0 && activeTab !== 'pending' ? 'ring-2 ring-amber-400/80 animate-pulse text-amber-700 dark:text-amber-300' : ''
-                            ]"
+                            :class="activeTab === 'pending' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'"
                             class="relative px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
                         >
                             {{ $t('loot.tabs.pending') }}
-                            <span v-if="isLeader && pendingLootCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black leading-none">
-                                {{ pendingLootCount }}
+                            <span v-if="isLeader && pendingLootCount > 0" class="relative ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black leading-none">
+                                <span class="absolute inset-0 rounded-full bg-red-600 animate-ping opacity-75"></span>
+                                <span class="relative">{{ pendingLootCount }}</span>
                             </span>
                         </button>
                         <button @click="activeTab = 'wishlist'" :class="activeTab === 'wishlist' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">{{ $t('loot.tabs.wishlist') }}</button>

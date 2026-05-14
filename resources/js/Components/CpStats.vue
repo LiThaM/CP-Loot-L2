@@ -265,8 +265,13 @@ const ringDash = (percent) => {
                 <p class="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">{{ $t('cp.hero.subtitle') }}</p>
              </div>
              <div class="flex items-center gap-4 relative">
-                <Link :href="route('loot.index')" class="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-white/70 hover:bg-white text-gray-900 text-xs font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition-all hover:scale-105 active:scale-95 shadow-xl">
-                    <span class="mr-2">🕒</span> {{ $t('member.pending') }} ({{ stats.pending_reports || 0 }})
+                <Link :href="route('loot.index')" class="relative inline-flex items-center justify-center h-12 px-6 rounded-xl bg-white/70 hover:bg-white text-gray-900 text-xs font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-700 transition-all hover:scale-105 active:scale-95 shadow-xl">
+                    <span class="mr-2">🕒</span> {{ $t('member.pending') }}
+                    <span v-if="(stats.pending_reports || 0) > 0" class="relative ml-2 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black leading-none">
+                        <span class="absolute inset-0 rounded-full bg-red-600 animate-ping opacity-75"></span>
+                        <span class="relative">{{ stats.pending_reports }}</span>
+                    </span>
+                    <span v-else class="ml-2 text-gray-500">({{ stats.pending_reports || 0 }})</span>
                 </Link>
                 <button @click="openLootModal" class="inline-flex items-center justify-center h-14 px-10 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-sm font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-purple-900/30">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
