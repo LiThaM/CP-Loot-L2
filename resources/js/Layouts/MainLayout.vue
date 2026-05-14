@@ -497,6 +497,16 @@ watch(() => alerts.value.items, (items) => {
 
                     <div v-if="user" class="flex items-center space-x-3 relative">
 
+                        <Link
+                            :href="route('changelog.index')"
+                            class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition"
+                            :title="$t('nav.changelog')"
+                        >
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.05 10.101c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.518-4.674z"/>
+                            </svg>
+                        </Link>
+
                         <div class="relative">
                             <button @click="alertsOpen = !alertsOpen" class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition relative">
                                 <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>

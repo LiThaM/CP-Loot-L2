@@ -416,6 +416,8 @@ const filteredPendingLoot = computed(() => {
     return sorted.filter((report) => getReportFilteredEntries(report).length > 0);
 });
 
+const pendingLootCount = computed(() => (props.pendingLoot || []).length);
+
 const filteredHistory = computed(() => {
     const sorted = sortReports(historyItems.value || []);
     const searchLower = '';
@@ -478,7 +480,19 @@ onMounted(async () => {
                 <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div class="flex bg-white/70 p-1 rounded-xl border border-gray-200 dark:bg-gray-900/50 dark:border-gray-800">
                         <button @click="activeTab = 'history'" :class="activeTab === 'history' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">{{ $t('loot.tabs.history') }}</button>
-                        <button @click="activeTab = 'pending'" :class="activeTab === 'pending' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">{{ $t('loot.tabs.pending') }}</button>
+                        <button
+                            @click="activeTab = 'pending'"
+                            :class="[
+                                activeTab === 'pending' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300',
+                                isLeader && pendingLootCount > 0 && activeTab !== 'pending' ? 'ring-2 ring-amber-400/80 animate-pulse text-amber-700 dark:text-amber-300' : ''
+                            ]"
+                            class="relative px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
+                        >
+                            {{ $t('loot.tabs.pending') }}
+                            <span v-if="isLeader && pendingLootCount > 0" class="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black leading-none">
+                                {{ pendingLootCount }}
+                            </span>
+                        </button>
                         <button @click="activeTab = 'wishlist'" :class="activeTab === 'wishlist' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">{{ $t('loot.tabs.wishlist') }}</button>
                     </div>
                     <button v-if="has_cp" @click="openLootModal" class="h-10 px-4 rounded-xl bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-800 transition">

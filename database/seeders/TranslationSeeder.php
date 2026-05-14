@@ -512,6 +512,15 @@ class TranslationSeeder extends Seeder
                 ['key' => 'party.points.pts', 'value' => 'pts'],
                 ['key' => 'party.points.hint', 'value' => 'Define puntos base por item.'],
 
+                ['key' => 'party.events.farm.name', 'value' => 'Farming'],
+                ['key' => 'party.events.farm.desc', 'value' => 'Puntos por farmeo'],
+                ['key' => 'party.events.boss.name', 'value' => 'Boss'],
+                ['key' => 'party.events.boss.desc', 'value' => 'Puntos por raid boss'],
+                ['key' => 'party.events.epic.name', 'value' => 'Épico'],
+                ['key' => 'party.events.epic.desc', 'value' => 'Puntos por boss épico'],
+                ['key' => 'party.events.siege.name', 'value' => 'Castle Siege'],
+                ['key' => 'party.events.siege.desc', 'value' => 'Puntos por sitio'],
+
                 ['key' => 'auth.login.title', 'value' => 'Entrar'],
                 ['key' => 'auth.login.subtitle', 'value' => 'Accede con tu cuenta'],
                 ['key' => 'auth.login.submit', 'value' => 'Entrar'],
@@ -1023,6 +1032,15 @@ class TranslationSeeder extends Seeder
                 ['key' => 'party.points.current', 'value' => 'Current'],
                 ['key' => 'party.points.pts', 'value' => 'pts'],
                 ['key' => 'party.points.hint', 'value' => 'Define base points per item.'],
+
+                ['key' => 'party.events.farm.name', 'value' => 'Farming'],
+                ['key' => 'party.events.farm.desc', 'value' => 'Farming points'],
+                ['key' => 'party.events.boss.name', 'value' => 'Boss'],
+                ['key' => 'party.events.boss.desc', 'value' => 'Raid boss points'],
+                ['key' => 'party.events.epic.name', 'value' => 'Epic'],
+                ['key' => 'party.events.epic.desc', 'value' => 'Epic boss points'],
+                ['key' => 'party.events.siege.name', 'value' => 'Castle Siege'],
+                ['key' => 'party.events.siege.desc', 'value' => 'Castle siege points'],
 
                 ['key' => 'auth.login.title', 'value' => 'Sign in'],
                 ['key' => 'auth.login.subtitle', 'value' => 'Access with your account'],
