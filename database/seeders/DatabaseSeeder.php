@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             TranslationSeeder::class,
+            ChangelogSeeder::class,
         ]);
 
         if (! app()->environment(['local', 'testing'])) {
