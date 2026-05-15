@@ -328,6 +328,70 @@ class TranslationSeeder extends Seeder
                 ['key' => 'changelog.type.security', 'value' => 'Seguridad'],
                 ['key' => 'changelog.type.chore', 'value' => 'Mantenimiento'],
 
+                ['key' => 'legal.back_home', 'value' => 'Volver al inicio'],
+                ['key' => 'legal.last_updated', 'value' => 'Última actualización: {date}'],
+                ['key' => 'legal.terms_link', 'value' => 'Términos de uso'],
+                ['key' => 'legal.privacy_link', 'value' => 'Política de privacidad'],
+
+                ['key' => 'legal.terms.kicker', 'value' => 'Documento legal'],
+                ['key' => 'legal.terms.title', 'value' => 'Términos de uso'],
+                ['key' => 'legal.terms.intro', 'value' => '{appName} es una herramienta gratuita, sin ánimo de lucro y mantenida como hobby, pensada para ayudar a los Constant Parties (CPs) de Lineage II a registrar loot, Adena, warehouse compartido y puntos DKP. Al usar el servicio aceptas estos términos.'],
+
+                ['key' => 'legal.terms.s1.title', 'value' => '1. Servicio sin ánimo de lucro'],
+                ['key' => 'legal.terms.s1.body', 'value' => 'AdenaLedger es completamente gratuito. No hay planes de pago, no se cobra ni se mostrarán anuncios. El proyecto se ofrece "tal cual" como ayuda a la comunidad de Lineage II. Las donaciones voluntarias (cripto) solo cubren costes de servidor y son opcionales.'],
+
+                ['key' => 'legal.terms.s2.title', 'value' => '2. Cuenta y elegibilidad'],
+                ['key' => 'legal.terms.s2.body', 'value' => 'Para registrarte necesitas un código de invitación de un líder de CP o solicitar la creación de tu propia CP. Eres responsable de mantener la confidencialidad de tu contraseña y de las acciones que se realicen desde tu cuenta. Debes tener al menos 13 años.'],
+
+                ['key' => 'legal.terms.s3.title', 'value' => '3. Uso aceptable'],
+                ['key' => 'legal.terms.s3.body', 'value' => 'Usa AdenaLedger únicamente para gestionar la actividad de tu CP. No está permitido: subir contenido ilegal o que infrinja derechos de terceros, intentar comprometer la seguridad del servicio, abusar de los recursos (scraping masivo, ataques DoS), ni suplantar a otros usuarios. Podemos suspender cuentas que incumplan estas reglas.'],
+
+                ['key' => 'legal.terms.s4.title', 'value' => '4. Contenido del usuario'],
+                ['key' => 'legal.terms.s4.body', 'value' => 'Eres el dueño del contenido que publicas (nombres de personaje, reportes de loot, mensajes de soporte, etc.). Nos concedes una licencia limitada para almacenarlo y mostrarlo a otros miembros de tu CP, exclusivamente para que el servicio funcione. No vendemos, alquilamos ni transferimos tu contenido a terceros.'],
+
+                ['key' => 'legal.terms.s5.title', 'value' => '5. Relación con NCSoft / Lineage II'],
+                ['key' => 'legal.terms.s5.body', 'value' => 'AdenaLedger es un proyecto independiente hecho por fans. No está afiliado ni patrocinado por NCSoft, NCWest ni ningún operador oficial o privado de Lineage II. Lineage II y todas sus marcas registradas son propiedad de sus respectivos dueños.'],
+
+                ['key' => 'legal.terms.s6.title', 'value' => '6. Sin garantías'],
+                ['key' => 'legal.terms.s6.body', 'value' => 'El servicio se ofrece "tal cual" sin ninguna garantía. No garantizamos disponibilidad ininterrumpida, ausencia de errores ni que el servicio se mantenga indefinidamente. Hacemos copias de seguridad razonables pero no nos responsabilizamos de pérdidas de datos.'],
+
+                ['key' => 'legal.terms.s7.title', 'value' => '7. Limitación de responsabilidad'],
+                ['key' => 'legal.terms.s7.body', 'value' => 'En la máxima medida permitida por la ley, no seremos responsables de daños directos, indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del servicio. Recuerda que AdenaLedger no maneja dinero real ni activos económicos: lo que registras son recursos virtuales dentro de un videojuego.'],
+
+                ['key' => 'legal.terms.s8.title', 'value' => '8. Cambios y cierre del servicio'],
+                ['key' => 'legal.terms.s8.body', 'value' => 'Podemos modificar estos términos o el servicio en cualquier momento. Los cambios importantes se anunciarán en la sección "Novedades". Si decidimos cerrar el proyecto, daremos un aviso razonable y, en la medida de lo posible, permitiremos exportar los datos antes de la baja.'],
+
+                ['key' => 'legal.terms.contact.title', 'value' => 'Contacto'],
+                ['key' => 'legal.terms.contact.body', 'value' => 'Para cualquier duda sobre estos términos, escribe a'],
+
+                ['key' => 'legal.privacy.kicker', 'value' => 'Documento legal'],
+                ['key' => 'legal.privacy.title', 'value' => 'Política de privacidad'],
+                ['key' => 'legal.privacy.intro', 'value' => '{appName} es un proyecto gratuito mantenido como hobby. Esta política explica qué datos guardamos, por qué y qué derechos tienes sobre ellos. Nuestro principio es: el mínimo posible.'],
+
+                ['key' => 'legal.privacy.s1.title', 'value' => '1. Quién es el responsable'],
+                ['key' => 'legal.privacy.s1.body', 'value' => 'El responsable del tratamiento es el mantenedor del proyecto, que actúa a título personal y sin ánimo de lucro. Puedes contactar en cualquier momento por email.'],
+
+                ['key' => 'legal.privacy.s2.title', 'value' => '2. Qué datos recogemos'],
+                ['key' => 'legal.privacy.s2.body', 'value' => 'Guardamos lo justo para que el servicio funcione: email y nombre de personaje (lo que escribes al registrarte), preferencias (idioma, tema), la actividad que generas dentro del panel (reportes de loot, asignaciones, mensajes de soporte y auditoría) y datos técnicos mínimos como tu dirección IP y user-agent en las acciones registradas, para detectar abusos. No recogemos información sensible.'],
+
+                ['key' => 'legal.privacy.s3.title', 'value' => '3. Para qué usamos los datos'],
+                ['key' => 'legal.privacy.s3.body', 'value' => 'Para ofrecer el servicio: autenticar tu cuenta, mostrar tus reportes a los miembros de tu CP, enviar notificaciones por email relacionadas con tu actividad (tickets, solicitudes de CP) y mantener el sistema seguro. No usamos los datos para publicidad ni los compartimos con anunciantes.'],
+
+                ['key' => 'legal.privacy.s4.title', 'value' => '4. Base legal'],
+                ['key' => 'legal.privacy.s4.body', 'value' => 'Tratamos los datos sobre la base de la ejecución del servicio que tú solicitas al registrarte (RGPD art. 6.1.b), tu consentimiento donde aplique (cuando rellenas formularios) y nuestro interés legítimo en mantener el servicio funcionando y seguro.'],
+
+                ['key' => 'legal.privacy.s5.title', 'value' => '5. Proveedores que tratan datos por nosotros'],
+                ['key' => 'legal.privacy.s5.body', 'value' => 'Usamos un mínimo de proveedores: Mailgun (Sinch) para entregar los emails transaccionales, Cloudflare como CDN y proveedor de DNS, y el hosting donde corre la aplicación. Estos proveedores procesan los datos siguiendo sus propias políticas y solo lo estrictamente necesario para el servicio que ofrecen.'],
+
+                ['key' => 'legal.privacy.s6.title', 'value' => '6. Retención'],
+                ['key' => 'legal.privacy.s6.body', 'value' => 'Mantenemos los datos mientras tengas cuenta activa. Si pides la baja borramos tu perfil y los datos personales asociados; el contenido compartido con tu CP (reportes de loot, etc.) puede permanecer anonimizado para no romper la auditoría histórica del grupo.'],
+
+                ['key' => 'legal.privacy.s7.title', 'value' => '7. Tus derechos'],
+                ['key' => 'legal.privacy.s7.body', 'value' => 'Puedes ejercer en cualquier momento tus derechos de acceso, rectificación, supresión, oposición, limitación y portabilidad escribiendo al email de contacto. Responderemos lo antes posible (objetivo: 30 días). Si crees que no hemos atendido bien tu solicitud puedes reclamar ante tu autoridad de protección de datos.'],
+
+                ['key' => 'legal.privacy.contact.title', 'value' => 'Contacto'],
+                ['key' => 'legal.privacy.contact.body', 'value' => 'Cualquier pregunta sobre privacidad o ejercicio de derechos:'],
+
                 ['key' => 'warehouse.join_cp_title', 'value' => 'Únete a una CP'],
                 ['key' => 'warehouse.join_cp_text', 'value' => 'Necesitas estar asignado a una CP para ver tu warehouse.'],
                 ['key' => 'warehouse.assigned_items_kicker', 'value' => 'Items asignados'],
@@ -848,6 +912,70 @@ class TranslationSeeder extends Seeder
                 ['key' => 'changelog.type.fix', 'value' => 'Fix'],
                 ['key' => 'changelog.type.security', 'value' => 'Security'],
                 ['key' => 'changelog.type.chore', 'value' => 'Maintenance'],
+
+                ['key' => 'legal.back_home', 'value' => 'Back to home'],
+                ['key' => 'legal.last_updated', 'value' => 'Last updated: {date}'],
+                ['key' => 'legal.terms_link', 'value' => 'Terms of Use'],
+                ['key' => 'legal.privacy_link', 'value' => 'Privacy Policy'],
+
+                ['key' => 'legal.terms.kicker', 'value' => 'Legal document'],
+                ['key' => 'legal.terms.title', 'value' => 'Terms of Use'],
+                ['key' => 'legal.terms.intro', 'value' => '{appName} is a free, non-profit, hobby-maintained tool designed to help Lineage II Constant Parties (CPs) track loot, Adena, shared warehouse and DKP points. By using the service you accept these terms.'],
+
+                ['key' => 'legal.terms.s1.title', 'value' => '1. Non-profit service'],
+                ['key' => 'legal.terms.s1.body', 'value' => 'AdenaLedger is completely free. There are no paid plans, no fees and no ads. The project is offered "as is" to help the Lineage II community. Voluntary crypto donations only cover server costs and are optional.'],
+
+                ['key' => 'legal.terms.s2.title', 'value' => '2. Account and eligibility'],
+                ['key' => 'legal.terms.s2.body', 'value' => 'To sign up you need an invite code from a CP leader or to request the creation of your own CP. You are responsible for keeping your password confidential and for actions performed from your account. You must be at least 13 years old.'],
+
+                ['key' => 'legal.terms.s3.title', 'value' => '3. Acceptable use'],
+                ['key' => 'legal.terms.s3.body', 'value' => 'Use AdenaLedger only to manage your CP\'s activity. The following is not allowed: uploading illegal or infringing content, attempting to compromise the security of the service, resource abuse (mass scraping, DoS attacks) or impersonating other users. We may suspend accounts that break these rules.'],
+
+                ['key' => 'legal.terms.s4.title', 'value' => '4. User content'],
+                ['key' => 'legal.terms.s4.body', 'value' => 'You own the content you publish (character names, loot reports, support messages, etc.). You grant us a limited license to store and display it to other members of your CP, solely so the service can function. We do not sell, rent or transfer your content to third parties.'],
+
+                ['key' => 'legal.terms.s5.title', 'value' => '5. Relationship with NCSoft / Lineage II'],
+                ['key' => 'legal.terms.s5.body', 'value' => 'AdenaLedger is an independent fan-made project. It is not affiliated with or endorsed by NCSoft, NCWest or any official or private Lineage II operator. Lineage II and all its trademarks are property of their respective owners.'],
+
+                ['key' => 'legal.terms.s6.title', 'value' => '6. No warranty'],
+                ['key' => 'legal.terms.s6.body', 'value' => 'The service is provided "as is", without warranties of any kind. We do not guarantee uninterrupted availability, freedom from bugs or that the service will remain online indefinitely. We make reasonable backups but cannot be held liable for data loss.'],
+
+                ['key' => 'legal.terms.s7.title', 'value' => '7. Limitation of liability'],
+                ['key' => 'legal.terms.s7.body', 'value' => 'To the maximum extent permitted by law, we are not liable for direct, indirect, incidental or consequential damages arising from the use of or inability to use the service. Remember that AdenaLedger does not handle real money or financial assets: what you record are virtual resources inside a video game.'],
+
+                ['key' => 'legal.terms.s8.title', 'value' => '8. Changes and shutdown'],
+                ['key' => 'legal.terms.s8.body', 'value' => 'We may modify these terms or the service at any time. Significant changes will be announced in the "What\'s new" section. If we decide to shut the project down, we will give reasonable notice and, where possible, allow data export before closing.'],
+
+                ['key' => 'legal.terms.contact.title', 'value' => 'Contact'],
+                ['key' => 'legal.terms.contact.body', 'value' => 'For any questions about these terms, write to'],
+
+                ['key' => 'legal.privacy.kicker', 'value' => 'Legal document'],
+                ['key' => 'legal.privacy.title', 'value' => 'Privacy Policy'],
+                ['key' => 'legal.privacy.intro', 'value' => '{appName} is a free, hobby-maintained project. This policy explains what data we keep, why, and what rights you have over it. Our principle is: as little as possible.'],
+
+                ['key' => 'legal.privacy.s1.title', 'value' => '1. Who is responsible'],
+                ['key' => 'legal.privacy.s1.body', 'value' => 'The data controller is the project maintainer, acting in a personal, non-profit capacity. You can reach us by email at any time.'],
+
+                ['key' => 'legal.privacy.s2.title', 'value' => '2. What data we collect'],
+                ['key' => 'legal.privacy.s2.body', 'value' => 'We store only what we need to run the service: email and character name (provided at registration), preferences (language, theme), the activity you generate inside the panel (loot reports, assignments, support messages and audit logs) and minimal technical data such as IP address and user-agent for logged actions, to prevent abuse. We do not collect sensitive information.'],
+
+                ['key' => 'legal.privacy.s3.title', 'value' => '3. Why we use the data'],
+                ['key' => 'legal.privacy.s3.body', 'value' => 'To run the service: authenticate your account, show your reports to members of your CP, send transactional emails related to your activity (tickets, CP requests) and keep the system secure. We do not use the data for advertising and do not share it with advertisers.'],
+
+                ['key' => 'legal.privacy.s4.title', 'value' => '4. Legal basis'],
+                ['key' => 'legal.privacy.s4.body', 'value' => 'We process data on the basis of performing the service you request at sign up (GDPR art. 6.1.b), your consent where applicable (when you submit forms) and our legitimate interest in keeping the service working and secure.'],
+
+                ['key' => 'legal.privacy.s5.title', 'value' => '5. Processors who handle data for us'],
+                ['key' => 'legal.privacy.s5.body', 'value' => 'We use a minimum of processors: Mailgun (Sinch) to deliver transactional emails, Cloudflare as CDN and DNS provider, and the hosting where the app runs. These providers process the data following their own policies and only what is strictly required to deliver their service.'],
+
+                ['key' => 'legal.privacy.s6.title', 'value' => '6. Retention'],
+                ['key' => 'legal.privacy.s6.body', 'value' => 'We keep data while your account is active. If you request deletion we remove your profile and the personal data associated with it; content shared with your CP (loot reports, etc.) may remain in an anonymised form so the historical audit of the group is not broken.'],
+
+                ['key' => 'legal.privacy.s7.title', 'value' => '7. Your rights'],
+                ['key' => 'legal.privacy.s7.body', 'value' => 'You can exercise your rights of access, rectification, erasure, objection, restriction and portability at any time by writing to the contact email. We will respond as soon as possible (target: 30 days). If you feel your request was not handled properly you may complain to your data protection authority.'],
+
+                ['key' => 'legal.privacy.contact.title', 'value' => 'Contact'],
+                ['key' => 'legal.privacy.contact.body', 'value' => 'For any privacy questions or to exercise your rights:'],
 
                 ['key' => 'warehouse.join_cp_title', 'value' => 'Join a CP'],
                 ['key' => 'warehouse.join_cp_text', 'value' => 'You need to be assigned to a CP to view your warehouse.'],

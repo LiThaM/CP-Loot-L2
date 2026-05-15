@@ -575,6 +575,10 @@ watch(() => alerts.value.items, (items) => {
                         ·
                         {{ $t('footer.support_label') }}
                         <button type="button" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition" @click="showSupportModal = true">{{ supportEmail }}</button>
+                        ·
+                        <Link :href="route('legal.terms')" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition">{{ $t('legal.terms_link') }}</Link>
+                        ·
+                        <Link :href="route('legal.privacy')" class="underline hover:text-purple-700 dark:hover:text-purple-300 transition">{{ $t('legal.privacy_link') }}</Link>
                     </div>
                 </div>
 

@@ -283,6 +283,8 @@ onMounted(() => {
                     {{ $t('footer.copyright', { year: new Date().getFullYear(), appName }) }}
                 </div>
                 <div class="flex items-center gap-4 text-xs" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">
+                    <Link :href="route('legal.terms')" class="hover:underline">{{ $t('legal.terms_link') }}</Link>
+                    <Link :href="route('legal.privacy')" class="hover:underline">{{ $t('legal.privacy_link') }}</Link>
                     <button @click="showSupportModal = true" class="hover:underline">{{ supportEmail }}</button>
                     <button @click="showDonationModal = true" class="hover:underline text-amber-500">{{ $t('welcome.modal.donation.title') }}</button>
                 </div>

@@ -20,6 +20,14 @@ Route::get('/recipes', function () {
     return Inertia::render('Recipes');
 })->name('recipes');
 
+Route::get('/terms', function () {
+    return Inertia::render('Legal/Terms');
+})->name('legal.terms');
+
+Route::get('/privacy', function () {
+    return Inertia::render('Legal/Privacy');
+})->name('legal.privacy');
+
 Route::prefix('api/public')->middleware('throttle:30,1')->group(function () {
     Route::get('/recipes/search', [PublicCraftingController::class, 'search'])->name('public.recipes.search');
     Route::get('/recipes/{recipe}/tree', [PublicCraftingController::class, 'tree'])->name('public.recipes.tree');
