@@ -24,6 +24,10 @@ class SupportTicket extends Model
         'closed_at',
         'metadata',
         'attachments',
+        'source',
+        'anon_token_id',
+        'tracking_token',
+        'bot_context_path',
     ];
 
     protected $casts = [
@@ -31,6 +35,11 @@ class SupportTicket extends Model
         'attachments' => 'array',
         'closed_at'   => 'datetime',
     ];
+
+    public function anonToken(): BelongsTo
+    {
+        return $this->belongsTo(\App\Contexts\ClientApi\Domain\Models\AnonToken::class, 'anon_token_id');
+    }
 
     public function user(): BelongsTo
     {

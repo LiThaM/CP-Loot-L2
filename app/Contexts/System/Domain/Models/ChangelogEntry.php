@@ -6,9 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChangelogEntry extends Model
 {
+    public const AUDIENCES = ['web', 'bot', 'both'];
+
     protected $fillable = [
         'type',
         'version',
+        'audience',
+        'release_id',
         'title_es',
         'title_en',
         'body_es',
@@ -19,4 +23,9 @@ class ChangelogEntry extends Model
     protected $casts = [
         'published_at' => 'datetime',
     ];
+
+    public function scopeForAudience($query, string $audience)
+    {
+        return $query->whereIn('audience', [$audience, 'both']);
+    }
 }

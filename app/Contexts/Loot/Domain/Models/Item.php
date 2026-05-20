@@ -20,4 +20,11 @@ class Item extends Model
     {
         return $this->hasMany(Wishlist::class);
     }
+
+    public function scopeLu4($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('chronicle', 'LU4')->orWhere('source', 'lu4_custom');
+        });
+    }
 }
