@@ -57,7 +57,7 @@ const submitSupport = () => {
 const cpRequestForm = useForm({ cp_name: '', server: '', chronicle: 'IL', leader_name: '', contact_email: '', message: '' });
 const submitCpRequest = () => {
     const swal = useSwal();
-    cpRequestForm.post(route('cp-requests.store'), {
+    cpRequestForm.post(route('cp.requests.store'), {
         preserveScroll: true,
         onSuccess: (page) => {
             showCpRequestModal.value = false; cpRequestForm.reset();
