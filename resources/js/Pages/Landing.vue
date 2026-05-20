@@ -1,11 +1,17 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
     latest: Object,
     changelog: Array,
 });
+
+const page = usePage();
+const appLocale = computed(() => page.props.app?.locale || 'es');
+const localeTag = computed(() => (appLocale.value === 'es' ? 'es-ES' : 'en-US'));
+
+const setLocale = (locale) => { router.post(route('locale.set'), { locale }, { preserveScroll: true }); };
 
 const humanSize = computed(() => {
     if (!props.latest?.size_bytes) return null;
@@ -15,10 +21,18 @@ const humanSize = computed(() => {
     while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
     return `${b.toFixed(1)} ${units[i]}`;
 });
+
+const localizedTitle = (entry) => (appLocale.value === 'en' ? entry.title_en : entry.title_es) || entry.title_es || entry.title_en;
+const localizedBody = (entry) => (appLocale.value === 'en' ? entry.body_en : entry.body_es) || '';
+const formatDate = (val) => {
+    if (!val) return '';
+    try { return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(val)); }
+    catch (_) { return String(val).slice(0, 10); }
+};
 </script>
 
 <template>
-    <Head title="Download — AdenaLedgerStats for Lu4" />
+    <Head :title="$t('landing.meta.title')" />
 
     <div class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-white">
         <!-- Top nav -->
@@ -29,9 +43,9 @@ const humanSize = computed(() => {
                     <span class="font-semibold tracking-tight">AdenaLedger</span>
                 </Link>
                 <nav class="text-sm flex items-center gap-6 text-slate-300">
-                    <a href="#features" class="hover:text-white">Features</a>
-                    <a href="#changelog" class="hover:text-white">Changelog</a>
-                    <Link :href="route('login')" class="hover:text-white">Login</Link>
+                    <a href="#features" class="hover:text-white">{{ $t('landing.nav.features') }}</a>
+                    <a href="#changelog" class="hover:text-white">{{ $t('landing.nav.changelog') }}</a>
+                    <button @click="setLocale(appLocale === 'es' ? 'en' : 'es')" class="text-xs font-bold tracking-widest hover:text-white">{{ appLocale === 'es' ? 'EN' : 'ES' }}</button>
                 </nav>
             </div>
         </header>
@@ -41,17 +55,14 @@ const humanSize = computed(() => {
             <div>
                 <p class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-amber-400 mb-4">
                     <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                    Only for the Lu4 private server
+                    {{ $t('landing.hero.badge') }}
                 </p>
                 <h1 class="text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
-                    Overlay &amp; tracker for
+                    {{ $t('landing.hero.title_line1') }}
                     <span class="bg-gradient-to-r from-amber-300 to-red-500 bg-clip-text text-transparent">Lineage 2</span>
-                    on Lu4
+                    {{ $t('landing.hero.title_line2') }}
                 </h1>
-                <p class="mt-5 text-slate-300 text-lg leading-relaxed">
-                    HP/MP/CP overlay, OCR-based chat parser, session stats, deaths, XP/h, adena/h, soulshot tracking and
-                    a clean dark HUD that stays out of your way. Single binary, no installer, no game-file modification.
-                </p>
+                <p class="mt-5 text-slate-300 text-lg leading-relaxed">{{ $t('landing.hero.subtitle') }}</p>
 
                 <div v-if="latest" class="mt-8 space-y-3">
                     <a :href="latest.download_url"
@@ -59,18 +70,16 @@ const humanSize = computed(() => {
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
                         </svg>
-                        Download {{ latest.version }}
+                        {{ $t('landing.download.btn', { version: latest.version }) }}
                     </a>
                     <div class="text-xs text-slate-500 space-x-3 font-mono">
                         <span v-if="humanSize">{{ humanSize }}</span>
                         <span v-if="latest.sha256">sha256: {{ latest.sha256.slice(0,16) }}…</span>
-                        <span v-if="latest.released_at">{{ latest.released_at.slice(0,10) }}</span>
+                        <span v-if="latest.released_at">{{ formatDate(latest.released_at) }}</span>
                     </div>
-                    <p v-if="latest.critical_update" class="text-xs text-red-400">
-                        ⚠ Critical update — previous versions are no longer supported.
-                    </p>
+                    <p v-if="latest.critical_update" class="text-xs text-red-400">⚠ {{ $t('landing.download.critical_warning') }}</p>
                 </div>
-                <div v-else class="mt-8 text-slate-400 italic">No published release yet.</div>
+                <div v-else class="mt-8 text-slate-400 italic">{{ $t('landing.download.no_release') }}</div>
             </div>
 
             <div class="relative">
@@ -80,7 +89,7 @@ const humanSize = computed(() => {
                         <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                         <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
                         <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                        <span class="ml-2">Lu4Bot overlay — Bishop / Lvl 55</span>
+                        <span class="ml-2">AdenaLedgerStats overlay — Bishop / Lvl 55</span>
                     </div>
                     <div class="flex justify-between"><span class="text-rose-400">HP</span><span>9 421 / 9 421</span></div>
                     <div class="flex justify-between"><span class="text-sky-400">MP</span><span>4 920 / 5 200</span></div>
@@ -88,8 +97,8 @@ const humanSize = computed(() => {
                     <div class="h-px bg-slate-800 my-2"></div>
                     <div class="flex justify-between"><span class="text-slate-400">XP/h</span><span class="text-emerald-400">+ 248 392</span></div>
                     <div class="flex justify-between"><span class="text-slate-400">Adena/h</span><span class="text-emerald-400">+ 49 800</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">SS used</span><span>1 184</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Deaths</span><span>0</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">{{ $t('landing.preview.ss_used') }}</span><span>1 184</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">{{ $t('landing.preview.deaths') }}</span><span>0</span></div>
                 </div>
             </div>
         </section>
@@ -97,70 +106,64 @@ const humanSize = computed(() => {
         <!-- Disclaimer -->
         <section class="max-w-4xl mx-auto px-6 py-8">
             <div class="border border-amber-700/40 bg-amber-950/30 rounded-xl p-5 text-sm text-amber-100">
-                <strong class="text-amber-300">Important.</strong> This software only works on the
-                <span class="font-mono">Lu4</span> private server. It is not affiliated with or endorsed by NCsoft.
-                Use of this tool is at your own responsibility — running third-party software alongside Lineage 2
-                may be against your server's terms of service. The OCR runs locally on screen pixels only; no game memory
-                is read or modified.
+                <strong class="text-amber-300">{{ $t('landing.disclaimer.label') }}</strong>
+                {{ $t('landing.disclaimer.text') }}
             </div>
         </section>
 
         <!-- Features -->
         <section id="features" class="max-w-6xl mx-auto px-6 py-16">
-            <h2 class="text-3xl font-bold mb-10 text-center">What's in the box</h2>
+            <h2 class="text-3xl font-bold mb-10 text-center">{{ $t('landing.features.title') }}</h2>
             <div class="grid md:grid-cols-3 gap-6">
                 <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h3 class="font-bold text-amber-400 mb-2">Always-on overlay</h3>
-                    <p class="text-sm text-slate-300">Compact HUD with HP / MP / CP, soulshot status, XP/h, adena/h and last hit tracker. Transparent, repositionable.</p>
+                    <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.overlay.title') }}</h3>
+                    <p class="text-sm text-slate-300">{{ $t('landing.features.overlay.text') }}</p>
                 </div>
                 <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h3 class="font-bold text-amber-400 mb-2">OCR-based parsing</h3>
-                    <p class="text-sm text-slate-300">Reads bars and chat from pixels using RapidOCR (ONNX) with Tesseract fallback. Multi-process pool keeps the game responsive.</p>
+                    <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.ocr.title') }}</h3>
+                    <p class="text-sm text-slate-300">{{ $t('landing.features.ocr.text') }}</p>
                 </div>
                 <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h3 class="font-bold text-amber-400 mb-2">Session stats</h3>
-                    <p class="text-sm text-slate-300">Local SQLite history of every session: kills, deaths, items obtained, damage in/out. Resumable on game restart.</p>
+                    <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.stats.title') }}</h3>
+                    <p class="text-sm text-slate-300">{{ $t('landing.features.stats.text') }}</p>
                 </div>
                 <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h3 class="font-bold text-amber-400 mb-2">Auto-updates</h3>
-                    <p class="text-sm text-slate-300">The bot checks for new versions on launch and updates itself with one click. No reinstall, no Steam, no fuss.</p>
+                    <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.autoupdate.title') }}</h3>
+                    <p class="text-sm text-slate-300">{{ $t('landing.features.autoupdate.text') }}</p>
                 </div>
                 <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h3 class="font-bold text-amber-400 mb-2">In-app support tickets</h3>
-                    <p class="text-sm text-slate-300">Hit a bug? Open a ticket from the overlay; logs and settings are attached automatically (scrubbed for privacy).</p>
+                    <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.tickets.title') }}</h3>
+                    <p class="text-sm text-slate-300">{{ $t('landing.features.tickets.text') }}</p>
                 </div>
                 <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h3 class="font-bold text-amber-400 mb-2">Privacy first</h3>
-                    <p class="text-sm text-slate-300">Character names and chat with nicks are stripped before any optional telemetry leaves your machine. Opt-in, opt-out, or fully offline.</p>
+                    <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.privacy.title') }}</h3>
+                    <p class="text-sm text-slate-300">{{ $t('landing.features.privacy.text') }}</p>
                 </div>
             </div>
         </section>
 
-        <!-- Changelog -->
+        <!-- Changelog (software/bot audience only) -->
         <section id="changelog" v-if="changelog && changelog.length" class="max-w-4xl mx-auto px-6 py-16">
-            <h2 class="text-3xl font-bold mb-8">Recent changes</h2>
+            <h2 class="text-3xl font-bold mb-2">{{ $t('landing.changelog.title') }}</h2>
+            <p class="text-sm text-slate-500 mb-8">{{ $t('landing.changelog.subtitle') }}</p>
             <div class="space-y-6">
-                <article v-for="entry in changelog" :key="entry.id"
-                         class="border-l-2 border-amber-600 pl-5 py-2">
+                <article v-for="entry in changelog" :key="entry.id" class="border-l-2 border-amber-600 pl-5 py-2">
                     <div class="flex items-baseline gap-3 mb-1">
                         <span class="text-amber-400 font-mono text-sm">{{ entry.version || entry.type }}</span>
-                        <span class="text-xs text-slate-500">{{ entry.published_at?.slice(0,10) }}</span>
+                        <span class="text-xs text-slate-500">{{ formatDate(entry.published_at) }}</span>
                     </div>
-                    <h3 class="font-semibold">{{ entry.title_en }}</h3>
-                    <p v-if="entry.body_en" class="text-sm text-slate-300 mt-1 whitespace-pre-wrap">{{ entry.body_en }}</p>
+                    <h3 class="font-semibold">{{ localizedTitle(entry) }}</h3>
+                    <p v-if="localizedBody(entry)" class="text-sm text-slate-300 mt-1 whitespace-pre-wrap">{{ localizedBody(entry) }}</p>
                 </article>
-            </div>
-            <div class="mt-8 text-center">
-                <Link :href="route('changelog.index')" class="text-amber-400 hover:underline text-sm">View full changelog →</Link>
             </div>
         </section>
 
         <!-- Footer -->
         <footer class="border-t border-slate-800 mt-16 py-8 text-center text-sm text-slate-500">
-            <p>AdenaLedgerStats — for the Lu4 community. Not affiliated with NCsoft.</p>
+            <p>{{ $t('landing.footer.tagline') }}</p>
             <p class="mt-2 space-x-4">
-                <Link :href="route('legal.terms')" class="hover:text-white">Terms</Link>
-                <Link :href="route('legal.privacy')" class="hover:text-white">Privacy</Link>
+                <Link :href="route('legal.terms')" class="hover:text-white">{{ $t('legal.terms_link') }}</Link>
+                <Link :href="route('legal.privacy')" class="hover:text-white">{{ $t('legal.privacy_link') }}</Link>
             </p>
         </footer>
     </div>

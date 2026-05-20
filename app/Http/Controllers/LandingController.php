@@ -16,7 +16,7 @@ class LandingController extends Controller
             ->orderByDesc('released_at')
             ->first();
 
-        $changelog = ChangelogEntry::forAudience('web')
+        $changelog = ChangelogEntry::forAudience('bot')
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at')
