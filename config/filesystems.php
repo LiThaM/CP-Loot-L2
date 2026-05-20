@@ -60,6 +60,27 @@ return [
             'report' => false,
         ],
 
+        'client_blobs' => env('CLIENT_BLOBS_DISK', 'local') === 's3'
+            ? [
+                'driver' => 's3',
+                'key' => env('CLIENT_BLOBS_AWS_KEY', env('AWS_ACCESS_KEY_ID')),
+                'secret' => env('CLIENT_BLOBS_AWS_SECRET', env('AWS_SECRET_ACCESS_KEY')),
+                'region' => env('CLIENT_BLOBS_AWS_REGION', env('AWS_DEFAULT_REGION')),
+                'bucket' => env('CLIENT_BLOBS_AWS_BUCKET', env('AWS_BUCKET')),
+                'url' => env('CLIENT_BLOBS_AWS_URL'),
+                'endpoint' => env('CLIENT_BLOBS_AWS_ENDPOINT'),
+                'use_path_style_endpoint' => env('CLIENT_BLOBS_AWS_PATH_STYLE', false),
+                'throw' => false,
+                'report' => false,
+            ]
+            : [
+                'driver' => 'local',
+                'root' => storage_path('app/client_blobs'),
+                'serve' => true,
+                'throw' => false,
+                'report' => false,
+            ],
+
     ],
 
     /*

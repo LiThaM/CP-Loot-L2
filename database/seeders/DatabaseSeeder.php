@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             TranslationSeeder::class,
             ChangelogSeeder::class,
+            InitialReleaseSeeder::class,
+            ClientApiKeySeeder::class,
         ]);
 
         if (! app()->environment(['local', 'testing'])) {
