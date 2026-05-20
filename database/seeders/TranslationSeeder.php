@@ -48,6 +48,11 @@ class TranslationSeeder extends Seeder
                 ['key' => 'welcome.hero.chips.vault', 'value' => 'CP Vault'],
                 ['key' => 'welcome.hero.chips.items', 'value' => 'Items DB'],
 
+                ['key' => 'welcome.nav.download', 'value' => 'Descargar'],
+                ['key' => 'welcome.download.cta', 'value' => 'Descargar AdenaLedgerStats (Lu4)'],
+                ['key' => 'welcome.download.coming_soon', 'value' => 'Próximamente disponible'],
+                ['key' => 'welcome.download.critical', 'value' => 'Crítica'],
+
                 ['key' => 'welcome.section.cp_cta.kicker', 'value' => '¿Tienes una CP?'],
                 ['key' => 'welcome.section.cp_cta.title', 'value' => 'Regístrala y empieza gratis'],
                 ['key' => 'welcome.section.cp_cta.text', 'value' => 'Envía una solicitud y te devolvemos un link de invitación para que tu CP se registre y empiece a usar el ledger.'],
@@ -632,6 +637,11 @@ class TranslationSeeder extends Seeder
                 ['key' => 'welcome.hero.chips.adena', 'value' => 'Adena splitting'],
                 ['key' => 'welcome.hero.chips.vault', 'value' => 'CP Vault'],
                 ['key' => 'welcome.hero.chips.items', 'value' => 'Items DB'],
+
+                ['key' => 'welcome.nav.download', 'value' => 'Download'],
+                ['key' => 'welcome.download.cta', 'value' => 'Download AdenaLedgerStats (Lu4)'],
+                ['key' => 'welcome.download.coming_soon', 'value' => 'Coming soon'],
+                ['key' => 'welcome.download.critical', 'value' => 'Critical'],
 
                 ['key' => 'welcome.section.cp_cta.kicker', 'value' => 'Have a CP?'],
                 ['key' => 'welcome.section.cp_cta.title', 'value' => 'Register it and start for free'],
