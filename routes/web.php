@@ -15,6 +15,15 @@ Route::get('/', function () {
     ]);
 });
 
+// Landing pública para descarga del bot (solo Lu4).
+Route::get('/download', [\App\Http\Controllers\LandingController::class, 'show'])
+    ->name('landing.download');
+
+// Tracking público de tickets desde la app (redirect a página Inertia).
+Route::get('/t/{token}', function (string $token) {
+    return Inertia::render('Tickets/Track', ['trackingToken' => $token]);
+})->where('token', '[A-Za-z0-9]{40}')->name('tickets.track');
+
 // Public Recipe Explorer (no auth required)
 Route::get('/recipes', function () {
     return Inertia::render('Recipes');

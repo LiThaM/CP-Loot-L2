@@ -2,6 +2,7 @@
 
 use App\Contexts\Identity\Application\Controllers\Auth\AuthenticatedSessionController;
 use App\Contexts\Identity\Application\Controllers\Auth\ConfirmablePasswordController;
+use App\Contexts\Identity\Application\Controllers\Auth\DiscordController;
 use App\Contexts\Identity\Application\Controllers\Auth\EmailVerificationNotificationController;
 use App\Contexts\Identity\Application\Controllers\Auth\EmailVerificationPromptController;
 use App\Contexts\Identity\Application\Controllers\Auth\NewPasswordController;
@@ -33,6 +34,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    // Discord OAuth (Socialite). DISCORD_CLIENT_ID/SECRET required in .env.
+    Route::get('auth/discord/redirect', [DiscordController::class, 'redirect'])
+        ->name('auth.discord.redirect');
+    Route::get('auth/discord/callback', [DiscordController::class, 'callback'])
+        ->name('auth.discord.callback');
 });
 
 Route::middleware('auth')->group(function () {
