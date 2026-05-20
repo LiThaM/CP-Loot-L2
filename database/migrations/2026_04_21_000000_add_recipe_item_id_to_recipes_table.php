@@ -12,29 +12,35 @@ return new class extends Migration
         Schema::table('recipes', function (Blueprint $table) {
             $table->foreignId('recipe_item_id')->nullable()->after('output_item_id')->constrained('items')->nullOnDelete();
         });
- 
+
+        // Data backfill solo en MySQL — SQLite usado en tests no soporta
+        // UPDATE con alias y se salta la backfill (la tabla está vacía en tests).
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Attempt to link based on external_id and chronicle
         DB::statement("
             UPDATE recipes r
             SET r.recipe_item_id = (
-                SELECT i.id 
-                FROM items i 
-                WHERE i.external_id = r.external_id 
-                  AND i.chronicle = r.chronicle 
+                SELECT i.id
+                FROM items i
+                WHERE i.external_id = r.external_id
+                  AND i.chronicle = r.chronicle
                   AND i.category = 'Recipe'
                 LIMIT 1
             )
             WHERE r.recipe_item_id IS NULL
         ");
- 
+
         // Fallback for those that don't match external_id but might match name
         DB::statement("
             UPDATE recipes r
             SET r.recipe_item_id = (
-                SELECT i.id 
-                FROM items i 
+                SELECT i.id
+                FROM items i
                 WHERE i.name = r.name
-                  AND i.chronicle = r.chronicle 
+                  AND i.chronicle = r.chronicle
                   AND i.category = 'Recipe'
                 LIMIT 1
             )
