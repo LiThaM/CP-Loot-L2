@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class ReleasesPublishApiController extends Controller
 {
     public const MAX_BINARY_BYTES = 314_572_800; // 300 MB
+    public const ALLOWED_EXTENSIONS = ['exe', 'zip'];
 
     public function store(Request $request): JsonResponse
     {
@@ -35,6 +36,15 @@ class ReleasesPublishApiController extends Controller
         $existing = Release::where('version', $data['version'])->first();
 
         $file = $request->file('binary');
+        $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+        if (!in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
+            return response()->json([
+                'error' => 'invalid_extension',
+                'message' => 'binary must be .exe or .zip (zip is used when shipping the updater alongside).',
+                'received' => $ext ?: null,
+            ], 422);
+        }
+
         $bytes = file_get_contents($file->getRealPath());
         if ($bytes === false) {
             return response()->json(['error' => 'cannot_read_upload'], 500);
@@ -50,7 +60,7 @@ class ReleasesPublishApiController extends Controller
             ], 422);
         }
 
-        $relPath = sprintf('releases/%s/AdenaLedgerStats-%s.exe', $data['version'], $data['version']);
+        $relPath = sprintf('releases/%s/AdenaLedgerStats-%s.%s', $data['version'], $data['version'], $ext);
         $disk = Storage::disk('client_blobs');
         $disk->put($relPath, $bytes);
 

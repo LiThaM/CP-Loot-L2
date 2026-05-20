@@ -32,11 +32,12 @@ class AdminReleasesPublishTest extends TestCase
         ]);
     }
 
-    private function fakeBinary(string $content = 'fake-exe-bytes'): UploadedFile
+    private function fakeBinary(string $content = 'fake-exe-bytes', string $ext = 'exe'): UploadedFile
     {
-        $path = tempnam(sys_get_temp_dir(), 'exe_').'.exe';
+        $path = tempnam(sys_get_temp_dir(), 'rel_').'.'.$ext;
         file_put_contents($path, $content);
-        return new UploadedFile($path, 'AdenaLedgerStats.exe', 'application/octet-stream', null, true);
+        $mime = $ext === 'zip' ? 'application/zip' : 'application/octet-stream';
+        return new UploadedFile($path, 'AdenaLedgerStats.'.$ext, $mime, null, true);
     }
 
     public function test_unauthenticated_request_is_rejected(): void
@@ -119,5 +120,31 @@ class AdminReleasesPublishTest extends TestCase
         $release = Release::where('version', '0.5.0')->first();
         $this->assertSame(hash('sha256', 'v2-bytes'), $release->sha256);
         $this->assertNotNull($release->published_at);
+    }
+
+    public function test_zip_upload_is_accepted_and_stored_with_zip_extension(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.6.0',
+            'binary' => $this->fakeBinary('zipped-bundle-bytes', 'zip'),
+            'publish_now' => true,
+        ])->assertStatus(201);
+
+        $release = Release::where('version', '0.6.0')->first();
+        $this->assertStringEndsWith('.zip', $release->storage_path);
+        Storage::disk('client_blobs')->assertExists($release->storage_path);
+    }
+
+    public function test_disallowed_extension_is_rejected(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.7.0',
+            'binary' => $this->fakeBinary('not-a-real-installer', 'rar'),
+        ])->assertStatus(422)
+          ->assertJsonPath('error', 'invalid_extension');
     }
 }

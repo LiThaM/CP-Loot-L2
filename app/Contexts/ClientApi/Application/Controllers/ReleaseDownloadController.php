@@ -55,11 +55,14 @@ class ReleaseDownloadController extends Controller
             return response()->json(['error' => 'file_missing'], 404);
         }
 
+        $ext = strtolower(pathinfo($release->storage_path, PATHINFO_EXTENSION)) ?: 'exe';
+
         return response($disk->get($release->storage_path), 200, [
-            'Content-Type' => 'application/octet-stream',
+            'Content-Type' => $ext === 'zip' ? 'application/zip' : 'application/octet-stream',
             'Content-Disposition' => sprintf(
-                'attachment; filename="AdenaLedgerStats-%s.exe"',
-                $release->version
+                'attachment; filename="AdenaLedgerStats-%s.%s"',
+                $release->version,
+                $ext
             ),
         ]);
     }
