@@ -185,6 +185,25 @@ Route::middleware('auth')->group(function () {
     Route::patch('/system/items/{item}', [ItemManagementController::class, 'update'])->name('system.items.update');
     Route::delete('/system/items/{item}', [ItemManagementController::class, 'destroy'])->name('system.items.destroy');
 
+    // Releases & Crashes (Admin Only)
+    Route::get('/system/releases', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'index'])
+        ->name('system.releases.index');
+    Route::post('/system/releases', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'store'])
+        ->name('system.releases.store');
+    Route::post('/system/releases/{release}/toggle-publish', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'togglePublish'])
+        ->name('system.releases.toggle_publish');
+    Route::delete('/system/releases/{release}', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'destroy'])
+        ->name('system.releases.destroy');
+
+    Route::get('/system/crashes', [\App\Contexts\System\Application\Controllers\CrashesController::class, 'index'])
+        ->name('system.crashes.index');
+    Route::get('/system/crashes/{fingerprint}', [\App\Contexts\System\Application\Controllers\CrashesController::class, 'show'])
+        ->where('fingerprint', '[a-f0-9]{64}')
+        ->name('system.crashes.show');
+    Route::delete('/system/crashes/{fingerprint}', [\App\Contexts\System\Application\Controllers\CrashesController::class, 'destroy'])
+        ->where('fingerprint', '[a-f0-9]{64}')
+        ->name('system.crashes.destroy');
+
     // User Management (Admin & CP Leader Audit)
     Route::get('/system/users', [UserManagementController::class, 'index'])->name('system.users.index');
     Route::get('/system/users/{user}/logs', [UserManagementController::class, 'logs'])->name('system.users.logs');
