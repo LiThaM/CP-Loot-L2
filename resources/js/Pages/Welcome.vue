@@ -7,7 +7,14 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 defineProps({
     canLogin: { type: Boolean },
     canRegister: { type: Boolean },
+    botRelease: { type: Object, default: null },
 });
+
+const formatBytes = (bytes) => {
+    if (!bytes) return '';
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
+};
 
 const page = usePage();
 const translations = computed(() => page.props.translations || {});
@@ -99,6 +106,7 @@ onMounted(() => {
 
                 <!-- Desktop -->
                 <div class="hidden md:flex items-center gap-1">
+                    <a href="/download" class="nav-link font-semibold" :class="darkMode ? 'text-purple-300 hover:text-white' : 'text-purple-700 hover:text-purple-900'">Download</a>
                     <a href="/recipes" class="nav-link" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">Recipes</a>
                     <button @click="showSupportModal = true" class="nav-link" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">{{ $t('welcome.modal.support.title') }}</button>
                     <div class="w-px h-4 mx-2" :class="darkMode ? 'bg-white/10' : 'bg-gray-200'"></div>
@@ -124,6 +132,7 @@ onMounted(() => {
 
             <!-- Mobile menu -->
             <div v-if="mobileMenuOpen" class="md:hidden border-t px-4 pb-4 pt-2 space-y-2" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                <a href="/download" class="mobile-link font-semibold" :class="darkMode ? 'text-purple-300' : 'text-purple-700'">Download Bot (Lu4)</a>
                 <a href="/recipes" class="mobile-link" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">Recipes</a>
                 <button @click="showSupportModal = true; mobileMenuOpen = false" class="mobile-link w-full text-left" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">{{ $t('welcome.modal.support.title') }}</button>
                 <button @click="showCpRequestModal = true; mobileMenuOpen = false" class="mobile-link w-full text-left text-amber-500">{{ $t('welcome.section.cp_cta.btn') }}</button>
@@ -163,17 +172,28 @@ onMounted(() => {
                         </p>
 
                         <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto">
+                            <a v-if="botRelease?.download_url" :href="botRelease.download_url" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                                Download Bot (Lu4)
+                                <span class="text-[10px] font-mono opacity-80">v{{ botRelease.version }}</span>
+                            </a>
+                            <a v-else href="#download" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2 opacity-70 cursor-not-allowed" @click.prevent>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                                Bot coming soon
+                            </a>
+                            <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
                                 {{ $t('welcome.hero.cta.dashboard') }}
                             </Link>
-                            <template v-else>
-                                <button @click="showCpRequestModal = true" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto">
-                                    {{ $t('welcome.section.cp_cta.btn') }}
-                                </button>
-                                <a href="#features" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
-                                    {{ $t('welcome.hero.cta.learn_more') }}
-                                </a>
-                            </template>
+                            <a v-else href="#features" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
+                                {{ $t('welcome.hero.cta.learn_more') }}
+                            </a>
+                        </div>
+
+                        <div v-if="botRelease" class="mt-4 inline-flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] font-mono" :class="darkMode ? 'text-gray-500' : 'text-gray-500'">
+                            <span>v{{ botRelease.version }}</span>
+                            <span v-if="botRelease.size_bytes">&middot; {{ formatBytes(botRelease.size_bytes) }}</span>
+                            <span v-if="botRelease.released_at">&middot; {{ new Date(botRelease.released_at).toLocaleDateString(appLocale) }}</span>
+                            <span v-if="botRelease.critical_update" class="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 font-bold uppercase tracking-widest">Critical</span>
                         </div>
 
                         <div class="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">

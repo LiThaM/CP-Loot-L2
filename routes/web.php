@@ -1,5 +1,6 @@
 <?php
 
+use App\Contexts\ClientApi\Domain\Models\Release;
 use App\Contexts\Loot\Application\Controllers\PublicCraftingController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -7,11 +8,25 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $latest = Release::published()
+        ->channel('stable')
+        ->orderByDesc('released_at')
+        ->first();
+
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
+        'botRelease' => $latest ? [
+            'version' => $latest->version,
+            'size_bytes' => $latest->size_bytes,
+            'released_at' => $latest->released_at?->toIso8601String(),
+            'critical_update' => (bool) $latest->critical_update,
+            'download_url' => $latest->storage_path
+                ? url('/api/v1/releases/'.$latest->version.'/download')
+                : null,
+        ] : null,
     ]);
 });
 
