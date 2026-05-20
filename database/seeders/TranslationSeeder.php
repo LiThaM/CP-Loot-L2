@@ -52,6 +52,11 @@ class TranslationSeeder extends Seeder
                 ['key' => 'welcome.download.cta', 'value' => 'Descargar AdenaLedgerStats (Lu4)'],
                 ['key' => 'welcome.download.coming_soon', 'value' => 'Próximamente disponible'],
                 ['key' => 'welcome.download.critical', 'value' => 'Crítica'],
+                ['key' => 'welcome.hero.desktop_tip', 'value' => '¿Juegas en Lu4? Te interesa también nuestra app de escritorio'],
+                ['key' => 'welcome.desktop.kicker', 'value' => 'App de escritorio (opcional)'],
+                ['key' => 'welcome.desktop.subtitle', 'value' => 'AdenaLedgerStats es una herramienta independiente para Lu4. Captura loot y estadísticas del cliente del juego en tiempo real y, si lo deseas, las sincroniza con tu ledger en AdenaLedger. Tu CP puede usar AdenaLedger sin instalar nada.'],
+                ['key' => 'welcome.desktop.details', 'value' => 'Ver detalles'],
+                ['key' => 'welcome.desktop.note', 'value' => 'Herramienta separada de AdenaLedger. No requiere cuenta para descargar.'],
 
                 ['key' => 'welcome.section.cp_cta.kicker', 'value' => '¿Tienes una CP?'],
                 ['key' => 'welcome.section.cp_cta.title', 'value' => 'Regístrala y empieza gratis'],
@@ -642,6 +647,11 @@ class TranslationSeeder extends Seeder
                 ['key' => 'welcome.download.cta', 'value' => 'Download AdenaLedgerStats (Lu4)'],
                 ['key' => 'welcome.download.coming_soon', 'value' => 'Coming soon'],
                 ['key' => 'welcome.download.critical', 'value' => 'Critical'],
+                ['key' => 'welcome.hero.desktop_tip', 'value' => 'Playing on Lu4? You may also want our desktop companion'],
+                ['key' => 'welcome.desktop.kicker', 'value' => 'Desktop companion (optional)'],
+                ['key' => 'welcome.desktop.subtitle', 'value' => 'AdenaLedgerStats is a separate tool for Lu4. It captures loot and stats from the game client in real time and, if you opt in, syncs them with your AdenaLedger ledger. Your CP can use AdenaLedger without installing anything.'],
+                ['key' => 'welcome.desktop.details', 'value' => 'See details'],
+                ['key' => 'welcome.desktop.note', 'value' => 'Separate tool from AdenaLedger. No account required to download.'],
 
                 ['key' => 'welcome.section.cp_cta.kicker', 'value' => 'Have a CP?'],
                 ['key' => 'welcome.section.cp_cta.title', 'value' => 'Register it and start for free'],

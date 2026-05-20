@@ -172,29 +172,23 @@ onMounted(() => {
                         </p>
 
                         <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <a v-if="botRelease?.download_url" :href="botRelease.download_url" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
-                                {{ $t('welcome.download.cta') }}
-                                <span class="text-[10px] font-mono opacity-80">v{{ botRelease.version }}</span>
-                            </a>
-                            <a v-else href="#download" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2 opacity-70 cursor-not-allowed" @click.prevent>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
-                                {{ $t('welcome.download.coming_soon') }}
-                            </a>
-                            <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
+                            <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto">
                                 {{ $t('welcome.hero.cta.dashboard') }}
                             </Link>
-                            <a v-else href="#features" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
-                                {{ $t('welcome.hero.cta.learn_more') }}
-                            </a>
+                            <template v-else>
+                                <button @click="showCpRequestModal = true" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto">
+                                    {{ $t('welcome.section.cp_cta.btn') }}
+                                </button>
+                                <a href="#features" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
+                                    {{ $t('welcome.hero.cta.learn_more') }}
+                                </a>
+                            </template>
                         </div>
 
-                        <div v-if="botRelease" class="mt-4 inline-flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] font-mono" :class="darkMode ? 'text-gray-500' : 'text-gray-500'">
-                            <span>v{{ botRelease.version }}</span>
-                            <span v-if="botRelease.size_bytes">&middot; {{ formatBytes(botRelease.size_bytes) }}</span>
-                            <span v-if="botRelease.released_at">&middot; {{ new Date(botRelease.released_at).toLocaleDateString(appLocale) }}</span>
-                            <span v-if="botRelease.critical_update" class="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 font-bold uppercase tracking-widest">{{ $t('welcome.download.critical') }}</span>
-                        </div>
+                        <a href="#desktop" class="mt-5 inline-flex items-center gap-2 text-xs font-medium hover:underline" :class="darkMode ? 'text-purple-300' : 'text-purple-700'">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+                            {{ $t('welcome.hero.desktop_tip') }}
+                        </a>
 
                         <div class="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">
                             <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> {{ $t('footer.free') }}</span>
@@ -277,6 +271,50 @@ onMounted(() => {
                             <div class="w-10 h-10 rounded-full mx-auto mb-4 flex items-center justify-center text-sm font-bold" :class="darkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-gray-100 text-gray-900 border border-gray-200'">{{ step.n }}</div>
                             <h3 class="text-sm font-bold mb-1.5" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ step.title }}</h3>
                             <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ step.text }}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Desktop companion app (separate product) -->
+            <section id="desktop" class="py-16 sm:py-20 border-t scroll-mt-16" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6">
+                    <div class="rounded-2xl border-2 overflow-hidden" :class="darkMode ? 'border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-blue-500/5' : 'border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50'">
+                        <div class="p-6 sm:p-10">
+                            <div class="flex flex-col sm:flex-row sm:items-start gap-6">
+                                <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" :class="darkMode ? 'bg-purple-500/15 text-purple-300' : 'bg-purple-100 text-purple-700'">
+                                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-bold uppercase tracking-widest mb-2" :class="darkMode ? 'text-purple-400' : 'text-purple-600'">{{ $t('welcome.desktop.kicker') }}</p>
+                                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-3" :class="darkMode ? 'text-white' : 'text-gray-900'">AdenaLedgerStats</h2>
+                                    <p class="text-sm leading-relaxed mb-6" :class="darkMode ? 'text-gray-300' : 'text-gray-600'">{{ $t('welcome.desktop.subtitle') }}</p>
+
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+                                        <a v-if="botRelease?.download_url" :href="botRelease.download_url" class="btn-primary px-6 py-3 text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                                            {{ $t('welcome.download.cta') }}
+                                            <span class="text-[10px] font-mono opacity-80">v{{ botRelease.version }}</span>
+                                        </a>
+                                        <span v-else class="btn-primary px-6 py-3 text-sm w-full sm:w-auto inline-flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            {{ $t('welcome.download.coming_soon') }}
+                                        </span>
+                                        <Link href="/download" class="btn-secondary px-6 py-3 text-sm w-full sm:w-auto">
+                                            {{ $t('welcome.desktop.details') }}
+                                        </Link>
+                                    </div>
+
+                                    <div v-if="botRelease" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono" :class="darkMode ? 'text-gray-500' : 'text-gray-500'">
+                                        <span>v{{ botRelease.version }}</span>
+                                        <span v-if="botRelease.size_bytes">&middot; {{ formatBytes(botRelease.size_bytes) }}</span>
+                                        <span v-if="botRelease.released_at">&middot; {{ new Date(botRelease.released_at).toLocaleDateString(appLocale) }}</span>
+                                        <span v-if="botRelease.critical_update" class="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 font-bold uppercase tracking-widest">{{ $t('welcome.download.critical') }}</span>
+                                    </div>
+
+                                    <p class="mt-4 text-[11px] italic" :class="darkMode ? 'text-gray-500' : 'text-gray-500'">{{ $t('welcome.desktop.note') }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
