@@ -68,6 +68,7 @@ class ReleasesPublishApiController extends Controller
         // `release_notes` (spec field) is treated as the canonical single-text
         // payload — it backs release_notes_md, and seeds the i18n columns when
         // the dev didn't provide localized variants.
+        $hasUnifiedNotes = array_key_exists('release_notes', $data) || array_key_exists('release_notes_md', $data);
         $unifiedNotes = $data['release_notes'] ?? $data['release_notes_md'] ?? null;
 
         $payload = [
@@ -76,29 +77,50 @@ class ReleasesPublishApiController extends Controller
             'storage_path' => $relPath,
             'sha256' => $sha256,
             'size_bytes' => $size,
-            'release_notes_md' => $unifiedNotes,
-            'release_notes_es' => $data['release_notes_es'] ?? $unifiedNotes,
-            'release_notes_en' => $data['release_notes_en'] ?? $unifiedNotes,
             'critical_update' => (bool) ($data['critical_update'] ?? false),
             'min_supported_version' => $data['min_supported_version'] ?? null,
             'released_at' => now(),
         ];
+
+        // Only touch the localized note columns when the caller explicitly
+        // sent them. A partial re-upload of the same version (build script
+        // without changelog section) would otherwise wipe the persisted
+        // markdown by writing nulls.
+        if ($hasUnifiedNotes) {
+            $payload['release_notes_md'] = $unifiedNotes;
+        }
+        if ($hasUnifiedNotes || array_key_exists('release_notes_es', $data)) {
+            $payload['release_notes_es'] = $data['release_notes_es'] ?? $unifiedNotes;
+        }
+        if ($hasUnifiedNotes || array_key_exists('release_notes_en', $data)) {
+            $payload['release_notes_en'] = $data['release_notes_en'] ?? $unifiedNotes;
+        }
+
+        $channel = $payload['channel'];
+        $explicitPublish = (bool) ($data['publish_now'] ?? false);
+        // Auto-publish when the uploaded version is greater than the current
+        // latest published release in the same channel. This lets the build
+        // script promote a real version bump (0.5.4 → 0.5.5) without forcing
+        // the operator to pass --publish every time.
+        $shouldPublish = $explicitPublish || $this->isNewerThanLatest($data['version'], $channel, $existing?->id);
 
         if ($existing) {
             // Overwrite previous storage_path file if it changed.
             if ($existing->storage_path && $existing->storage_path !== $relPath) {
                 $disk->delete($existing->storage_path);
             }
-            // Preserve published_at unless publish_now is explicitly set.
-            if (array_key_exists('publish_now', $data)) {
-                $payload['published_at'] = $data['publish_now'] ? now() : null;
+            // Touch published_at when publish_now was explicitly set OR when
+            // we computed that the version should be auto-promoted; otherwise
+            // preserve whatever it was.
+            if (array_key_exists('publish_now', $data) || $shouldPublish) {
+                $payload['published_at'] = $shouldPublish ? now() : null;
             }
             $existing->update($payload);
             $release = $existing->fresh();
             $created = false;
         } else {
             $payload['version'] = $data['version'];
-            $payload['published_at'] = ($data['publish_now'] ?? false) ? now() : null;
+            $payload['published_at'] = $shouldPublish ? now() : null;
             $release = Release::create($payload);
             $created = true;
         }
@@ -115,5 +137,19 @@ class ReleasesPublishApiController extends Controller
                 ? url('/api/v1/releases/'.$release->version.'/download')
                 : null,
         ], $created ? 201 : 200);
+    }
+
+    private function isNewerThanLatest(string $newVersion, string $channel, ?int $excludeId): bool
+    {
+        $query = Release::published()->channel($channel);
+        if ($excludeId !== null) {
+            $query->where('id', '!=', $excludeId);
+        }
+        $latest = $query->orderByDesc('released_at')->first();
+
+        if ($latest === null) {
+            return true;
+        }
+        return version_compare($newVersion, $latest->version, '>');
     }
 }

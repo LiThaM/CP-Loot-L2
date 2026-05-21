@@ -200,11 +200,22 @@ class DigitTemplatesController extends Controller
         // `char` is a MySQL reserved word, so `selectRaw('char, …')` blows up
         // with a 1064 syntax error in prod. The query builder auto-quotes
         // identifiers, so we go through select() + DB::raw() instead.
-        $byChar = (clone $base)
+        $counts = (clone $base)
             ->select(['char as char_value', DB::raw('COUNT(*) as c')])
             ->groupBy('char')
             ->pluck('c', 'char_value')
             ->toArray();
+
+        // Always emit every char with 0 for missing — clients rely on the full
+        // map. Cast to object so json_encode emits "{...}" even when only
+        // numeric keys are present (otherwise PHP normalises "0","1",… to int
+        // keys and json_encode treats the result as a list).
+        $allChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'slash'];
+        $byChar = [];
+        foreach ($allChars as $ch) {
+            $byChar[$ch] = (int) ($counts[$ch] ?? 0);
+        }
+        $byChar = (object) $byChar;
 
         $disk = Storage::disk('client_blobs');
         $cachedPath = $this->consensus->cachedZipPath($version ?: null);

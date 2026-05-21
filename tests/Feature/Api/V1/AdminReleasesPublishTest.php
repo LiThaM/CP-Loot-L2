@@ -162,4 +162,52 @@ class AdminReleasesPublishTest extends TestCase
         $this->assertSame("### Added\n- shared notes for both locales", $release->release_notes_es);
         $this->assertSame("### Added\n- shared notes for both locales", $release->release_notes_en);
     }
+
+    public function test_uploading_newer_version_auto_publishes_without_publish_now(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        // Seed a published baseline 0.5.4.
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.5.4-alpha',
+            'binary' => $this->fakeBinary('v1-bytes'),
+            'publish_now' => true,
+        ])->assertStatus(201);
+
+        // Upload a newer version WITHOUT publish_now; expect auto-promote.
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.5.5-alpha',
+            'binary' => $this->fakeBinary('v2-bytes'),
+        ])->assertStatus(201);
+
+        $latest = Release::where('version', '0.5.5-alpha')->first();
+        $this->assertNotNull($latest);
+        $this->assertNotNull($latest->published_at, 'newer version must auto-publish');
+    }
+
+    public function test_re_upload_without_release_notes_preserves_existing_notes(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        // First upload populates release_notes_md.
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.9.0',
+            'release_notes' => "## Notes\n- initial markdown",
+            'binary' => $this->fakeBinary('v1-bytes'),
+            'publish_now' => true,
+        ])->assertStatus(201);
+
+        // Re-upload the same version without sending release_notes (typical
+        // when the build script's changelog extractor returns nothing).
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.9.0',
+            'binary' => $this->fakeBinary('v2-bytes'),
+        ])->assertStatus(200)
+          ->assertJsonPath('status', 'updated');
+
+        $release = Release::where('version', '0.9.0')->first();
+        $this->assertSame("## Notes\n- initial markdown", $release->release_notes_md);
+        $this->assertSame("## Notes\n- initial markdown", $release->release_notes_es);
+        $this->assertSame("## Notes\n- initial markdown", $release->release_notes_en);
+    }
 }

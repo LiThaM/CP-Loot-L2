@@ -69,4 +69,40 @@ class DigitTemplatesStatsTest extends TestCase
             ->assertJsonPath('total_templates', 0)
             ->assertJsonPath('contributors', 0);
     }
+
+    public function test_by_char_is_object_with_all_digits_and_slash_even_when_zero(): void
+    {
+        $token = AnonToken::create([
+            'token_uuid' => strtolower((string) Str::uuid()),
+            'first_seen_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+        // Only one digit has any submission; the rest plus "slash" should
+        // still appear in the response with count = 0.
+        DigitTemplateSubmission::create([
+            'anon_token_id' => $token->id,
+            'char' => '5',
+            'storage_path' => 'x.png',
+            'phash' => '0000000000000000',
+            'dim_w' => 20,
+            'dim_h' => 32,
+            'original_size_bytes' => 100,
+            'submitted_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/templates/digits/stats');
+
+        $response->assertStatus(200);
+        foreach (['0','1','2','3','4','6','7','8','9','slash'] as $ch) {
+            $response->assertJsonPath('by_char.'.$ch, 0);
+        }
+        $response->assertJsonPath('by_char.5', 1);
+
+        // Raw payload must encode by_char as a JSON object, not a list. The
+        // previous bug emitted "[1, 0, 0, ...]" because PHP coerced numeric
+        // string keys to ints.
+        $raw = $response->json('by_char');
+        $this->assertIsArray($raw);
+        $this->assertArrayHasKey('slash', $raw);
+    }
 }
