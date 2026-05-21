@@ -138,6 +138,12 @@ Route::middleware('auth')->group(function () {
     // Phase 3 & 4 Routes
     Route::get('/party', [PartyController::class, 'index'])->name('party.index');
     Route::get('/warehouse-cp', [PartyController::class, 'index'])->name('party.warehouse_cp')->defaults('tab', 'warehouse_cp');
+    // Bulk crafting planner — read-only calculator that aggregates N recipes
+    // and crosses them against the CP warehouse stock.
+    Route::get('/party/craft-bulk', [\App\Contexts\Loot\Application\Controllers\CraftBulkController::class, 'index'])
+        ->name('party.craft_bulk.index');
+    Route::post('/api/party/craft-bulk/plan', [\App\Contexts\Loot\Application\Controllers\CraftBulkController::class, 'plan'])
+        ->name('party.craft_bulk.plan');
     Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
     Route::post('/party/points/reset', [PartyController::class, 'resetPoints'])->name('party.points.reset');
     Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog.index');

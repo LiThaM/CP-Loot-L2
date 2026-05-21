@@ -58,7 +58,7 @@ class PublicCraftingController extends Controller
         $recipe->load(['materials.item', 'outputs.item', 'outputItem', 'recipeItem']);
 
         $chronicle = $recipe->chronicle ?: 'IL';
-        $craftableMap = $this->craftableRecipeIdByItemId($chronicle);
+        $craftableMap = \App\Contexts\Loot\Domain\Models\Item::craftableRecipeIdByItemId($chronicle);
 
         $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $craftableMap) {
             return $this->buildNode(
@@ -127,30 +127,6 @@ class PublicCraftingController extends Controller
             ->pluck('chronicle');
 
         return response()->json($chronicles);
-    }
-
-    private function craftableRecipeIdByItemId(string $chronicle): array
-    {
-        $direct = Recipe::query()
-            ->select(['id', 'output_item_id'])
-            ->where('chronicle', $chronicle)
-            ->whereNotNull('output_item_id')
-            ->get()
-            ->map(fn ($r) => ['item_id' => (int) $r->output_item_id, 'recipe_id' => (int) $r->id]);
-
-        $alt = DB::table('recipe_outputs')
-            ->join('recipes', 'recipes.id', '=', 'recipe_outputs.recipe_id')
-            ->where('recipes.chronicle', $chronicle)
-            ->select(['recipe_outputs.item_id', 'recipe_outputs.recipe_id'])
-            ->get()
-            ->map(fn ($r) => ['item_id' => (int) $r->item_id, 'recipe_id' => (int) $r->recipe_id]);
-
-        $map = [];
-        foreach ($direct->concat($alt)->groupBy('item_id') as $itemId => $rows) {
-            $map[(int) $itemId] = (int) $rows->sortBy('recipe_id')->first()['recipe_id'];
-        }
-
-        return $map;
     }
 
     private function buildNode(

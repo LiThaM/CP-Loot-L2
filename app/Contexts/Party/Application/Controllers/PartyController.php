@@ -1330,29 +1330,6 @@ class PartyController extends Controller
 
     private function craftableRecipeIdByItemId(string $chronicle): array
     {
-        $direct = Recipe::query()
-            ->select(['id', 'output_item_id'])
-            ->where('chronicle', $chronicle)
-            ->whereNotNull('output_item_id')
-            ->get()
-            ->map(fn ($r) => ['item_id' => (int) $r->output_item_id, 'recipe_id' => (int) $r->id]);
-
-        $alt = DB::table('recipe_outputs')
-            ->join('recipes', 'recipes.id', '=', 'recipe_outputs.recipe_id')
-            ->where('recipes.chronicle', $chronicle)
-            ->select(['recipe_outputs.item_id as item_id', 'recipe_outputs.recipe_id as recipe_id'])
-            ->get()
-            ->map(fn ($r) => ['item_id' => (int) $r->item_id, 'recipe_id' => (int) $r->recipe_id]);
-
-        $all = $direct->concat($alt)->groupBy('item_id');
-        $map = [];
-        foreach ($all as $itemId => $rows) {
-            $best = $rows->sortBy('recipe_id')->first();
-            if ($best) {
-                $map[(int) $itemId] = (int) $best['recipe_id'];
-            }
-        }
-
-        return $map;
+        return Item::craftableRecipeIdByItemId($chronicle);
     }
 }
