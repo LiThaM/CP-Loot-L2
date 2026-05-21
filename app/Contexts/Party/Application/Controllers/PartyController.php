@@ -132,6 +132,9 @@ class PartyController extends Controller
         $cpRecipes = CpRecipe::query()
             ->where('cp_id', $user->cp_id)
             ->with(['recipe.outputItem', 'recipe.outputs.item', 'recipe.materials.item', 'recipe.recipeItem'])
+            // Newest pin first — the leader is normally looking at what they
+            // just added. `priority` stays as a manual tie-breaker.
+            ->orderByDesc('created_at')
             ->orderBy('priority')
             ->get()
             ->map(function (CpRecipe $cpRecipe) use ($warehouseAmountsByItemId, $craftableRecipeIdByItemId, $subRecipesById) {

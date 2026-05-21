@@ -44,9 +44,17 @@ class ItemManagementController extends Controller
             $query->where('category', $request->category);
         }
 
-        $items = $query->orderBy('name')
-            ->paginate(50)
-            ->withQueryString();
+        // When the user is searching by name we keep alphabetical so the
+        // closest match stays where it's expected. When they're just
+        // browsing the full DB (no `search` term), show the freshest items
+        // first — that's what the user is normally looking for after a
+        // bulk import or a manual add.
+        if ($request->filled('search')) {
+            $query->orderBy('name');
+        } else {
+            $query->orderByDesc('created_at')->orderBy('name');
+        }
+        $items = $query->paginate(50)->withQueryString();
 
         return Inertia::render('System/Items/Index', [
             'items' => $items,
@@ -82,9 +90,12 @@ class ItemManagementController extends Controller
             $query->where('category', $filters['category']);
         }
 
-        $items = $query->orderBy('name')
-            ->paginate(50)
-            ->withQueryString();
+        if (! empty($filters['search'])) {
+            $query->orderBy('name');
+        } else {
+            $query->orderByDesc('created_at')->orderBy('name');
+        }
+        $items = $query->paginate(50)->withQueryString();
 
         return Inertia::render('System/Items/Index', [
             'items' => $items,
