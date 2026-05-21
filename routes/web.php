@@ -148,6 +148,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/cp', [ConstPartyController::class, 'store'])->name('admin.cp.store');
     Route::post('/admin/cp/{cp}/toggle-active', [ConstPartyController::class, 'toggleActive'])->name('admin.cp.toggleActive');
     Route::delete('/admin/cp/{cp}', [ConstPartyController::class, 'destroy'])->name('admin.cp.destroy');
+    // Full admin CP roster (search/filter/edit) — replaces the dashboard widget.
+    Route::get('/system/cps', [ConstPartyController::class, 'adminIndex'])->name('system.cps.index');
+    Route::patch('/system/cps/{cp}', [ConstPartyController::class, 'adminUpdate'])->name('system.cps.update');
     Route::post('/admin/cp-requests/{cpRequest}/approve', [SupportController::class, 'approveCpRequest'])->name('admin.cp-requests.approve');
     Route::post('/admin/cp-requests/{cpRequest}/reject', [SupportController::class, 'rejectCpRequest'])->name('admin.cp-requests.reject');
 
