@@ -23,10 +23,10 @@ const form = useForm({
     channel: 'stable',
     critical_update: false,
     min_supported_version: '',
-    release_notes_md: '',
+    release_notes_es: '',
+    release_notes_en: '',
     binary: null,
     publish_now: false,
-    create_changelog_entry: true,
 });
 
 const submit = () => {
@@ -105,10 +105,17 @@ const human = (bytes) => {
                         <InputError :message="form.errors.binary" />
                     </div>
 
-                    <div>
-                        <InputLabel for="notes" value="Release notes (markdown)" />
-                        <textarea id="notes" v-model="form.release_notes_md" rows="6"
-                                  class="w-full border-gray-300 dark:bg-gray-900 dark:text-white rounded font-mono text-sm"></textarea>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel for="notes_es" value="Release notes — ES (markdown)" />
+                            <textarea id="notes_es" v-model="form.release_notes_es" rows="6"
+                                      class="w-full border-gray-300 dark:bg-gray-900 dark:text-white rounded font-mono text-sm"></textarea>
+                        </div>
+                        <div>
+                            <InputLabel for="notes_en" value="Release notes — EN (markdown)" />
+                            <textarea id="notes_en" v-model="form.release_notes_en" rows="6"
+                                      class="w-full border-gray-300 dark:bg-gray-900 dark:text-white rounded font-mono text-sm"></textarea>
+                        </div>
                     </div>
 
                     <div class="flex flex-wrap gap-6 items-center">
@@ -119,10 +126,6 @@ const human = (bytes) => {
                         <label class="inline-flex items-center gap-2 dark:text-gray-200">
                             <Checkbox v-model:checked="form.publish_now" />
                             <span>Publish immediately</span>
-                        </label>
-                        <label class="inline-flex items-center gap-2 dark:text-gray-200">
-                            <Checkbox v-model:checked="form.create_changelog_entry" />
-                            <span>Create changelog entry</span>
                         </label>
                     </div>
 

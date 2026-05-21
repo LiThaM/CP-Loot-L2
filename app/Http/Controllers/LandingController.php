@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Contexts\ClientApi\Domain\Models\Release;
-use App\Contexts\System\Domain\Models\ChangelogEntry;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,12 +15,13 @@ class LandingController extends Controller
             ->orderByDesc('released_at')
             ->first();
 
-        $changelog = ChangelogEntry::forAudience('bot')
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->limit(5)
-            ->get(['id', 'type', 'version', 'title_es', 'title_en', 'body_es', 'body_en', 'published_at']);
+        // Software (desktop) changelog: each published release is one entry.
+        // Web app changelog lives in the changelog_entries table — kept fully
+        // separate so the two stop bleeding into each other.
+        $releaseHistory = Release::published()
+            ->orderByDesc('released_at')
+            ->limit(10)
+            ->get(['id', 'version', 'channel', 'critical_update', 'release_notes_md', 'release_notes_es', 'release_notes_en', 'released_at']);
 
         return Inertia::render('Landing', [
             'latest' => $latest ? [
@@ -34,7 +34,15 @@ class LandingController extends Controller
                     ? url('/api/v1/releases/'.$latest->version.'/download')
                     : null,
             ] : null,
-            'changelog' => $changelog,
+            'releases' => $releaseHistory->map(fn (Release $r) => [
+                'id' => $r->id,
+                'version' => $r->version,
+                'channel' => $r->channel,
+                'critical_update' => (bool) $r->critical_update,
+                'released_at' => $r->released_at?->toIso8601String(),
+                'notes_es' => $r->release_notes_es ?: $r->release_notes_md,
+                'notes_en' => $r->release_notes_en ?: $r->release_notes_md,
+            ]),
         ]);
     }
 }

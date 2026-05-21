@@ -3,7 +3,6 @@
 namespace App\Contexts\ClientApi\Application\Controllers\Admin;
 
 use App\Contexts\ClientApi\Domain\Models\Release;
-use App\Contexts\System\Domain\Models\ChangelogEntry;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,6 +22,8 @@ class ReleasesPublishApiController extends Controller
             'critical_update' => ['nullable', 'boolean'],
             'min_supported_version' => ['nullable', 'string', 'max:50'],
             'release_notes_md' => ['nullable', 'string', 'max:20000'],
+            'release_notes_es' => ['nullable', 'string', 'max:20000'],
+            'release_notes_en' => ['nullable', 'string', 'max:20000'],
             'expected_sha256' => ['nullable', 'string', 'size:64', 'regex:/^[a-f0-9]{64}$/i'],
             'binary' => [
                 'required',
@@ -30,7 +31,6 @@ class ReleasesPublishApiController extends Controller
                 'max:' . (int) (self::MAX_BINARY_BYTES / 1024),
             ],
             'publish_now' => ['nullable', 'boolean'],
-            'create_changelog_entry' => ['nullable', 'boolean'],
         ]);
 
         $existing = Release::where('version', $data['version'])->first();
@@ -71,6 +71,8 @@ class ReleasesPublishApiController extends Controller
             'sha256' => $sha256,
             'size_bytes' => $size,
             'release_notes_md' => $data['release_notes_md'] ?? null,
+            'release_notes_es' => $data['release_notes_es'] ?? $data['release_notes_md'] ?? null,
+            'release_notes_en' => $data['release_notes_en'] ?? $data['release_notes_md'] ?? null,
             'critical_update' => (bool) ($data['critical_update'] ?? false),
             'min_supported_version' => $data['min_supported_version'] ?? null,
             'released_at' => now(),
@@ -93,21 +95,6 @@ class ReleasesPublishApiController extends Controller
             $payload['published_at'] = ($data['publish_now'] ?? false) ? now() : null;
             $release = Release::create($payload);
             $created = true;
-        }
-
-        if (($data['create_changelog_entry'] ?? false) && !empty($data['release_notes_md'])) {
-            ChangelogEntry::updateOrCreate(
-                ['type' => 'release', 'version' => $data['version']],
-                [
-                    'audience' => 'both',
-                    'release_id' => $release->id,
-                    'title_es' => 'Versión '.$data['version'],
-                    'title_en' => 'Release '.$data['version'],
-                    'body_es' => $data['release_notes_md'],
-                    'body_en' => $data['release_notes_md'],
-                    'published_at' => $release->published_at ?? now()->addCentury(),
-                ]
-            );
         }
 
         return response()->json([

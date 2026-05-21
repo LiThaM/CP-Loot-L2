@@ -5,7 +5,6 @@ namespace Tests\Feature\Api\V1;
 use App\Contexts\ClientApi\Domain\Models\Release;
 use App\Contexts\Identity\Domain\Models\Role;
 use App\Contexts\Identity\Domain\Models\User;
-use App\Contexts\System\Domain\Models\ChangelogEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -68,9 +67,9 @@ class AdminReleasesPublishTest extends TestCase
         $response = $this->postJson('/api/v1/admin/releases', [
             'version' => '0.5.0-alpha',
             'channel' => 'stable',
-            'release_notes_md' => "## Changes\n- Bug fix",
+            'release_notes_es' => "## Cambios\n- Arreglo bug",
+            'release_notes_en' => "## Changes\n- Bug fix",
             'publish_now' => true,
-            'create_changelog_entry' => true,
             'expected_sha256' => $expected,
             'binary' => $this->fakeBinary($bytes),
         ]);
@@ -83,9 +82,9 @@ class AdminReleasesPublishTest extends TestCase
         $release = Release::where('version', '0.5.0-alpha')->first();
         $this->assertNotNull($release);
         $this->assertNotNull($release->published_at);
+        $this->assertSame("## Cambios\n- Arreglo bug", $release->release_notes_es);
+        $this->assertSame("## Changes\n- Bug fix", $release->release_notes_en);
         Storage::disk('client_blobs')->assertExists($release->storage_path);
-
-        $this->assertSame(1, ChangelogEntry::where('version', '0.5.0-alpha')->count());
     }
 
     public function test_sha256_mismatch_is_rejected(): void

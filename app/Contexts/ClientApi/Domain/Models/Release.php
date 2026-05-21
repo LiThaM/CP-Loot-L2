@@ -16,6 +16,8 @@ class Release extends Model
         'sha256',
         'size_bytes',
         'release_notes_md',
+        'release_notes_es',
+        'release_notes_en',
         'critical_update',
         'min_supported_version',
         'released_at',

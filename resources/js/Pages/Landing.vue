@@ -4,7 +4,7 @@ import { computed } from 'vue';
 
 const props = defineProps({
     latest: Object,
-    changelog: Array,
+    releases: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -22,8 +22,7 @@ const humanSize = computed(() => {
     return `${b.toFixed(1)} ${units[i]}`;
 });
 
-const localizedTitle = (entry) => (appLocale.value === 'en' ? entry.title_en : entry.title_es) || entry.title_es || entry.title_en;
-const localizedBody = (entry) => (appLocale.value === 'en' ? entry.body_en : entry.body_es) || '';
+const localizedNotes = (rel) => (appLocale.value === 'en' ? rel.notes_en : rel.notes_es) || rel.notes_en || rel.notes_es || '';
 const formatDate = (val) => {
     if (!val) return '';
     try { return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(val)); }
@@ -142,18 +141,21 @@ const formatDate = (val) => {
             </div>
         </section>
 
-        <!-- Changelog (software/bot audience only) -->
-        <section id="changelog" v-if="changelog && changelog.length" class="max-w-4xl mx-auto px-6 py-16">
+        <!-- Software changelog: each entry is a published release. Fully
+             independent from the AdenaLedger web app changelog. -->
+        <section id="changelog" v-if="releases.length" class="max-w-4xl mx-auto px-6 py-16">
             <h2 class="text-3xl font-bold mb-2">{{ $t('landing.changelog.title') }}</h2>
             <p class="text-sm text-slate-500 mb-8">{{ $t('landing.changelog.subtitle') }}</p>
             <div class="space-y-6">
-                <article v-for="entry in changelog" :key="entry.id" class="border-l-2 border-amber-600 pl-5 py-2">
-                    <div class="flex items-baseline gap-3 mb-1">
-                        <span class="text-amber-400 font-mono text-sm">{{ entry.version || entry.type }}</span>
-                        <span class="text-xs text-slate-500">{{ formatDate(entry.published_at) }}</span>
+                <article v-for="rel in releases" :key="rel.id" class="border-l-2 border-amber-600 pl-5 py-2">
+                    <div class="flex items-baseline gap-3 mb-1 flex-wrap">
+                        <span class="text-amber-400 font-mono text-sm">v{{ rel.version }}</span>
+                        <span class="text-xs text-slate-500">{{ formatDate(rel.released_at) }}</span>
+                        <span v-if="rel.channel === 'beta'" class="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 uppercase tracking-widest">beta</span>
+                        <span v-if="rel.critical_update" class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 uppercase tracking-widest">{{ $t('welcome.download.critical') }}</span>
                     </div>
-                    <h3 class="font-semibold">{{ localizedTitle(entry) }}</h3>
-                    <p v-if="localizedBody(entry)" class="text-sm text-slate-300 mt-1 whitespace-pre-wrap">{{ localizedBody(entry) }}</p>
+                    <p v-if="localizedNotes(rel)" class="text-sm text-slate-300 mt-1 whitespace-pre-wrap">{{ localizedNotes(rel) }}</p>
+                    <p v-else class="text-sm text-slate-500 italic mt-1">{{ $t('landing.changelog.no_notes') }}</p>
                 </article>
             </div>
         </section>
