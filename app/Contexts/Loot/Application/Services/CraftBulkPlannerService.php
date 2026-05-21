@@ -59,10 +59,15 @@ class CraftBulkPlannerService
 
         // Aggregate top-level demand: how many of each leaf material the
         // requested outputs would need if we ignored stock and never
-        // sub-crafted.
+        // sub-crafted. `$sources` tracks WHY each material is being
+        // demanded (which output / which sub-craft) so the UI can show
+        // an expandable "Para X: 8, para Y: 4" breakdown per row.
         $demand = []; // itemId => int
+        $sources = []; // itemId => [label => qty]
         foreach ($orderedRequests as $req) {
-            $this->addRecipeDemand($demand, $recipes->get($req['recipe']['id']), $req['qty']);
+            $recipe = $recipes->get($req['recipe']['id']);
+            $label = $recipe->outputItem?->name ?: $recipe->name;
+            $this->addRecipeDemand($demand, $sources, $recipe, $req['qty'], $label);
         }
 
         // Stock and craftable map computed ONCE for the whole plan.
@@ -123,10 +128,14 @@ class CraftBulkPlannerService
                 // already covered.
                 $consumed[$itemId] = ($consumed[$itemId] ?? 0) - ($produces - $missing);
                 // Propagate the sub-recipe's own material demand into the
-                // queue, multiplied by `crafts`.
+                // queue, multiplied by `crafts`. Tag the source so the UI
+                // can show "Para Crafted Leather: 8 Coal" later.
+                $subLabel = $subRecipe->outputItem?->name ?: $subRecipe->name;
                 foreach ($subRecipe->materials as $mat) {
                     $matId = (int) $mat->item_id;
-                    $next[$matId] = ($next[$matId] ?? 0) + ((int) ($mat->quantity ?? 1)) * $crafts;
+                    $addQty = ((int) ($mat->quantity ?? 1)) * $crafts;
+                    $next[$matId] = ($next[$matId] ?? 0) + $addQty;
+                    $sources[$matId][$subLabel] = ($sources[$matId][$subLabel] ?? 0) + $addQty;
                     $ancestors[$matId] = array_merge($ancestors[$itemId] ?? [], [$craftRecipeId]);
                 }
             }
@@ -152,13 +161,25 @@ class CraftBulkPlannerService
         $totals = [];
         foreach ($leaves as $itemId => $missing) {
             $meta = $itemMeta->get($itemId);
+            $usagesRaw = $sources[$itemId] ?? [];
+            arsort($usagesRaw);
+            $usages = [];
+            foreach ($usagesRaw as $label => $qty) {
+                $usages[] = ['for' => (string) $label, 'qty' => (int) $qty];
+            }
+            $need = $missing + (int) ($consumed[$itemId] ?? 0);
+            $have = (int) ($stock[$itemId] ?? 0);
             $totals[] = [
                 'item_id' => $itemId,
                 'name' => $meta?->name,
                 'image_url' => $meta?->image_url,
-                'need' => $missing + (int) ($consumed[$itemId] ?? 0),
-                'have' => (int) ($stock[$itemId] ?? 0),
-                'missing' => $missing,
+                'need' => $need,
+                'have' => $have,
+                // Always equals `max(0, need - have)` so the row's
+                // arithmetic matches what the user reads on screen, even
+                // in edge cases where sub-crafts shuffle `consumed`.
+                'missing' => max(0, $need - $have),
+                'usages' => $usages,
             ];
         }
         // Stable order: missing-first, then by name.
@@ -207,14 +228,18 @@ class CraftBulkPlannerService
     /**
      * Add a recipe's direct material demand (output_qty * crafts) to the
      * running demand map. `crafts = ceil(qtyRequested / output_qty)`.
+     * Also stamps each added quantity under `$sources[itemId][$label]` so
+     * the planner can render "Para X: N" later in the totals breakdown.
      */
-    private function addRecipeDemand(array &$demand, Recipe $recipe, int $qtyRequested): void
+    private function addRecipeDemand(array &$demand, array &$sources, Recipe $recipe, int $qtyRequested, string $label): void
     {
         $outputQty = max(1, (int) ($recipe->output_quantity ?? 1));
         $crafts = (int) ceil($qtyRequested / $outputQty);
         foreach ($recipe->materials as $mat) {
             $itemId = (int) $mat->item_id;
-            $demand[$itemId] = ($demand[$itemId] ?? 0) + ((int) ($mat->quantity ?? 1)) * $crafts;
+            $addQty = ((int) ($mat->quantity ?? 1)) * $crafts;
+            $demand[$itemId] = ($demand[$itemId] ?? 0) + $addQty;
+            $sources[$itemId][$label] = ($sources[$itemId][$label] ?? 0) + $addQty;
         }
     }
 

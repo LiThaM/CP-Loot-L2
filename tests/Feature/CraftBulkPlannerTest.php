@@ -240,4 +240,42 @@ class CraftBulkPlannerTest extends TestCase
         $res = $this->plan([['recipe_id' => $recipeA->id, 'qty' => 1]]);
         $this->assertNotEmpty($res['warnings']);
     }
+
+    public function test_usages_breakdown_shows_which_outputs_demand_each_material(): void
+    {
+        $helmet = $this->makeItem('Helm');
+        $blade = $this->makeItem('Blade');
+        // Helm uses Coal x3; Blade uses Coal x5. Plan 1 of each → 8 Coal
+        // total with usages [{for: Blade, qty: 5}, {for: Helm, qty: 3}].
+        $helmetRecipe = $this->makeRecipe('Recipe: Helm', $helmet, 1, [$this->coal->id => 3]);
+        $bladeRecipe  = $this->makeRecipe('Recipe: Blade', $blade, 1, [$this->coal->id => 5]);
+
+        $res = $this->plan([
+            ['recipe_id' => $helmetRecipe->id, 'qty' => 1],
+            ['recipe_id' => $bladeRecipe->id, 'qty' => 1],
+        ]);
+
+        $coalRow = collect($res['totals'])->firstWhere('item_id', $this->coal->id);
+        $this->assertSame(8, $coalRow['need']);
+        $this->assertNotEmpty($coalRow['usages']);
+        $byLabel = collect($coalRow['usages'])->keyBy('for');
+        $this->assertSame(5, $byLabel['Blade']['qty']);
+        $this->assertSame(3, $byLabel['Helm']['qty']);
+    }
+
+    public function test_missing_always_equals_need_minus_have(): void
+    {
+        // Partial stock on a leaf — `missing` must strictly equal
+        // max(0, need - have) so the UI arithmetic adds up.
+        $this->addWarehouseStock($this->coal->id, 3);
+        $res = $this->plan([['recipe_id' => $this->craftedLeatherRecipe->id, 'qty' => 2]]);
+
+        foreach ($res['totals'] as $row) {
+            $this->assertSame(
+                max(0, $row['need'] - $row['have']),
+                $row['missing'],
+                "missing must equal max(0, need - have) for {$row['name']}"
+            );
+        }
+    }
 }

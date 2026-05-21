@@ -103,7 +103,20 @@ const submitPlan = async () => {
         planning.value = false;
     }
 };
-const clearPlan = () => { planResult.value = null; planError.value = ''; };
+const clearPlan = () => { planResult.value = null; planError.value = ''; expandedRows.value = {}; };
+
+// Per-row toggle for the "Para qué se usa este material" breakdown.
+const expandedRows = ref({});
+const toggleRow = (id) => { expandedRows.value[id] = !expandedRows.value[id]; };
+
+// Compact summary "Helmet, Crafted Leather, +1 más" used as a hint next
+// to the material name when the row is collapsed.
+const usageHint = (usages) => {
+    if (!Array.isArray(usages) || usages.length === 0) return '';
+    if (usages.length === 1) return usages[0].for;
+    if (usages.length === 2) return `${usages[0].for}, ${usages[1].for}`;
+    return `${usages[0].for}, ${usages[1].for} +${usages.length - 2}`;
+};
 </script>
 
 <template>
@@ -226,16 +239,41 @@ const clearPlan = () => { planResult.value = null; planError.value = ''; };
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                    <tr v-for="t in planResult.totals" :key="t.item_id"
-                                        :class="t.missing > 0 ? 'bg-red-50/50 dark:bg-red-900/10' : ''">
-                                        <td class="px-3 py-2 flex items-center gap-2">
-                                            <img v-if="t.image_url" :src="t.image_url" class="w-6 h-6 rounded" />
-                                            <span class="text-gray-900 dark:text-gray-200 truncate">{{ t.name }}</span>
-                                        </td>
-                                        <td class="px-3 py-2 text-right font-mono text-gray-700 dark:text-gray-300">{{ fmt(t.need) }}</td>
-                                        <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-300">{{ fmt(t.have) }}</td>
-                                        <td class="px-3 py-2 text-right font-mono font-bold" :class="t.missing > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'">{{ fmt(t.missing) }}</td>
-                                    </tr>
+                                    <template v-for="t in planResult.totals" :key="t.item_id">
+                                        <tr :class="[t.missing > 0 ? 'bg-red-50/50 dark:bg-red-900/10' : '', (t.usages?.length ?? 0) > 0 ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/40' : '']"
+                                            @click="(t.usages?.length ?? 0) > 0 && toggleRow(t.item_id)">
+                                            <td class="px-3 py-2 flex items-center gap-2">
+                                                <svg v-if="(t.usages?.length ?? 0) > 0" class="w-3 h-3 flex-shrink-0 text-gray-400 transition-transform"
+                                                     :class="expandedRows[t.item_id] ? 'rotate-90' : ''"
+                                                     fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                <span v-else class="w-3 h-3 flex-shrink-0"></span>
+                                                <img v-if="t.image_url" :src="t.image_url" class="w-6 h-6 rounded" />
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="text-gray-900 dark:text-gray-200 truncate">{{ t.name }}</div>
+                                                    <div v-if="(t.usages?.length ?? 0) > 0 && !expandedRows[t.item_id]" class="text-[10px] text-gray-500 truncate">
+                                                        {{ $t('party.craft_bulk.right.usage_for') }} {{ usageHint(t.usages) }}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-3 py-2 text-right font-mono text-gray-700 dark:text-gray-300">{{ fmt(t.need) }}</td>
+                                            <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-300">{{ fmt(t.have) }}</td>
+                                            <td class="px-3 py-2 text-right font-mono font-bold" :class="t.missing > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'">{{ fmt(t.missing) }}</td>
+                                        </tr>
+                                        <tr v-if="expandedRows[t.item_id] && (t.usages?.length ?? 0) > 0" :key="'exp-'+t.item_id" class="bg-gray-50 dark:bg-gray-900/40">
+                                            <td colspan="4" class="px-3 py-2">
+                                                <div class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">{{ $t('party.craft_bulk.right.used_for') }}</div>
+                                                <ul class="space-y-0.5 text-xs">
+                                                    <li v-for="(u, i) in t.usages" :key="i" class="flex items-center gap-2">
+                                                        <span class="font-mono text-amber-600 dark:text-amber-300 w-12 text-right tabular-nums">{{ fmt(u.qty) }}</span>
+                                                        <span class="text-gray-400">→</span>
+                                                        <span class="text-gray-700 dark:text-gray-300">{{ u.for }}</span>
+                                                    </li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </template>
                                 </tbody>
                             </table>
                             <div v-else class="p-6 text-center text-xs italic text-emerald-600 dark:text-emerald-300">{{ $t('party.craft_bulk.right.all_covered') }}</div>
