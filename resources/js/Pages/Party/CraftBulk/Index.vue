@@ -3,7 +3,7 @@ import { Head, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import axios from 'axios';
 import { computed, ref, watch } from 'vue';
-import throttle from 'lodash/throttle';
+import debounce from 'lodash/debounce';
 
 const props = defineProps({
     cp: { type: Object, required: true },
@@ -27,19 +27,47 @@ const dropdownOpen = ref(false);
 
 const orders = ref([]); // [{recipe: {id,name,output_qty,output_item}, qty}]
 
-watch(query, throttle(async (val) => {
-    const q = String(val || '').trim();
-    if (q.length < 2) { searchResults.value = []; return; }
-    searching.value = true;
+// Latest in-flight request — cancelled when a newer query comes in so the
+// stale response can't overwrite the newer one (typing fast used to
+// occasionally leave the dropdown showing results for a previous query).
+let searchAbort = null;
+
+const runSearch = debounce(async (q) => {
+    if (q.length < 2) {
+        searchResults.value = [];
+        searching.value = false;
+        return;
+    }
+    if (searchAbort) searchAbort.abort();
+    searchAbort = new AbortController();
     try {
         const { data } = await axios.get(route('public.recipes.search'), {
             params: { q, chronicle: props.cp.chronicle },
+            signal: searchAbort.signal,
         });
         searchResults.value = Array.isArray(data) ? data : [];
+    } catch (e) {
+        if (!axios.isCancel(e)) {
+            searchResults.value = [];
+        }
     } finally {
         searching.value = false;
     }
-}, 300));
+}, 300);
+
+watch(query, (val) => {
+    const q = String(val || '').trim();
+    // Set the flag synchronously so the spinner appears immediately,
+    // before the 300ms debounce window elapses.
+    if (q.length >= 2) {
+        searching.value = true;
+        dropdownOpen.value = true;
+    } else {
+        searching.value = false;
+        searchResults.value = [];
+    }
+    runSearch(q);
+});
 
 const addRecipe = (r) => {
     const existing = orders.value.find((o) => o.recipe.id === r.id);
@@ -98,20 +126,35 @@ const clearPlan = () => { planResult.value = null; planError.value = ''; };
                                :placeholder="$t('party.craft_bulk.left.search_ph')"
                                @focus="dropdownOpen = true"
                                @blur="setTimeout(() => dropdownOpen = false, 200)"
-                               class="w-full h-10 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
-                        <div v-if="dropdownOpen && searchResults.length" class="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl">
-                            <button v-for="r in searchResults" :key="r.id"
-                                    type="button"
-                                    @mousedown.prevent="addRecipe(r)"
-                                    class="w-full px-3 py-2 flex items-center gap-2 text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-left">
-                                <img v-if="r.output_item?.image_url" :src="r.output_item.image_url" class="w-7 h-7 rounded" />
-                                <div v-else class="w-7 h-7 rounded bg-amber-500/10"></div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="font-semibold text-gray-900 dark:text-white truncate">{{ r.name }}</div>
-                                    <div class="text-[10px] text-gray-500 uppercase tracking-widest">{{ r.chronicle }} · {{ r.materials_count }} {{ $t('recipes.search.mats') }}</div>
+                               class="w-full h-10 pl-3 pr-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
+                        <!-- Spinner inside the input on the right -->
+                        <svg v-if="searching" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-purple-500" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <div v-if="dropdownOpen && (searching || query.trim().length >= 2)"
+                             class="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl">
+                            <div v-if="searching" class="px-3 py-3 flex items-center gap-2 text-xs text-gray-500 italic">
+                                <svg class="w-3.5 h-3.5 animate-spin text-purple-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                {{ $t('party.craft_bulk.left.searching') }}
+                            </div>
+                            <template v-else>
+                                <button v-for="r in searchResults" :key="r.id"
+                                        type="button"
+                                        @mousedown.prevent="addRecipe(r)"
+                                        class="w-full px-3 py-2 flex items-center gap-2 text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-left">
+                                    <img v-if="r.output_item?.image_url" :src="r.output_item.image_url" class="w-7 h-7 rounded" />
+                                    <div v-else class="w-7 h-7 rounded bg-amber-500/10"></div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-semibold text-gray-900 dark:text-white truncate">{{ r.name }}</div>
+                                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">{{ r.chronicle }} · {{ r.materials_count }} {{ $t('recipes.search.mats') }}</div>
+                                    </div>
+                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-300">+</span>
+                                </button>
+                                <div v-if="searchResults.length === 0" class="px-3 py-3 text-xs italic text-gray-500">
+                                    {{ $t('party.craft_bulk.left.no_results') }}
                                 </div>
-                                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-300">+</span>
-                            </button>
+                            </template>
                         </div>
                     </div>
 

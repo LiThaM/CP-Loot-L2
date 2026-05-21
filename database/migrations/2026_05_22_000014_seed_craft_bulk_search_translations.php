@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    private array $translations = [
+        'party.craft_bulk.left.searching'  => ['es' => 'Buscando recetas…',                  'en' => 'Searching recipes…'],
+        'party.craft_bulk.left.no_results' => ['es' => 'Ninguna receta coincide con la búsqueda.', 'en' => 'No recipes match this search.'],
+    ];
+
+    public function up(): void
+    {
+        $now = now();
+        $rows = [];
+        foreach ($this->translations as $key => $langs) {
+            foreach ($langs as $lang => $value) {
+                $exists = DB::table('translations')->where('key', $key)->where('language', $lang)->exists();
+                if (!$exists) {
+                    $rows[] = ['language' => $lang, 'key' => $key, 'value' => $value, 'created_at' => $now, 'updated_at' => $now];
+                }
+            }
+        }
+        if (!empty($rows)) {
+            DB::table('translations')->insert($rows);
+        }
+    }
+
+    public function down(): void
+    {
+        DB::table('translations')
+            ->whereIn('key', array_keys($this->translations))
+            ->whereIn('language', ['es', 'en'])
+            ->delete();
+    }
+};
