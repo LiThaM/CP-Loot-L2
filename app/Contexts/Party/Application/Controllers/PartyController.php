@@ -74,12 +74,11 @@ class PartyController extends Controller
                 'items.icon_name',
                 'items.image_url',
                 'items.grade',
+                'items.category',
                 'items.market_price',
                 'items.market_price_updated_at',
                 'items.market_price_updated_by',
                 DB::raw('SUM(loot_entries.amount) as incoming_amount'),
-                // Newest report that contributed this item — used to put
-                // freshly farmed loot at the top of the warehouse list.
                 DB::raw('MAX(loot_reports.created_at) as last_added_at'),
             ])
             ->join('items', 'items.id', '=', 'loot_entries.item_id')
@@ -88,7 +87,7 @@ class PartyController extends Controller
             ->where('loot_reports.status', 'confirmed')
             ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
-            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade', 'items.market_price', 'items.market_price_updated_at', 'items.market_price_updated_by')
+            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade', 'items.category', 'items.market_price', 'items.market_price_updated_at', 'items.market_price_updated_by')
             ->get()
             ->keyBy('id');
 
@@ -111,23 +110,26 @@ class PartyController extends Controller
             ->groupBy('items.id')
             ->pluck('outgoing_amount', 'id');
 
-        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames) {
+        // L2 grade tiers: S > A > B > C > D > NG. Items without a grade go last.
+        $gradeRank = ['S' => 6, 'A' => 5, 'B' => 4, 'C' => 3, 'D' => 2, 'NG' => 1];
+
+        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames, $gradeRank) {
             $out = (int) ($warehouseOutgoing[$row->id] ?? 0);
             $in = (int) ($row->incoming_amount ?? 0);
             $row->total_amount = max(0, $in - $out);
             $row->market_price = $row->market_price !== null ? (int) $row->market_price : null;
             $row->stock_value = $row->market_price !== null ? $row->market_price * $row->total_amount : null;
             $row->market_price_updated_by_name = $row->market_price_updated_by ? ($priceEditorNames[$row->market_price_updated_by] ?? null) : null;
+            $row->grade_rank = $gradeRank[$row->grade] ?? 0;
             unset($row->incoming_amount, $row->market_price_updated_by);
 
             return $row;
         })->values()
           ->filter(fn ($row) => (int) $row->total_amount > 0)
-          // Sort by most recently added DESC, then by stock DESC as tie-
-          // breaker so newly farmed loot lands at the top of the list.
           ->sortBy([
-              ['last_added_at', 'desc'],
+              ['grade_rank', 'desc'],
               ['total_amount', 'desc'],
+              ['last_added_at', 'desc'],
           ])->values();
 
         $warehouseAmountsByItemId = $warehouseItems->pluck('total_amount', 'id');

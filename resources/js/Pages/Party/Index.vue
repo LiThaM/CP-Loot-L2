@@ -273,6 +273,19 @@ const resetDkpPoints = async () => {
 };
 
 const warehouseFilter = ref('');
+const warehouseGradeFilter = ref('');
+const warehouseCategoryFilter = ref('');
+const WAREHOUSE_GRADES = ['S', 'A', 'B', 'C', 'D', 'NG'];
+const WAREHOUSE_CATEGORIES = ['Weapon', 'Armor', 'Jewelry', 'Material', 'Recipe', 'EtcItem'];
+
+const availableGrades = computed(() => {
+    const present = new Set(localWarehouseItems.value.map((it) => it.grade).filter(Boolean));
+    return WAREHOUSE_GRADES.filter((g) => present.has(g));
+});
+const availableCategories = computed(() => {
+    const present = new Set(localWarehouseItems.value.map((it) => it.category).filter(Boolean));
+    return WAREHOUSE_CATEGORIES.filter((c) => present.has(c));
+});
 
 const localWarehouseItems = ref([...(props.warehouseItems || [])]);
 watch(() => props.warehouseItems, (val) => { localWarehouseItems.value = [...(val || [])]; });
@@ -307,11 +320,18 @@ const onMaterialPriceUpdate = (itemId, payload) => {
 const filteredWarehouseItems = computed(() => {
     const items = localWarehouseItems.value;
     const q = warehouseFilter.value.trim().toLowerCase();
-    if (!q) return items;
+    const g = warehouseGradeFilter.value;
+    const c = warehouseCategoryFilter.value;
+    if (!q && !g && !c) return items;
     return items.filter((item) => {
-        const name = String(item?.name ?? '').toLowerCase();
-        const grade = String(item?.grade ?? '').toLowerCase();
-        return name.includes(q) || grade.includes(q);
+        if (g && item?.grade !== g) return false;
+        if (c && item?.category !== c) return false;
+        if (q) {
+            const name = String(item?.name ?? '').toLowerCase();
+            const grade = String(item?.grade ?? '').toLowerCase();
+            if (!name.includes(q) && !grade.includes(q)) return false;
+        }
+        return true;
     });
 });
 
@@ -1452,14 +1472,24 @@ watch(buySearch, throttle(async (val) => {
                         </div>
                     </div>
 
-                    <div class="relative mt-5">
-                        <input v-model="warehouseFilter" type="text" :placeholder="$t('party.vault.filter_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
-                        <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <div class="mt-5 grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3">
+                        <div class="relative">
+                            <input v-model="warehouseFilter" type="text" :placeholder="$t('party.vault.filter_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
+                            <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <select v-model="warehouseGradeFilter" class="bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 h-11 px-3 text-sm font-bold dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                            <option value="">{{ $t('system.items.all_grades') }}</option>
+                            <option v-for="g in availableGrades" :key="g" :value="g">{{ g }}</option>
+                        </select>
+                        <select v-model="warehouseCategoryFilter" class="bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 h-11 px-3 text-sm font-bold dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                            <option value="">{{ $t('system.items.all_categories') }}</option>
+                            <option v-for="c in availableCategories" :key="c" :value="c">{{ c }}</option>
+                        </select>
                     </div>
                 </div>
 
                 <div v-if="filteredWarehouseItems.length === 0" class="l2-panel p-10 rounded-3xl border-gray-800 text-center text-gray-600 dark:text-gray-500 font-cinzel text-xl italic opacity-50">
-                    {{ warehouseFilter.trim() ? $t('party.vault.empty_filtered') : $t('party.vault.empty') }}
+                    {{ (warehouseFilter.trim() || warehouseGradeFilter || warehouseCategoryFilter) ? $t('party.vault.empty_filtered') : $t('party.vault.empty') }}
                 </div>
 
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
