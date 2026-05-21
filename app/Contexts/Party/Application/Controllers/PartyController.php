@@ -75,6 +75,9 @@ class PartyController extends Controller
                 'items.image_url',
                 'items.grade',
                 DB::raw('SUM(loot_entries.amount) as incoming_amount'),
+                // Newest report that contributed this item — used to put
+                // freshly farmed loot at the top of the warehouse list.
+                DB::raw('MAX(loot_reports.created_at) as last_added_at'),
             ])
             ->join('items', 'items.id', '=', 'loot_entries.item_id')
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
@@ -107,7 +110,14 @@ class PartyController extends Controller
             unset($row->incoming_amount);
 
             return $row;
-        })->values()->filter(fn ($row) => (int) $row->total_amount > 0)->sortByDesc('total_amount')->values();
+        })->values()
+          ->filter(fn ($row) => (int) $row->total_amount > 0)
+          // Sort by most recently added DESC, then by stock DESC as tie-
+          // breaker so newly farmed loot lands at the top of the list.
+          ->sortBy([
+              ['last_added_at', 'desc'],
+              ['total_amount', 'desc'],
+          ])->values();
 
         $warehouseAmountsByItemId = $warehouseItems->pluck('total_amount', 'id');
 
@@ -386,6 +396,7 @@ class PartyController extends Controller
                 'items.image_url',
                 'items.grade',
                 DB::raw('SUM(loot_entries.amount) as assigned_amount'),
+                DB::raw('MAX(loot_reports.created_at) as last_added_at'),
             ])
             ->join('items', 'items.id', '=', 'loot_entries.item_id')
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
@@ -420,7 +431,12 @@ class PartyController extends Controller
             unset($row->assigned_amount);
 
             return $row;
-        })->values()->filter(fn ($row) => (int) $row->total_amount > 0)->sortByDesc('total_amount')->values();
+        })->values()
+          ->filter(fn ($row) => (int) $row->total_amount > 0)
+          ->sortBy([
+              ['last_added_at', 'desc'],
+              ['total_amount', 'desc'],
+          ])->values();
 
         return Inertia::render('Warehouse/Index', [
             'has_cp' => true,
@@ -463,6 +479,7 @@ class PartyController extends Controller
                 'items.image_url',
                 'items.grade',
                 DB::raw('SUM(loot_entries.amount) as assigned_amount'),
+                DB::raw('MAX(loot_reports.created_at) as last_added_at'),
             ])
             ->join('items', 'items.id', '=', 'loot_entries.item_id')
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
@@ -497,7 +514,12 @@ class PartyController extends Controller
             unset($row->assigned_amount);
 
             return $row;
-        })->values()->filter(fn ($row) => (int) $row->total_amount > 0)->sortByDesc('total_amount')->values();
+        })->values()
+          ->filter(fn ($row) => (int) $row->total_amount > 0)
+          ->sortBy([
+              ['last_added_at', 'desc'],
+              ['total_amount', 'desc'],
+          ])->values();
 
         return response()->json([
             'user_id' => $user->id,

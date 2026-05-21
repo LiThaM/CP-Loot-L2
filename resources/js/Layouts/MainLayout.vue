@@ -214,11 +214,17 @@ onUnmounted(() => {
 });
 
 const addToSession = (item) => {
-    const existing = lootForm.items.find(i => i.item_id === item.id);
-    if (existing) {
-        existing.amount++;
+    // Newest entry always on top so the leader sees what just landed —
+    // before this it was push() and a 6th item would slide off the
+    // bottom of the visible list. If the item is already there, bump
+    // its count and move it to the top too.
+    const existingIdx = lootForm.items.findIndex(i => i.item_id === item.id);
+    if (existingIdx >= 0) {
+        const [row] = lootForm.items.splice(existingIdx, 1);
+        row.amount++;
+        lootForm.items.unshift(row);
     } else {
-        lootForm.items.push({
+        lootForm.items.unshift({
             item_id: item.id,
             name: item.name,
             image_url: item.image_url,
