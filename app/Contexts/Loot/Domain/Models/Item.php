@@ -7,6 +7,16 @@ use Illuminate\Support\Facades\DB;
 
 class Item extends Model
 {
+    protected static function booted(): void
+    {
+        static::addGlobalScope('visible', fn ($q) => $q->where($q->getModel()->getTable().'.hidden', false));
+    }
+
+    protected $casts = [
+        'hidden' => 'boolean',
+    ];
+
+
     /**
      * Maps `item_id → recipe_id` for every craftable item in a chronicle.
      * Used by the recipe explorer and the bulk-craft planner to decide
@@ -39,6 +49,7 @@ class Item extends Model
     protected $fillable = [
         'name', 'grade', 'category', 'image_url', 'base_points',
         'external_id', 'chronicle', 'source', 'icon_name', 'description',
+        'hidden',
     ];
 
     public function lootEntries()

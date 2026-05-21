@@ -30,9 +30,7 @@ class LootSearchController extends Controller
             ]);
         }
 
-        $query = Item::where('name', 'like', "%{$search}%")
-            ->whereRaw('LOWER(name) NOT LIKE ?', ['%not in use%'])
-            ->whereRaw('LOWER(name) NOT LIKE ?', ['%not use%']);
+        $query = Item::where('name', 'like', "%{$search}%");
 
         // Filter by CP Chronicle if the user belongs to one
         if ($user->cp_id && $user->cp) {

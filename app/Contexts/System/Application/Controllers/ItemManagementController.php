@@ -9,20 +9,13 @@ use Inertia\Inertia;
 
 class ItemManagementController extends Controller
 {
-    private function applyListExcludes($query)
-    {
-        return $query
-            ->whereRaw('LOWER(name) NOT LIKE ?', ['%not in use%'])
-            ->whereRaw('LOWER(name) NOT LIKE ?', ['%not use%']);
-    }
-
     public function index(Request $request)
     {
         if (($request->user()?->role?->name ?? null) !== 'admin') {
             abort(403);
         }
 
-        $query = $this->applyListExcludes(Item::query());
+        $query = Item::query();
 
         // Search by name
         if ($request->filled('search')) {
@@ -70,7 +63,7 @@ class ItemManagementController extends Controller
 
     public function itemsDb(Request $request)
     {
-        $query = $this->applyListExcludes(Item::query());
+        $query = Item::query();
 
         $filters = $request->only(['search', 'chronicle', 'grade', 'category']);
         if (! $request->filled('chronicle') && $request->user()?->cp?->chronicle) {
