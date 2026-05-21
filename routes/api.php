@@ -116,5 +116,12 @@ Route::middleware(['api.log'])->group(function () {
         Route::post('/admin/releases', [ReleasesPublishApiController::class, 'store'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.admin.releases.store');
+
+        // Metadata-only PATCH — backfill release_notes / critical_update / etc.
+        // on a release whose binary is already in S3 and must not be touched.
+        Route::patch('/admin/releases/{version}', [ReleasesPublishApiController::class, 'update'])
+            ->middleware('throttle:api-v1')
+            ->where('version', '[\w.\-+]+')
+            ->name('api.v1.admin.releases.update');
     });
 });

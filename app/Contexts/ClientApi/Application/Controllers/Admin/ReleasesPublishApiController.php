@@ -139,6 +139,74 @@ class ReleasesPublishApiController extends Controller
         ], $created ? 201 : 200);
     }
 
+    /**
+     * Metadata-only update. Never touches binary, sha256, size_bytes,
+     * published_at or download_url — only changelog text, channel, and
+     * the publication-policy flags. Designed to backfill release_notes
+     * on existing releases without re-uploading the binary.
+     */
+    public function update(Request $request, string $version): JsonResponse
+    {
+        $release = Release::where('version', $version)->first();
+        if ($release === null) {
+            return response()->json(['error' => 'release_not_found'], 404);
+        }
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'channel' => ['sometimes', 'nullable', 'string', 'in:stable,beta'],
+            'critical_update' => ['sometimes', 'nullable', 'boolean'],
+            'min_supported_version' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'release_notes' => ['sometimes', 'nullable', 'string', 'max:20000'],
+            'release_notes_md' => ['sometimes', 'nullable', 'string', 'max:20000'],
+            'release_notes_es' => ['sometimes', 'nullable', 'string', 'max:20000'],
+            'release_notes_en' => ['sometimes', 'nullable', 'string', 'max:20000'],
+            // release_notes_url is computed in the response (not a column),
+            // so we accept-and-ignore for forward-compat with admin clients
+            // that send it because the response includes it.
+            'release_notes_url' => ['sometimes', 'nullable', 'string', 'max:500'],
+        ]);
+
+        $payload = [];
+        foreach (['name', 'channel', 'critical_update', 'min_supported_version'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $payload[$field] = $field === 'critical_update'
+                    ? (bool) $data[$field]
+                    : $data[$field];
+            }
+        }
+
+        $hasUnifiedNotes = array_key_exists('release_notes', $data) || array_key_exists('release_notes_md', $data);
+        $unifiedNotes = $data['release_notes'] ?? $data['release_notes_md'] ?? null;
+        if ($hasUnifiedNotes) {
+            $payload['release_notes_md'] = $unifiedNotes;
+        }
+        if ($hasUnifiedNotes || array_key_exists('release_notes_es', $data)) {
+            $payload['release_notes_es'] = $data['release_notes_es'] ?? $unifiedNotes;
+        }
+        if ($hasUnifiedNotes || array_key_exists('release_notes_en', $data)) {
+            $payload['release_notes_en'] = $data['release_notes_en'] ?? $unifiedNotes;
+        }
+
+        if (!empty($payload)) {
+            $release->update($payload);
+            $release = $release->fresh();
+        }
+
+        return response()->json([
+            'status' => 'updated',
+            'release_id' => $release->id,
+            'version' => $release->version,
+            'sha256' => $release->sha256,
+            'size_bytes' => $release->size_bytes,
+            'channel' => $release->channel,
+            'published_at' => $release->published_at?->toIso8601String(),
+            'download_url' => $release->published_at
+                ? url('/api/v1/releases/'.$release->version.'/download')
+                : null,
+        ], 200);
+    }
+
     private function isNewerThanLatest(string $newVersion, string $channel, ?int $excludeId): bool
     {
         $query = Release::published()->channel($channel);

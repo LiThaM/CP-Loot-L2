@@ -210,4 +210,87 @@ class AdminReleasesPublishTest extends TestCase
         $this->assertSame("## Notes\n- initial markdown", $release->release_notes_es);
         $this->assertSame("## Notes\n- initial markdown", $release->release_notes_en);
     }
+
+    public function test_patch_backfills_release_notes_without_touching_binary(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        // Seed a release that has a binary but empty notes (the situation
+        // for versions 0.5.0 → 0.5.4 in prod).
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.5.3-alpha',
+            'binary' => $this->fakeBinary('legacy-bytes'),
+            'publish_now' => true,
+        ])->assertStatus(201);
+
+        $before = Release::where('version', '0.5.3-alpha')->first();
+
+        $this->patchJson('/api/v1/admin/releases/0.5.3-alpha', [
+            'release_notes' => "### Añadido\n- i18n es/en",
+        ])->assertStatus(200)
+          ->assertJsonPath('status', 'updated')
+          ->assertJsonPath('version', '0.5.3-alpha');
+
+        $after = Release::where('version', '0.5.3-alpha')->first();
+        // Notes were backfilled across all three locale columns.
+        $this->assertSame("### Añadido\n- i18n es/en", $after->release_notes_md);
+        $this->assertSame("### Añadido\n- i18n es/en", $after->release_notes_es);
+        $this->assertSame("### Añadido\n- i18n es/en", $after->release_notes_en);
+        // Binary metadata is untouched.
+        $this->assertSame($before->sha256, $after->sha256);
+        $this->assertSame($before->size_bytes, $after->size_bytes);
+        $this->assertSame($before->storage_path, $after->storage_path);
+        $this->assertEquals($before->published_at, $after->published_at);
+    }
+
+    public function test_patch_only_touches_explicit_fields(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.5.4-alpha',
+            'release_notes' => "original notes",
+            'critical_update' => false,
+            'binary' => $this->fakeBinary(),
+            'publish_now' => true,
+        ])->assertStatus(201);
+
+        $this->patchJson('/api/v1/admin/releases/0.5.4-alpha', [
+            'critical_update' => true,
+        ])->assertStatus(200);
+
+        $after = Release::where('version', '0.5.4-alpha')->first();
+        $this->assertTrue((bool) $after->critical_update);
+        // release_notes_* must be preserved since PATCH did not include them.
+        $this->assertSame('original notes', $after->release_notes_md);
+        $this->assertSame('original notes', $after->release_notes_es);
+        $this->assertSame('original notes', $after->release_notes_en);
+    }
+
+    public function test_patch_returns_404_for_missing_version(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        $this->patchJson('/api/v1/admin/releases/9.9.9-nope', [
+            'release_notes' => 'whatever',
+        ])->assertStatus(404)
+          ->assertJsonPath('error', 'release_not_found');
+    }
+
+    public function test_patch_requires_release_upload_ability(): void
+    {
+        // Seed a release as a baseline for the request to target.
+        Sanctum::actingAs($this->admin, ['release:upload']);
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.5.4-alpha',
+            'binary' => $this->fakeBinary(),
+            'publish_now' => true,
+        ])->assertStatus(201);
+
+        // Token without the right ability → 403.
+        Sanctum::actingAs($this->admin, ['some:other-ability']);
+        $this->patchJson('/api/v1/admin/releases/0.5.4-alpha', [
+            'release_notes' => 'denied',
+        ])->assertStatus(403);
+    }
 }
