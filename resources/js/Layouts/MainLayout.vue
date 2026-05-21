@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import { throttle } from 'lodash';
 import axios from 'axios';
@@ -241,13 +241,56 @@ const normalizeAmount = (item) => {
     item.amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
 
+// Cache of `/api/users/{id}/characters` responses keyed by user_id so the
+// loot modal does not refetch when the leader toggles the same member
+// twice. Shape: { [userId]: { main: {...}, secondaries: [...] } | 'pending' }
+const memberCharsByUser = reactive({});
+
+const fetchMemberChars = async (userId) => {
+    if (memberCharsByUser[userId] && memberCharsByUser[userId] !== 'pending') return;
+    if (memberCharsByUser[userId] === 'pending') return;
+    memberCharsByUser[userId] = 'pending';
+    try {
+        const { data } = await axios.get(route('api.users.characters', userId));
+        memberCharsByUser[userId] = data;
+    } catch (_) {
+        memberCharsByUser[userId] = { main: null, secondaries: [] };
+    }
+};
+
+const hasSecondaryChars = (userId) => {
+    const entry = memberCharsByUser[userId];
+    return entry && entry !== 'pending' && Array.isArray(entry.secondaries) && entry.secondaries.length > 0;
+};
+
+const memberCharOptions = (userId) => {
+    const entry = memberCharsByUser[userId];
+    if (!entry || entry === 'pending') return [];
+    const opts = [];
+    if (entry.main) {
+        opts.push({ value: null, label: `${entry.main.name}${entry.main.class_name ? ' · '+entry.main.class_name : ''}`, isMain: true });
+    }
+    for (const s of (entry.secondaries || [])) {
+        opts.push({ value: s.id, label: `${s.name}${s.class_name ? ' · '+s.class_name : ''}`, isMain: false });
+    }
+    return opts;
+};
+
+const getAttendeeForUser = (userId) => lootForm.attendees.find((a) => Number(a.user_id) === Number(userId));
+const setAttendeeCharacter = (userId, characterId) => {
+    const a = getAttendeeForUser(userId);
+    if (a) a.character_id = characterId === '' || characterId === undefined ? null : (characterId === null ? null : Number(characterId));
+};
+
 const toggleRecipient = (userId) => {
     const idx = lootForm.attendees.findIndex((a) => Number(a.user_id) === Number(userId));
     if (idx >= 0) {
         lootForm.attendees.splice(idx, 1);
         return;
     }
-    lootForm.attendees.push({ user_id: userId });
+    lootForm.attendees.push({ user_id: userId, character_id: null });
+    // Lazy-fetch this member's chars so the picker can render once data lands.
+    fetchMemberChars(userId);
 };
 
 const addExternalAttendee = () => {
@@ -954,25 +997,37 @@ watch(() => alerts.value.items, (items) => {
                         <div v-if="cpMembers.length > 0">
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-2">{{ $t('loot.attendees.cp_members_label') }}</div>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                <button
+                                <div
                                     v-for="member in cpMembers"
                                     :key="member.id"
-                                    type="button"
-                                    @click="toggleRecipient(member.id)"
-                                    class="p-3 border rounded-xl text-left transition-all flex items-center group"
+                                    class="p-3 border rounded-xl text-left transition-all flex flex-col gap-1.5 group"
                                     :class="isMemberSelected(member.id) ? 'bg-purple-600/15 border-purple-500 text-purple-700 dark:text-white shadow-lg shadow-purple-950/20' : 'bg-white/70 border-gray-200 text-gray-700 hover:border-gray-300 dark:bg-gray-900/50 dark:border-gray-800 dark:text-gray-500 dark:hover:border-gray-600'"
                                 >
-                                    <div class="w-6 h-6 rounded bg-gray-200 text-gray-800 mr-2 flex items-center justify-center text-[10px] font-black dark:bg-gray-800 dark:text-gray-200" :class="isMemberSelected(member.id) ? 'bg-purple-500 text-white' : ''">
-                                        {{ isMemberSelected(member.id) ? '✓' : '+' }}
-                                    </div>
-                                    <span class="text-xs font-bold uppercase tracking-tight truncate">{{ member.name }}</span>
-                                    <span
-                                        v-if="lootAdenaSplitPreview && isMemberSelected(member.id) && lootAdenaSplitPreview.perMember > 0"
-                                        class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300"
+                                    <button type="button" @click="toggleRecipient(member.id)" class="flex items-center w-full text-left">
+                                        <div class="w-6 h-6 rounded bg-gray-200 text-gray-800 mr-2 flex items-center justify-center text-[10px] font-black dark:bg-gray-800 dark:text-gray-200" :class="isMemberSelected(member.id) ? 'bg-purple-500 text-white' : ''">
+                                            {{ isMemberSelected(member.id) ? '✓' : '+' }}
+                                        </div>
+                                        <span class="text-xs font-bold uppercase tracking-tight truncate">{{ member.name }}</span>
+                                        <span
+                                            v-if="lootAdenaSplitPreview && isMemberSelected(member.id) && lootAdenaSplitPreview.perMember > 0"
+                                            class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300"
+                                        >
+                                            +{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}
+                                        </span>
+                                    </button>
+                                    <!-- Char picker — only when the member is selected AND has secondaries. -->
+                                    <select
+                                        v-if="isMemberSelected(member.id) && hasSecondaryChars(member.id)"
+                                        :value="getAttendeeForUser(member.id)?.character_id ?? ''"
+                                        @change="setAttendeeCharacter(member.id, $event.target.value)"
+                                        @click.stop
+                                        class="text-[10px] px-2 py-1 rounded border border-purple-300/40 bg-white/80 dark:bg-gray-900/60 dark:border-purple-700/40 text-gray-700 dark:text-gray-200"
                                     >
-                                        +{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}
-                                    </span>
-                                </button>
+                                        <option v-for="opt in memberCharOptions(member.id)" :key="String(opt.value)" :value="opt.value ?? ''">
+                                            {{ opt.isMain ? ('★ ' + opt.label) : opt.label }}
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
