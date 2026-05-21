@@ -15,7 +15,7 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
-    protected $fillable = ['name', 'email', 'password', 'cp_id', 'role_id', 'membership_status', 'theme_preference', 'language_preference'];
+    protected $fillable = ['name', 'email', 'password', 'cp_id', 'role_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -24,6 +24,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'changelog_last_seen_at' => 'datetime',
         ];
     }
 

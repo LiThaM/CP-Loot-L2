@@ -75,7 +75,7 @@ class ExternalPayoutsTest extends TestCase
         ]);
     }
 
-    public function test_member_cannot_access_external_payouts_page(): void
+    public function test_member_can_view_external_payouts_in_read_only_mode(): void
     {
         $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
         $member = User::create([
@@ -84,6 +84,37 @@ class ExternalPayoutsTest extends TestCase
         ]);
 
         $this->actingAs($member)
+            ->get(route('system.external_payouts.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('System/ExternalPayouts/Index')
+                ->where('canMarkPaid', false)
+                ->has('payouts', 1)
+            );
+    }
+
+    public function test_member_cannot_mark_paid(): void
+    {
+        $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
+        $member = User::create([
+            'name' => 'Member2', 'email' => 'm2@t.l', 'password' => bcrypt('x'),
+            'role_id' => $memberRole->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
+        ]);
+
+        $this->actingAs($member)
+            ->post(route('system.external_payouts.mark_paid', $this->external->id))
+            ->assertForbidden();
+    }
+
+    public function test_admin_cannot_access_external_payouts_page(): void
+    {
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
+        $admin = User::create([
+            'name' => 'Super', 'email' => 'super@t.l', 'password' => bcrypt('x'),
+            'role_id' => $adminRole->id, 'membership_status' => 'approved',
+        ]);
+
+        $this->actingAs($admin)
             ->get(route('system.external_payouts.index'))
             ->assertForbidden();
     }

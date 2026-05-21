@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\System\Domain\Models\ChangelogEntry;
 use App\Contexts\System\Domain\Models\Translation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +93,33 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'changelog' => fn () => $this->changelogSummary($authUser, $isBanned),
             'translations' => $translations,
         ];
+    }
+
+    /**
+     * Unread-count for the changelog navbar badge: entries with audience
+     * `web`/`both` published after the user's last visit to /changelog.
+     */
+    private function changelogSummary(?User $user, bool $isBanned): array
+    {
+        if (!$user || $isBanned) {
+            return ['unreadCount' => 0];
+        }
+
+        try {
+            $since = $user->changelog_last_seen_at;
+            $count = ChangelogEntry::query()
+                ->whereIn('audience', ['web', 'both'])
+                ->whereNotNull('published_at')
+                ->where('published_at', '<=', now())
+                ->when($since, fn ($q) => $q->where('published_at', '>', $since))
+                ->count();
+        } catch (\Throwable $e) {
+            $count = 0;
+        }
+
+        return ['unreadCount' => (int) $count];
     }
 }

@@ -16,9 +16,17 @@ class ExternalPayoutsController extends Controller
     {
         $current = $request->user();
         $roleName = $current->role?->name;
-        if (! in_array($roleName, ['admin', 'cp_leader'], true)) {
-            abort(403, 'Solo el líder o admin pueden ver los pagos externos.');
+        // The superadmin (`admin`) is intentionally locked out — they have no
+        // CP to settle. CP leaders see the list AND can mark items paid; CP
+        // members see the same list read-only (transparency: they can confirm
+        // their leader has paid the externals that farmed with them).
+        if ($roleName === 'admin') {
+            abort(403, 'Esta página es para miembros de una CP.');
         }
+        if (!$current->cp_id || ($current->membership_status ?? 'approved') !== 'approved') {
+            abort(403, 'No perteneces a una CP aprobada.');
+        }
+        $canMarkPaid = $roleName === 'cp_leader';
 
         $filter = $request->query('filter', 'pending');
         if (!in_array($filter, ['pending', 'paid', 'all'], true)) {
@@ -29,12 +37,8 @@ class ExternalPayoutsController extends Controller
             ->with('lootReport:id,cp_id,event_type,created_at')
             ->where('is_external', true)
             ->whereNotNull('share_adena')
-            ->orderByDesc('id');
-
-        if ($roleName !== 'admin') {
-            // Leader sees only their own CP; admin sees all CPs.
-            $query->whereHas('lootReport', fn ($q) => $q->where('cp_id', $current->cp_id));
-        }
+            ->orderByDesc('id')
+            ->whereHas('lootReport', fn ($q) => $q->where('cp_id', $current->cp_id));
         if ($filter === 'pending') {
             $query->whereNull('paid_at');
         } elseif ($filter === 'paid') {
@@ -54,6 +58,7 @@ class ExternalPayoutsController extends Controller
         return Inertia::render('System/ExternalPayouts/Index', [
             'payouts' => $payouts,
             'filter' => $filter,
+            'canMarkPaid' => $canMarkPaid,
         ]);
     }
 
@@ -61,7 +66,7 @@ class ExternalPayoutsController extends Controller
     {
         $current = $request->user();
         $roleName = $current->role?->name;
-        if (! in_array($roleName, ['admin', 'cp_leader'], true)) {
+        if ($roleName !== 'cp_leader') {
             abort(403);
         }
 
@@ -70,7 +75,7 @@ class ExternalPayoutsController extends Controller
         }
 
         $report = $attendee->lootReport;
-        if ($roleName !== 'admin' && $report?->cp_id !== $current->cp_id) {
+        if ($report?->cp_id !== $current->cp_id) {
             abort(403);
         }
 

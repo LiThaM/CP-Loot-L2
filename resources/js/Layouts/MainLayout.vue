@@ -9,9 +9,11 @@ import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value.role?.name === 'admin');
+const isLeader = computed(() => user.value.role?.name === 'cp_leader');
 const canAuditCp = computed(() => ['cp_leader', 'accountant'].includes(user.value.role?.name));
 const cpMembers = computed(() => page.props.cpMembers || []);
 const alerts = computed(() => page.props.alerts || { unreadCount: 0, items: [] });
+const changelogUnread = computed(() => Number(page.props.changelog?.unreadCount ?? 0));
 const flashSuccess = computed(() => page.props.flash?.success);
 const flashError = computed(() => page.props.flash?.error);
 
@@ -506,15 +508,15 @@ watch(() => alerts.value.items, (items) => {
         </div>
         <!-- Main Navbar (Top) -->
         <nav class="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 shadow-md sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
+            <div class="w-full px-4 sm:px-6 lg:px-8 xl:px-12">
+                <div class="flex justify-between gap-4 h-16">
                     <div class="flex items-center">
                         <Link href="/">
                             <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 tracking-wider font-cinzel">{{ appName }}</span>
                         </Link>
                     </div>
                     
-                    <div class="hidden lg:flex items-center space-x-8">
+                    <div class="hidden lg:flex flex-1 items-center justify-center gap-x-6 xl:gap-x-8 min-w-0 px-4">
                         <template v-if="isAdmin">
                             <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.dashboard') }}</Link>
                             <Link :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">{{ $t('nav.members') }}</Link>
@@ -522,7 +524,6 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">{{ $t('nav.translations') }}</Link>
                             <Link :href="route('system.releases.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.releases.*')}">Releases</Link>
                             <Link :href="route('system.crashes.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.crashes.*')}">Crashes</Link>
-                            <Link :href="route('system.external_payouts.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.external_payouts.*')}">{{ $t('system.external_payouts.nav') }}</Link>
                             <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
                         </template>
                         <template v-else>
@@ -532,6 +533,7 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">{{ $t('nav.cp_vault') }}</Link>
                             <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">{{ $t('nav.warehouse') }}</Link>
                             <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">{{ $t('nav.items_db') }}</Link>
+                            <Link :href="route('system.external_payouts.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.external_payouts.*')}">{{ $t('system.external_payouts.nav') }}</Link>
                             <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
                         </template>
                     </div>
@@ -540,12 +542,14 @@ watch(() => alerts.value.items, (items) => {
 
                         <Link
                             :href="route('changelog.index')"
-                            class="p-2 rounded-lg border border-gray-300 bg-gray-100 hover:border-purple-500 dark:border-gray-700 dark:bg-gray-800/50 transition"
+                            class="relative p-2 rounded-lg border bg-gray-100 hover:border-purple-500 dark:bg-gray-800/50 transition"
+                            :class="changelogUnread > 0 ? 'border-purple-500 dark:border-purple-400 animate-pulse-soft' : 'border-gray-300 dark:border-gray-700'"
                             :title="$t('nav.changelog')"
                         >
-                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" :class="changelogUnread > 0 ? 'text-purple-700 dark:text-purple-300' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.05 10.101c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.518-4.674z"/>
                             </svg>
+                            <span v-if="changelogUnread > 0" class="absolute -top-1 -right-1 bg-purple-600 text-white text-[10px] font-black rounded-full px-1.5 py-0.5 animate-pulse">{{ changelogUnread }}</span>
                         </Link>
 
                         <div class="relative">

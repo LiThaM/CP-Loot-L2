@@ -7,6 +7,7 @@ import { computed } from 'vue';
 const props = defineProps({
     payouts: { type: Array, default: () => [] },
     filter: { type: String, default: 'pending' },
+    canMarkPaid: { type: Boolean, default: false },
 });
 
 const page = usePage();
@@ -83,7 +84,7 @@ const $t = (key, params = {}) => {
                                 <span v-else class="text-gray-400">—</span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <button v-if="!p.paid_at" @click="markPaid(p)"
+                                <button v-if="!p.paid_at && canMarkPaid" @click="markPaid(p)"
                                         class="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded bg-emerald-600 hover:bg-emerald-500 text-white">
                                     {{ $t('system.external_payouts.action.mark_paid') }}
                                 </button>
