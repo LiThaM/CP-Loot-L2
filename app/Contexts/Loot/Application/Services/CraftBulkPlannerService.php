@@ -101,10 +101,17 @@ class CraftBulkPlannerService
                 $taken = min($available, $needed);
                 $consumed[$itemId] = ($consumed[$itemId] ?? 0) + $taken;
                 $missing = $needed - $taken;
+                $craftRecipeId = $craftableMap[$itemId] ?? null;
                 if ($missing <= 0) {
+                    // Fully covered by stock. Still record non-craftable
+                    // leaves so the totals table shows them with
+                    // need/have/missing=0 — users want the full per-mat
+                    // count visible to cross-check the warehouse in-game.
+                    if (!$craftRecipeId) {
+                        $leaves[$itemId] = $leaves[$itemId] ?? 0;
+                    }
                     continue;
                 }
-                $craftRecipeId = $craftableMap[$itemId] ?? null;
                 if (!$craftRecipeId) {
                     // Leaf — record what's still missing.
                     $leaves[$itemId] = ($leaves[$itemId] ?? 0) + $missing;

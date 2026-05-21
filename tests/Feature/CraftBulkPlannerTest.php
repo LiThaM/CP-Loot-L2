@@ -139,9 +139,17 @@ class CraftBulkPlannerTest extends TestCase
 
         $res = $this->plan([['recipe_id' => $this->craftedLeatherRecipe->id, 'qty' => 1]]);
 
-        // Everything covered → no leaves, no sub-crafts.
-        $this->assertSame([], $res['totals']);
+        // No sub-crafts (stock covers everything), but the totals table
+        // still lists every leaf with need/have/missing=0 so the user can
+        // cross-check the warehouse in-game.
         $this->assertSame([], $res['sub_crafts']);
+        $totals = collect($res['totals'])->keyBy('item_id');
+        foreach ([$this->coal->id, $this->leather->id, $this->cord->id] as $id) {
+            $this->assertArrayHasKey($id, $totals->all(), "leaf {$id} should appear in totals even when fully covered");
+            $this->assertSame(4, $totals[$id]['need']);
+            $this->assertSame(4, $totals[$id]['have']);
+            $this->assertSame(0, $totals[$id]['missing']);
+        }
     }
 
     public function test_partial_stock_on_intermediate_craftable_triggers_sub_craft(): void
