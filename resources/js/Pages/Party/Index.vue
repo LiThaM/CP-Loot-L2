@@ -1463,47 +1463,52 @@ watch(buySearch, throttle(async (val) => {
                 </div>
 
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div v-for="item in filteredWarehouseItems" :key="item.id" class="l2-panel p-4 rounded-2xl border-gray-800 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
-                            <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover">
-                            <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">{{ $t('common.na') }}</div>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.amount') }}</div>
-                            <div class="text-lg font-cinzel text-gray-900 dark:text-white">x{{ item.total_amount }}</div>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ tFromProps('market_price.column_label', 'Market price') }}</div>
-                            <MarketPriceCell
-                                :item-id="item.id"
-                                :value="item.market_price"
-                                :updated-at="item.market_price_updated_at"
-                                :updated-by-name="item.market_price_updated_by_name"
-                                :locale-tag="localeTag"
-                                :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
-                                :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
-                                :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
-                                @update="(p) => onWarehousePriceUpdate(item.id, p)"
-                            />
-                            <div class="text-[10px] font-cinzel text-amber-700 dark:text-amber-300 mt-1">
-                                <span v-if="item.market_price != null" v-tooltip="formatAdenaFull(item.market_price * item.total_amount)">
-                                    = {{ formatAdenaShort(item.market_price * item.total_amount) }}
-                                </span>
-                                <span v-else class="text-gray-400 dark:text-gray-600">—</span>
+                    <div v-for="item in filteredWarehouseItems" :key="item.id" class="l2-panel p-4 rounded-2xl border-gray-800 flex flex-col gap-3">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
+                                <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover">
+                                <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">{{ $t('common.na') }}</div>
                             </div>
-                        </div>
-                        <div v-if="canManageWarehouse" class="ml-3">
-                            <div class="flex flex-col gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
+                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
+                            </div>
+                            <div v-if="canManageWarehouse" class="shrink-0 flex flex-col gap-2">
                                 <button @click="openAssign(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg transition shadow-lg shadow-purple-950/20">
                                     {{ $t('common.assign') }}
                                 </button>
                                 <button @click="openSell(item)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white rounded-lg transition shadow-lg shadow-emerald-950/20">
                                     {{ $t('common.sell') }}
                                 </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/40 dark:border-gray-800/60">
+                            <div>
+                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.amount') }}</div>
+                                <div class="text-base font-cinzel text-gray-900 dark:text-white">x{{ item.total_amount }}</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ tFromProps('market_price.column_label', 'Market price') }}</div>
+                                <MarketPriceCell
+                                    :item-id="item.id"
+                                    :value="item.market_price"
+                                    :updated-at="item.market_price_updated_at"
+                                    :updated-by-name="item.market_price_updated_by_name"
+                                    :locale-tag="localeTag"
+                                    :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
+                                    :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
+                                    :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
+                                    @update="(p) => onWarehousePriceUpdate(item.id, p)"
+                                />
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ tFromProps('market_price.value_column', 'Value') }}</div>
+                                <div class="text-base font-cinzel text-amber-700 dark:text-amber-300">
+                                    <span v-if="item.market_price != null" v-tooltip="formatAdenaFull(item.market_price * item.total_amount)">
+                                        {{ formatAdenaShort(item.market_price * item.total_amount) }}
+                                    </span>
+                                    <span v-else class="text-gray-400 dark:text-gray-600">—</span>
+                                </div>
                             </div>
                         </div>
                     </div>
