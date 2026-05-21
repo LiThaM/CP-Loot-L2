@@ -74,6 +74,9 @@ class PartyController extends Controller
                 'items.icon_name',
                 'items.image_url',
                 'items.grade',
+                'items.market_price',
+                'items.market_price_updated_at',
+                'items.market_price_updated_by',
                 DB::raw('SUM(loot_entries.amount) as incoming_amount'),
                 // Newest report that contributed this item — used to put
                 // freshly farmed loot at the top of the warehouse list.
@@ -85,9 +88,14 @@ class PartyController extends Controller
             ->where('loot_reports.status', 'confirmed')
             ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
-            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade')
+            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade', 'items.market_price', 'items.market_price_updated_at', 'items.market_price_updated_by')
             ->get()
             ->keyBy('id');
+
+        $priceEditorIds = $warehouseIncoming->pluck('market_price_updated_by')->filter()->unique()->all();
+        $priceEditorNames = ! empty($priceEditorIds)
+            ? DB::table('users')->whereIn('id', $priceEditorIds)->pluck('name', 'id')
+            : collect();
 
         $warehouseOutgoing = LootEntry::query()
             ->select([
@@ -103,11 +111,14 @@ class PartyController extends Controller
             ->groupBy('items.id')
             ->pluck('outgoing_amount', 'id');
 
-        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing) {
+        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames) {
             $out = (int) ($warehouseOutgoing[$row->id] ?? 0);
             $in = (int) ($row->incoming_amount ?? 0);
             $row->total_amount = max(0, $in - $out);
-            unset($row->incoming_amount);
+            $row->market_price = $row->market_price !== null ? (int) $row->market_price : null;
+            $row->stock_value = $row->market_price !== null ? $row->market_price * $row->total_amount : null;
+            $row->market_price_updated_by_name = $row->market_price_updated_by ? ($priceEditorNames[$row->market_price_updated_by] ?? null) : null;
+            unset($row->incoming_amount, $row->market_price_updated_by);
 
             return $row;
         })->values()
@@ -150,6 +161,7 @@ class PartyController extends Controller
                         'item_id' => $mat->item_id,
                         'name' => $mat->item?->name,
                         'image_url' => $mat->item?->image_url,
+                        'market_price' => $mat->item?->market_price !== null ? (int) $mat->item->market_price : null,
                         'need' => $need,
                         'have' => $have,
                         'missing' => max(0, $need - $have),
@@ -272,12 +284,17 @@ class PartyController extends Controller
         }
         $initialTab = in_array($tab, ['members', 'warehouse_cp', 'crafting', 'config'], true) ? $tab : 'members';
 
+        $warehouseStockValue = $warehouseItems->sum(fn ($r) => (int) ($r->stock_value ?? 0));
+        $warehouseStockPriced = $warehouseItems->filter(fn ($r) => $r->market_price !== null)->count();
+
         return Inertia::render('Party/Index', [
             'has_cp' => true,
             'cp' => $cp,
             'members' => $members,
             'eventConfigs' => $eventConfigs,
             'warehouseItems' => $warehouseItems,
+            'warehouseStockValue' => $warehouseStockValue,
+            'warehouseStockPriced' => $warehouseStockPriced,
             'warehouseAdena' => $warehouseAdena,
             'warehouseAdenaNet' => $warehouseAdena - $cpAdenaOwed,
             'cpAdenaOwed' => $cpAdenaOwed,

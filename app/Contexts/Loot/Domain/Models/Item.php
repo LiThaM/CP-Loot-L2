@@ -2,6 +2,7 @@
 
 namespace App\Contexts\Loot\Domain\Models;
 
+use App\Contexts\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -14,7 +15,11 @@ class Item extends Model
 
     protected $casts = [
         'hidden' => 'boolean',
+        'market_price' => 'integer',
+        'market_price_updated_at' => 'datetime',
     ];
+
+    protected $appends = ['market_price_updated_by_name'];
 
 
     /**
@@ -49,7 +54,7 @@ class Item extends Model
     protected $fillable = [
         'name', 'grade', 'category', 'image_url', 'base_points',
         'external_id', 'chronicle', 'source', 'icon_name', 'description',
-        'hidden',
+        'hidden', 'market_price', 'market_price_updated_at', 'market_price_updated_by',
     ];
 
     public function lootEntries()
@@ -60,6 +65,16 @@ class Item extends Model
     public function wishlists()
     {
         return $this->hasMany(Wishlist::class);
+    }
+
+    public function priceUpdatedBy()
+    {
+        return $this->belongsTo(User::class, 'market_price_updated_by');
+    }
+
+    public function getMarketPriceUpdatedByNameAttribute(): ?string
+    {
+        return $this->priceUpdatedBy?->name;
     }
 
     public function scopeLu4($query)

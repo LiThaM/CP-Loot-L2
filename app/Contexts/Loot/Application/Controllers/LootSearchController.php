@@ -39,7 +39,7 @@ class LootSearchController extends Controller
 
         $paginator = $query
             ->orderBy('name')
-            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle'], 'page', $page);
+            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle', 'market_price'], 'page', $page);
 
         return response()->json([
             'items' => $paginator->items(),
@@ -50,5 +50,33 @@ class LootSearchController extends Controller
                 'has_more' => $paginator->hasMorePages(),
             ],
         ]);
+    }
+
+    public function updateMarketPrice(Request $request, Item $item)
+    {
+        $data = $request->validate([
+            'price' => 'nullable|integer|min:0|max:9999999999',
+        ]);
+
+        $price = $data['price'] ?? null;
+        $now = now();
+        $user = $request->user();
+
+        $item->forceFill([
+            'market_price' => $price,
+            'market_price_updated_at' => $price !== null ? $now : null,
+            'market_price_updated_by' => $price !== null ? $user->id : null,
+        ])->save();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'item_id' => $item->id,
+                'market_price' => $price,
+                'market_price_updated_at' => $price !== null ? $now->toIso8601String() : null,
+                'market_price_updated_by_name' => $price !== null ? $user->name : null,
+            ]);
+        }
+
+        return back();
     }
 }

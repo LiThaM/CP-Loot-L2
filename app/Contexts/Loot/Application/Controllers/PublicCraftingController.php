@@ -65,6 +65,7 @@ class PublicCraftingController extends Controller
                 itemId: (int) $mat->item_id,
                 name: $mat->item?->name,
                 imageUrl: $mat->item?->image_url,
+                marketPrice: $mat->item?->market_price !== null ? (int) $mat->item->market_price : null,
                 need: (int) ($mat->quantity ?? 1),
                 craftableMap: $craftableMap,
                 depth: $depth,
@@ -78,6 +79,7 @@ class PublicCraftingController extends Controller
                 'item_id' => (int) $recipe->recipe_item_id,
                 'name' => $recipe->recipeItem?->name ?? 'Recipe: '.$recipe->name,
                 'image_url' => $recipe->recipeItem?->image_url,
+                'market_price' => $recipe->recipeItem?->market_price !== null ? (int) $recipe->recipeItem->market_price : null,
                 'need' => 1,
                 'craft_recipe_id' => null,
                 'children' => [],
@@ -133,6 +135,7 @@ class PublicCraftingController extends Controller
         int $itemId,
         ?string $name,
         ?string $imageUrl,
+        ?int $marketPrice,
         int $need,
         array $craftableMap,
         int $depth,
@@ -155,12 +158,6 @@ class PublicCraftingController extends Controller
                 $outputQty = max(1, (int) ($craftRecipe->output_quantity ?? 1));
                 $children = $craftRecipe->materials->map(function ($mat) use ($need, $depth, $chronicle, $craftableMap, $branchAncestors, $outputQty) {
                     $matQty = (int) ($mat->quantity ?? 1);
-                    // Per-parent ratio = how many of this child you need to
-                    // make ONE unit of the parent (the recipe ratio). The
-                    // UI shows this as "(N / unit)" subtitle so the user
-                    // doesn't read "× 5 under × 5 parent" as "5 per parent"
-                    // (which would be 25 total). For recipes that output
-                    // more than 1 unit at a time we divide accordingly.
                     $ratioPerParent = $outputQty > 1
                         ? (int) ceil($matQty / $outputQty)
                         : $matQty;
@@ -168,10 +165,7 @@ class PublicCraftingController extends Controller
                         itemId: (int) $mat->item_id,
                         name: $mat->item?->name,
                         imageUrl: $mat->item?->image_url,
-                        // Total = mat per recipe × number of crafts needed
-                        // to cover the parent need. ceil() handles the case
-                        // where you must over-craft (e.g. need 5 of a thing
-                        // that comes 2 per craft → 3 crafts → 6 produced).
+                        marketPrice: $mat->item?->market_price !== null ? (int) $mat->item->market_price : null,
                         need: $matQty * (int) ceil(max(1, $need) / $outputQty),
                         craftableMap: $craftableMap,
                         depth: $depth - 1,
@@ -187,6 +181,7 @@ class PublicCraftingController extends Controller
             'item_id' => $itemId,
             'name' => $name,
             'image_url' => $imageUrl,
+            'market_price' => $marketPrice,
             'need' => $need,
             'per_parent_qty' => $perParentQty,
             'craft_recipe_id' => $craftRecipeId,

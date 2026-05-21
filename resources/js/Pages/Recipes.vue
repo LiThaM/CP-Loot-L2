@@ -1,8 +1,10 @@
 <script setup>
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import MarketPriceCell from '@/Components/MarketPriceCell.vue';
 import { computed, ref, watch, reactive } from 'vue';
 import axios from 'axios';
+import { formatAdenaShort, formatAdenaFull } from '@/utils/adena.js';
 
 const page = usePage();
 const translations = computed(() => page.props.translations || {});
@@ -94,6 +96,7 @@ const buildCraftableMap = (nodes) => {
                     item_id: c.item_id,
                     qty: (c.per_parent_qty ?? Math.round(c.need / parentNeed)) || 1,
                     name: c.name, image_url: c.image_url,
+                    market_price: c.market_price ?? null,
                 }));
             }
             if (n.children?.length) walk(n.children);
@@ -118,6 +121,7 @@ const getCalcItems = (nodes) => {
 
             items.push({
                 item_id: n.item_id, name: n.name, image_url: n.image_url,
+                market_price: n.market_price ?? null,
                 need: n.need, needBuy, craftable: isCraftable, toCraft,
                 per_parent_qty: n.per_parent_qty ?? null,
                 depth,
@@ -169,6 +173,39 @@ const getMissing = (itemId, need) => {
 };
 
 const fmt = (n) => n?.toLocaleString() ?? '0';
+
+const isAuthenticated = computed(() => !!page.props.auth?.user);
+const localeTag = computed(() => (page.props.app?.locale === 'es' ? 'es-ES' : 'en-US'));
+
+const propagatePriceOnTree = (itemId, price) => {
+    if (!tree.value?.nodes) return;
+    const walk = (list) => {
+        for (const n of list) {
+            if (Number(n.item_id) === Number(itemId)) n.market_price = price;
+            if (n.children?.length) walk(n.children);
+        }
+    };
+    walk(tree.value.nodes);
+};
+
+const onRecipePriceUpdate = (payload) => {
+    propagatePriceOnTree(payload.itemId, payload.price);
+};
+
+const totalRecipeCost = computed(() => {
+    if (!tree.value?.nodes) return { mats: 0, fee: 0, total: 0, anyPriced: false };
+    const leaves = getNeededResources(tree.value.nodes);
+    let mats = 0;
+    let anyPriced = false;
+    for (const r of leaves) {
+        if (r.market_price != null) {
+            mats += Number(r.market_price) * Number(r.need);
+            anyPriced = true;
+        }
+    }
+    const fee = Number(tree.value.recipe?.adena_fee || 0);
+    return { mats, fee, total: mats + fee, anyPriced };
+});
 </script>
 
 <template>
@@ -307,9 +344,22 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                                 <span class="text-sm truncate" :class="[node.is_recipe ? 'text-amber-400 font-bold italic' : 'text-gray-200', node.depth === 0 ? 'font-bold' : 'font-medium']">{{ node.name || 'Unknown' }}</span>
                                                 <span v-if="node.craft_recipe_id && node.children?.length" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">{{ $t('recipes.tree.craftable') }}</span>
                                             </div>
-                                            <div class="flex flex-col items-end flex-shrink-0">
-                                                <span class="text-xs font-mono font-bold text-yellow-400">x{{ node.need }}</span>
-                                                <span v-if="node.depth > 0 && node.per_parent_qty && node.per_parent_qty !== node.need" class="text-[9px] font-mono text-gray-500 leading-none mt-0.5">{{ node.per_parent_qty }} / unit</span>
+                                            <div class="flex items-center gap-3 flex-shrink-0">
+                                                <MarketPriceCell
+                                                    v-if="!node.is_recipe"
+                                                    :item-id="node.item_id"
+                                                    :value="node.market_price"
+                                                    :editable="isAuthenticated"
+                                                    :locale-tag="localeTag"
+                                                    :label-edit="t('market_price.edit_cta')"
+                                                    :label-updated="t('market_price.tooltip_updated', { user: '{user}', ago: '{ago}' })"
+                                                    size="sm"
+                                                    @update="onRecipePriceUpdate"
+                                                />
+                                                <div class="flex flex-col items-end">
+                                                    <span class="text-xs font-mono font-bold text-yellow-400">x{{ node.need }}</span>
+                                                    <span v-if="node.depth > 0 && node.per_parent_qty && node.per_parent_qty !== node.need" class="text-[9px] font-mono text-gray-500 leading-none mt-0.5">{{ node.per_parent_qty }} / unit</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -318,6 +368,24 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
 
                             <!-- RIGHT: Calculator (l2hub style) -->
                             <div class="space-y-5">
+                                <!-- Estimated cost -->
+                                <div class="rounded-xl border border-amber-500/20 overflow-hidden bg-gradient-to-br from-amber-500/[0.08] to-transparent">
+                                    <div class="px-4 py-3 flex items-center justify-between gap-2">
+                                        <div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-amber-400">{{ t('market_price.recipe_total') }}</div>
+                                            <div v-if="totalRecipeCost.anyPriced" class="text-2xl font-cinzel text-amber-300 mt-1" :title="formatAdenaFull(totalRecipeCost.total, localeTag)">
+                                                {{ formatAdenaShort(totalRecipeCost.total, localeTag) }} a
+                                            </div>
+                                            <div v-else class="text-sm text-gray-500 italic mt-1">
+                                                {{ t('market_price.placeholder') }}
+                                            </div>
+                                            <div v-if="totalRecipeCost.anyPriced && totalRecipeCost.fee > 0" class="text-[10px] text-gray-500 mt-0.5">
+                                                {{ t('market_price.recipe_fee', { fee: formatAdenaShort(totalRecipeCost.fee, localeTag) }) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Items to craft - single list with inline sliders -->
                                 <div class="rounded-xl border border-amber-500/20 overflow-hidden bg-amber-500/[0.03]">
                                     <div class="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">

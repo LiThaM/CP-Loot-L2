@@ -3,6 +3,7 @@ import { Head, useForm, Link, router, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
+import MarketPriceCell from '@/Components/MarketPriceCell.vue';
 import { ref, computed, watch } from 'vue';
 import { throttle } from 'lodash';
 import axios from 'axios';
@@ -15,6 +16,8 @@ const props = defineProps({
     members: Array,
     eventConfigs: Array,
     warehouseItems: Array,
+    warehouseStockValue: Number,
+    warehouseStockPriced: Number,
     warehouseAdena: Number,
     warehouseAdenaNet: Number,
     cpAdenaOwed: Number,
@@ -35,6 +38,10 @@ const t = (key, params = {}) => {
     const raw = page.props.translations?.[key];
     if (!raw || typeof raw !== 'string') return key;
     return raw.replace(/\{(\w+)\}/g, (match, p1) => (Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : match));
+};
+const tFromProps = (key, fallback) => {
+    const raw = page.props.translations?.[key];
+    return (raw && typeof raw === 'string') ? raw : fallback;
 };
 
 const normalizeTab = (tab) => {
@@ -267,8 +274,38 @@ const resetDkpPoints = async () => {
 
 const warehouseFilter = ref('');
 
+const localWarehouseItems = ref([...(props.warehouseItems || [])]);
+watch(() => props.warehouseItems, (val) => { localWarehouseItems.value = [...(val || [])]; });
+
+const localStockValue = computed(() => localWarehouseItems.value.reduce(
+    (sum, it) => sum + (it.market_price != null ? Number(it.market_price) * Number(it.total_amount) : 0),
+    0,
+));
+const localStockPriced = computed(() => localWarehouseItems.value.filter((it) => it.market_price != null).length);
+
+const onWarehousePriceUpdate = (itemId, payload) => {
+    const target = localWarehouseItems.value.find((it) => it.id === itemId);
+    if (!target) return;
+    target.market_price = payload.price;
+    target.market_price_updated_at = payload.updatedAt;
+    target.market_price_updated_by_name = payload.updatedByName;
+    target.stock_value = payload.price !== null ? payload.price * target.total_amount : null;
+};
+
+const onMaterialPriceUpdate = (itemId, payload) => {
+    // Recipes pinned to the CP — keep their material rows in sync after edit.
+    (props.cpRecipes || []).forEach((entry) => {
+        (entry.materials_list || []).forEach((m) => {
+            if (Number(m.item_id) === Number(itemId)) {
+                m.market_price = payload.price;
+            }
+        });
+    });
+    onWarehousePriceUpdate(itemId, payload);
+};
+
 const filteredWarehouseItems = computed(() => {
-    const items = props.warehouseItems || [];
+    const items = localWarehouseItems.value;
     const q = warehouseFilter.value.trim().toLowerCase();
     if (!q) return items;
     return items.filter((item) => {
@@ -1378,7 +1415,14 @@ watch(buySearch, throttle(async (val) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mt-6">
+                        <div class="l2-panel p-6 rounded-3xl border-amber-500/15 bg-gradient-to-br from-amber-600/5 to-transparent backdrop-blur relative overflow-hidden group">
+                            <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🏛️</div>
+                            <div class="text-[10px] text-amber-700 dark:text-amber-300 font-black uppercase tracking-widest mb-1">{{ tFromProps('market_price.warehouse_total', 'Estimated stock value') }}</div>
+                            <div class="text-3xl font-cinzel text-amber-700 dark:text-amber-300" v-tooltip="formatAdenaFull(localStockValue || 0)">{{ formatAdenaShort(localStockValue || 0) }}</div>
+                            <div class="mt-2 text-[10px] text-amber-500 font-bold uppercase tracking-widest">{{ t('market_price.warehouse_note', { priced: localStockPriced }) }}</div>
+                        </div>
+
                         <div class="l2-panel p-6 rounded-3xl border-purple-500/15 bg-gradient-to-br from-purple-600/5 to-transparent backdrop-blur relative overflow-hidden group">
                             <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">💰</div>
                             <div class="text-[10px] text-purple-700 dark:text-purple-300 font-black uppercase tracking-widest mb-1">{{ $t('party.vault.adena_in_warehouse') }}</div>
@@ -1428,9 +1472,28 @@ watch(buySearch, throttle(async (val) => {
                             <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
                             <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
                         </div>
-                        <div class="text-right">
+                        <div class="text-right shrink-0">
                             <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ $t('common.amount') }}</div>
                             <div class="text-lg font-cinzel text-gray-900 dark:text-white">x{{ item.total_amount }}</div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ tFromProps('market_price.column_label', 'Market price') }}</div>
+                            <MarketPriceCell
+                                :item-id="item.id"
+                                :value="item.market_price"
+                                :updated-at="item.market_price_updated_at"
+                                :updated-by-name="item.market_price_updated_by_name"
+                                :locale-tag="localeTag"
+                                :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
+                                :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by :user :ago')"
+                                @update="(p) => onWarehousePriceUpdate(item.id, p)"
+                            />
+                            <div class="text-[10px] font-cinzel text-amber-700 dark:text-amber-300 mt-1">
+                                <span v-if="item.market_price != null" v-tooltip="formatAdenaFull(item.market_price * item.total_amount)">
+                                    = {{ formatAdenaShort(item.market_price * item.total_amount) }}
+                                </span>
+                                <span v-else class="text-gray-400 dark:text-gray-600">—</span>
+                            </div>
                         </div>
                         <div v-if="canManageWarehouse" class="ml-3">
                             <div class="flex flex-col gap-2">

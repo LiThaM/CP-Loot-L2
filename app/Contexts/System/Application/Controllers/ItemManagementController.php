@@ -15,7 +15,7 @@ class ItemManagementController extends Controller
             abort(403);
         }
 
-        $query = Item::query();
+        $query = Item::query()->with('priceUpdatedBy:id,name');
 
         // Search by name
         if ($request->filled('search')) {
@@ -63,7 +63,7 @@ class ItemManagementController extends Controller
 
     public function itemsDb(Request $request)
     {
-        $query = Item::query();
+        $query = Item::query()->with('priceUpdatedBy:id,name');
 
         $filters = $request->only(['search', 'chronicle', 'grade', 'category']);
         if (! $request->filled('chronicle') && $request->user()?->cp?->chronicle) {

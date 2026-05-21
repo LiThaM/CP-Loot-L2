@@ -255,6 +255,7 @@ class CraftingController extends Controller
                 itemId: (int) $mat->item_id,
                 name: $mat->item?->name,
                 imageUrl: $mat->item?->image_url,
+                marketPrice: $mat->item?->market_price !== null ? (int) $mat->item->market_price : null,
                 need: (int) ($mat->quantity ?? 1),
                 have: (int) ($amounts[$mat->item_id] ?? 0),
                 craftableRecipeIdByItemId: $craftableRecipeIdByItemId,
@@ -264,13 +265,14 @@ class CraftingController extends Controller
                 ancestors: [],
             );
         })->values();
- 
+
         // Inject Recipe Item as a mandatory node if exists
         if ($recipe->recipe_item_id) {
             $recipeItemNode = [
                 'item_id' => (int) $recipe->recipe_item_id,
                 'name' => $recipe->recipeItem?->name ?? 'Receta ' . $recipe->name,
                 'image_url' => $recipe->recipeItem?->image_url,
+                'market_price' => $recipe->recipeItem?->market_price !== null ? (int) $recipe->recipeItem->market_price : null,
                 'need' => 1,
                 'have' => (int) ($amounts[$recipe->recipe_item_id] ?? 0),
                 'missing' => max(0, 1 - (int) ($amounts[$recipe->recipe_item_id] ?? 0)),
@@ -286,6 +288,7 @@ class CraftingController extends Controller
                 'id' => $recipe->id,
                 'name' => $recipe->name,
                 'success_rate' => $recipe->success_rate,
+                'adena_fee' => (int) ($recipe->adena_fee ?? 0),
             ],
             'nodes' => $nodes,
         ]);
@@ -445,6 +448,7 @@ class CraftingController extends Controller
         int $itemId,
         ?string $name,
         ?string $imageUrl,
+        ?int $marketPrice,
         int $need,
         int $have,
         array $craftableRecipeIdByItemId,
@@ -474,6 +478,7 @@ class CraftingController extends Controller
                         itemId: (int) $mat->item_id,
                         name: $mat->item?->name,
                         imageUrl: $mat->item?->image_url,
+                        marketPrice: $mat->item?->market_price !== null ? (int) $mat->item->market_price : null,
                         need: $childNeed,
                         have: $childHave,
                         craftableRecipeIdByItemId: $craftableRecipeIdByItemId,
@@ -490,6 +495,7 @@ class CraftingController extends Controller
             'item_id' => $itemId,
             'name' => $name,
             'image_url' => $imageUrl,
+            'market_price' => $marketPrice,
             'need' => $need,
             'have' => $have,
             'missing' => $missing,

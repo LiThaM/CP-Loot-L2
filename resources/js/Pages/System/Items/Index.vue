@@ -1,8 +1,19 @@
 <script setup>
-import { ref, watch } from 'vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
+import MarketPriceCell from '@/Components/MarketPriceCell.vue';
 import { throttle } from 'lodash';
+
+const page = usePage();
+const localeTag = computed(() => (page.props.app?.locale === 'es' ? 'es-ES' : 'en-US'));
+const tFromProps = (key, fallback) => page.props.translations?.[key] || fallback;
+
+const onPriceUpdate = (item, payload) => {
+    item.market_price = payload.price;
+    item.market_price_updated_at = payload.updatedAt;
+    item.market_price_updated_by_name = payload.updatedByName;
+};
 
 const props = defineProps({
     items: Object,
@@ -148,6 +159,7 @@ const getGradeColor = (itemGrade) => {
                                 <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.category') }}</th>
                                 <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.chronicle') }}</th>
                                 <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('system.items.base_points') }}</th>
+                                <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ tFromProps('market_price.column_label', 'Market price') }}</th>
                                 <th v-if="canEdit" class="px-6 py-4 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">{{ $t('common.actions') }}</th>
                             </tr>
                         </thead>
@@ -185,6 +197,18 @@ const getGradeColor = (itemGrade) => {
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-blue-700 dark:text-blue-300">
                                     {{ item.base_points }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center" @click.stop>
+                                    <MarketPriceCell
+                                        :item-id="item.id"
+                                        :value="item.market_price"
+                                        :updated-at="item.market_price_updated_at"
+                                        :updated-by-name="item.market_price_updated_by_name"
+                                        :locale-tag="localeTag"
+                                        :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
+                                        :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by :user :ago')"
+                                        @update="(p) => onPriceUpdate(item, p)"
+                                    />
                                 </td>
                                 <td v-if="canEdit" class="px-6 py-4 whitespace-nowrap text-right text-sm">
                                     <button 
