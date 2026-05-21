@@ -41,8 +41,10 @@ class LootReport extends Model
         return $this->belongsTo(User::class, 'requested_by_id');
     }
 
+    // Default newest-first. Use `entries()->reorder()->orderBy('id')` for
+    // insertion order (e.g. FIFO consumption).
     public function entries()
     {
-        return $this->hasMany(LootEntry::class, 'loot_report_id');
+        return $this->hasMany(LootEntry::class, 'loot_report_id')->orderByDesc('id');
     }
 }

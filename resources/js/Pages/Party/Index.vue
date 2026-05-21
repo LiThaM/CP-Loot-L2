@@ -834,17 +834,19 @@ const stockForm = useForm({
 });
 
 const addStockItem = (item) => {
-    const existing = stockForm.items.find(i => i.item_id === item.id);
-    if (existing) {
-        existing.amount++;
-        return;
+    const idx = stockForm.items.findIndex(i => i.item_id === item.id);
+    if (idx >= 0) {
+        const [row] = stockForm.items.splice(idx, 1);
+        row.amount++;
+        stockForm.items.unshift(row);
+    } else {
+        stockForm.items.unshift({
+            item_id: item.id,
+            name: item.name,
+            image_url: item.image_url,
+            amount: 1
+        });
     }
-    stockForm.items.push({
-        item_id: item.id,
-        name: item.name,
-        image_url: item.image_url,
-        amount: 1
-    });
     stockSearch.value = '';
     stockSearchResults.value = [];
 };
@@ -907,7 +909,7 @@ const quickAddAdena = async () => {
         const rows = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
         const found = rows.find(it => String(it.name).toLowerCase() === 'adena');
         if (found) {
-            stockForm.items.push({
+            stockForm.items.unshift({
                 item_id: found.id,
                 name: found.name,
                 image_url: found.image_url,
@@ -971,17 +973,19 @@ const buyForm = useForm({
 });
 
 const addBuyItem = (item) => {
-    const existing = buyForm.items.find(i => i.item_id === item.id);
-    if (existing) {
-        existing.amount++;
-        return;
+    const idx = buyForm.items.findIndex(i => i.item_id === item.id);
+    if (idx >= 0) {
+        const [row] = buyForm.items.splice(idx, 1);
+        row.amount++;
+        buyForm.items.unshift(row);
+    } else {
+        buyForm.items.unshift({
+            item_id: item.id,
+            name: item.name,
+            image_url: item.image_url,
+            amount: 1
+        });
     }
-    buyForm.items.push({
-        item_id: item.id,
-        name: item.name,
-        image_url: item.image_url,
-        amount: 1
-    });
     buySearch.value = '';
     buySearchResults.value = [];
 };
