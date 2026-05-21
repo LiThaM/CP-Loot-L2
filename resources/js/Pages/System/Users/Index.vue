@@ -23,6 +23,15 @@ const props = defineProps({
 
 const currentUserId = computed(() => page.props.auth?.user?.id ?? null);
 
+// Non-admins (cp_leader, accountant…) shouldn't even see `admin` as an
+// option. The backend already rejects the assignment, but hiding it
+// from the dropdown avoids the confusing "(admins only)" disabled
+// entry.
+const assignableRoles = computed(() => {
+    if (props.isAdmin) return props.roles ?? [];
+    return (props.roles ?? []).filter((r) => r.name !== 'admin');
+});
+
 const search = ref('');
 const filteredUsers = computed(() => {
     return props.users.filter(user => 

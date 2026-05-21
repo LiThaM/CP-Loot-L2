@@ -18,30 +18,11 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
-        $user = $request->user();
-        $user->loadMissing('characters.l2Class', 'mainClass');
-
+        // L2 character management lives in /characters now; this page
+        // stays focused on web-account fields (email, password, prefs).
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
-            'characters' => $user->characters->map(fn ($c) => [
-                'id' => $c->id,
-                'name' => $c->name,
-                'l2_class_id' => $c->l2_class_id,
-                'class_name' => $c->l2Class?->name,
-                'race' => $c->race,
-                'level' => $c->level,
-            ])->values(),
-            'main_character' => [
-                'name' => $user->name,
-                'l2_class_id' => $user->main_class_id,
-                'class_name' => $user->mainClass?->name,
-                'race' => $user->main_race,
-                'level' => $user->main_level,
-            ],
-            'l2_classes' => \App\Contexts\Identity\Domain\Models\L2Class::orderBy('race')->orderBy('class_type')->orderBy('name')
-                ->get(['id', 'name', 'race', 'class_type']),
-            'l2_races' => \App\Contexts\Identity\Application\Services\CharacterCatalogService::RACES,
         ]);
     }
 

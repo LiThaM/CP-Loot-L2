@@ -37,7 +37,7 @@ class CharactersCrudTest extends TestCase
     public function test_store_creates_a_character_and_derives_race_from_class(): void
     {
         $this->actingAs($this->user)
-            ->post(route('profile.characters.store'), [
+            ->post(route('characters.store'), [
                 'name' => 'Bisho2',
                 'l2_class_id' => $this->bishop->id,
                 'level' => 78,
@@ -55,7 +55,7 @@ class CharactersCrudTest extends TestCase
         $this->assertSame('Human', $char->race);
 
         $this->actingAs($this->user)
-            ->patch(route('profile.characters.update', $char->id), [
+            ->patch(route('characters.update', $char->id), [
                 'name' => 'SwapMe',
                 'l2_class_id' => $this->shillienElder->id,
                 'level' => 42,
@@ -71,7 +71,7 @@ class CharactersCrudTest extends TestCase
 
         $this->actingAs($this->user)
             ->from('/profile')
-            ->post(route('profile.characters.store'), [
+            ->post(route('characters.store'), [
                 'name' => 'Bisho2',
                 'l2_class_id' => $this->sorcerer->id,
             ])->assertSessionHasErrors('name');
@@ -84,7 +84,7 @@ class CharactersCrudTest extends TestCase
         $char = Character::create(['user_id' => $other->id, 'name' => 'Mine', 'l2_class_id' => $this->bishop->id]);
 
         $this->actingAs($this->user)
-            ->patch(route('profile.characters.update', $char->id), ['name' => 'Stolen'])
+            ->patch(route('characters.update', $char->id), ['name' => 'Stolen'])
             ->assertForbidden();
     }
 
@@ -93,7 +93,7 @@ class CharactersCrudTest extends TestCase
         $char = Character::create(['user_id' => $this->user->id, 'name' => 'ToDel', 'l2_class_id' => $this->bishop->id]);
 
         $this->actingAs($this->user)
-            ->delete(route('profile.characters.destroy', $char->id))
+            ->delete(route('characters.destroy', $char->id))
             ->assertRedirect();
 
         $this->assertNull(Character::find($char->id));

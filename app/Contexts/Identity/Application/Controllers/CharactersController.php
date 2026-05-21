@@ -12,10 +12,45 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CharactersController extends Controller
 {
     public function __construct(private readonly CharacterCatalogService $catalog) {}
+
+    /**
+     * Dedicated page for managing the user's L2 characters. Lives outside
+     * /profile so the perfil de usuario stays focused on web-account
+     * fields (email, password, preferences) and the L2 nicks/classes have
+     * their own home.
+     */
+    public function index(Request $request): Response
+    {
+        $user = $request->user();
+        $user->loadMissing('characters.l2Class', 'mainClass');
+
+        return Inertia::render('Characters/Index', [
+            'characters' => $user->characters->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'l2_class_id' => $c->l2_class_id,
+                'class_name' => $c->l2Class?->name,
+                'race' => $c->race,
+                'level' => $c->level,
+            ])->values(),
+            'main_character' => [
+                'name' => $user->name,
+                'l2_class_id' => $user->main_class_id,
+                'class_name' => $user->mainClass?->name,
+                'race' => $user->main_race,
+                'level' => $user->main_level,
+            ],
+            'l2_classes' => L2Class::orderBy('race')->orderBy('class_type')->orderBy('name')
+                ->get(['id', 'name', 'race', 'class_type']),
+            'l2_races' => CharacterCatalogService::RACES,
+        ]);
+    }
 
     public function store(CharacterStoreRequest $request): RedirectResponse
     {

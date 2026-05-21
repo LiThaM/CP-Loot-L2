@@ -116,7 +116,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    // Secondary L2 characters of the authenticated user.
+
+    // L2 characters — own page, separate from the web-account profile.
+    Route::get('/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'index'])
+        ->name('characters.index');
+    Route::post('/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'store'])
+        ->name('characters.store');
+    Route::patch('/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'update'])
+        ->name('characters.update');
+    Route::delete('/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'destroy'])
+        ->name('characters.destroy');
+    // Legacy aliases kept so old tests / cached frontend routes keep
+    // resolving until they get rebuilt.
     Route::post('/profile/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'store'])
         ->name('profile.characters.store');
     Route::patch('/profile/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'update'])

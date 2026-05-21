@@ -60,9 +60,9 @@ const openEdit = (c) => {
 const submit = () => {
     const opts = { preserveScroll: true, onSuccess: () => { formOpen.value = false; charForm.reset(); } };
     if (editing.value) {
-        charForm.patch(route('profile.characters.update', editing.value.id), opts);
+        charForm.patch(route('characters.update', editing.value.id), opts);
     } else {
-        charForm.post(route('profile.characters.store'), opts);
+        charForm.post(route('characters.store'), opts);
     }
 };
 const destroy = async (c) => {
@@ -73,7 +73,7 @@ const destroy = async (c) => {
         $t('common.cancel'),
     );
     if (!ok) return;
-    router.delete(route('profile.characters.destroy', c.id), { preserveScroll: true });
+    router.delete(route('characters.destroy', c.id), { preserveScroll: true });
 };
 </script>
 
