@@ -273,7 +273,14 @@ class PartyController extends Controller
             'canManageWarehouse' => $canManageWarehouse,
             'isLeader' => $user->id === $cp->leader_id,
             'initialTab' => $initialTab,
-            'roles' => Role::all(),
+            // Non-admins must not see `admin` in the role dropdown of the
+            // user-edit modal. The backend already rejects the assignment
+            // in UserManagementController::update, but until now the
+            // dropdown still listed it because this payload sent
+            // Role::all() unconditionally.
+            'roles' => $user->role?->name === 'admin'
+                ? Role::all()
+                : Role::query()->whereIn('name', ['cp_leader', 'accountant', 'member'])->get(),
             'cps' => in_array($user->role?->name, ['admin']) ? ConstParty::all() : [],
             'isAdmin' => $user->role?->name === 'admin',
         ]);

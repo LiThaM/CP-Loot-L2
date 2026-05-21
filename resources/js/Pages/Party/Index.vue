@@ -118,6 +118,13 @@ const userEditForm = useForm({
     cp_id: '',
 });
 
+// Defensive mirror of the backend filter: non-admins never see `admin`
+// as an assignable role, regardless of what the payload says.
+const assignableRoles = computed(() => {
+    if (props.isAdmin) return props.roles ?? [];
+    return (props.roles ?? []).filter((r) => r.name !== 'admin');
+});
+
 const donationForm = useForm({
     amount: '',
 });
@@ -2315,7 +2322,7 @@ watch(buySearch, throttle(async (val) => {
                 <div>
                     <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('common.role') }}</label>
                     <select v-model="userEditForm.role_id" class="w-full bg-white/70 border border-gray-200 text-gray-900 rounded-xl focus:ring-blue-600 h-12 px-4 font-bold dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
-                        <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                        <option v-for="role in assignableRoles" :key="role.id" :value="role.id">{{ role.name }}</option>
                     </select>
                 </div>
 
