@@ -82,4 +82,27 @@ class VersionControllerTest extends TestCase
     {
         $this->getJson('/api/v1/version')->assertStatus(404);
     }
+
+    public function test_response_includes_release_notes_for_current_locale(): void
+    {
+        Release::create([
+            'version' => '0.5.4-alpha',
+            'channel' => 'stable',
+            'release_notes_es' => '### Añadido\n- Burst archive para AOE',
+            'release_notes_en' => '### Added\n- Burst archive for AOE',
+            'released_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/version');
+        $response->assertStatus(200);
+        $body = $response->json();
+
+        $this->assertArrayHasKey('release_notes', $body);
+        $this->assertArrayHasKey('release_notes_es', $body);
+        $this->assertArrayHasKey('release_notes_en', $body);
+        $this->assertArrayHasKey('release_notes_url', $body);
+        $this->assertSame('### Añadido\n- Burst archive para AOE', $body['release_notes_es']);
+        $this->assertSame('### Added\n- Burst archive for AOE', $body['release_notes_en']);
+    }
 }

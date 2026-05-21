@@ -25,6 +25,7 @@ class UploadDigitTemplatesRequest extends FormRequest
                 'max:' . (int) (self::MAX_ZIP_BYTES / 1024),
                 'mimetypes:application/zip,application/x-zip-compressed,application/octet-stream',
             ],
+            'bot_version' => ['nullable', 'string', 'max:50', 'regex:/^[\w.\-+]+$/'],
         ];
     }
 

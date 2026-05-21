@@ -10,7 +10,8 @@ class OcrSample extends Model
 {
     protected $table = 'ocr_samples';
 
-    public const CATEGORIES = ['bar', 'chat', 'chat_damage', 'system_msg', 'bar_misread'];
+    public const CATEGORIES = ['bar', 'chat', 'chat_damage', 'system_msg', 'bar_misread', 'level'];
+    public const STATUSES = ['pending', 'labeled', 'rejected', 'noisy'];
 
     protected $fillable = [
         'anon_token_id',
@@ -21,10 +22,14 @@ class OcrSample extends Model
         'expected_value',
         'actual_ocr',
         'confidence',
+        'bot_version',
+        'status',
+        'reviewed_at',
     ];
 
     protected $casts = [
         'confidence' => 'float',
+        'reviewed_at' => 'datetime',
     ];
 
     public function anonToken(): BelongsTo

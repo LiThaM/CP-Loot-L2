@@ -48,6 +48,16 @@ Route::middleware(['api.log'])->group(function () {
         ->middleware('throttle:api-v1')
         ->name('api.v1.changelog.index');
 
+    // Stats públicas del crowdsource (sin client_key) — el cliente las muestra
+    // en su HUD para que el user vea cuánto ha contribuido la comunidad.
+    Route::get('/templates/digits/stats', [DigitTemplatesController::class, 'stats'])
+        ->middleware('throttle:api-v1')
+        ->name('api.v1.templates.digits.stats');
+
+    Route::get('/ocr/samples/stats', [OcrSamplesController::class, 'stats'])
+        ->middleware('throttle:api-v1')
+        ->name('api.v1.ocr.samples.stats');
+
     // GET items Lu4 — público para sync periódica del cliente. Necesita client_key
     // para filtrar tráfico pero no anon_token (es de solo lectura).
     Route::middleware(['client_key'])->group(function () {
@@ -69,6 +79,11 @@ Route::middleware(['api.log'])->group(function () {
         Route::post('/templates/digits', [DigitTemplatesController::class, 'store'])
             ->middleware('throttle:api-v1-upload')
             ->name('api.v1.templates.digits.upload');
+
+        // Descarga del ZIP de consenso (top-N clusters por dígito).
+        Route::get('/templates/digits', [DigitTemplatesController::class, 'index'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.templates.digits.index');
 
         Route::post('/ocr/samples', [OcrSamplesController::class, 'store'])
             ->middleware('throttle:api-v1-ocr-samples')

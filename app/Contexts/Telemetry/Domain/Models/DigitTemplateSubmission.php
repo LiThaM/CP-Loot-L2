@@ -16,6 +16,8 @@ class DigitTemplateSubmission extends Model
         'anon_token_id',
         'char',
         'storage_path',
+        'phash',
+        'bot_version',
         'sharpness',
         'dim_w',
         'dim_h',

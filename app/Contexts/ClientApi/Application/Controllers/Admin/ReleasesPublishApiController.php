@@ -21,6 +21,7 @@ class ReleasesPublishApiController extends Controller
             'channel' => ['nullable', 'string', 'in:stable,beta'],
             'critical_update' => ['nullable', 'boolean'],
             'min_supported_version' => ['nullable', 'string', 'max:50'],
+            'release_notes' => ['nullable', 'string', 'max:20000'],
             'release_notes_md' => ['nullable', 'string', 'max:20000'],
             'release_notes_es' => ['nullable', 'string', 'max:20000'],
             'release_notes_en' => ['nullable', 'string', 'max:20000'],
@@ -64,15 +65,20 @@ class ReleasesPublishApiController extends Controller
         $disk = Storage::disk('client_blobs');
         $disk->put($relPath, $bytes);
 
+        // `release_notes` (spec field) is treated as the canonical single-text
+        // payload — it backs release_notes_md, and seeds the i18n columns when
+        // the dev didn't provide localized variants.
+        $unifiedNotes = $data['release_notes'] ?? $data['release_notes_md'] ?? null;
+
         $payload = [
             'name' => $data['name'] ?? ('AdenaLedgerStats '.$data['version']),
             'channel' => $data['channel'] ?? 'stable',
             'storage_path' => $relPath,
             'sha256' => $sha256,
             'size_bytes' => $size,
-            'release_notes_md' => $data['release_notes_md'] ?? null,
-            'release_notes_es' => $data['release_notes_es'] ?? $data['release_notes_md'] ?? null,
-            'release_notes_en' => $data['release_notes_en'] ?? $data['release_notes_md'] ?? null,
+            'release_notes_md' => $unifiedNotes,
+            'release_notes_es' => $data['release_notes_es'] ?? $unifiedNotes,
+            'release_notes_en' => $data['release_notes_en'] ?? $unifiedNotes,
             'critical_update' => (bool) ($data['critical_update'] ?? false),
             'min_supported_version' => $data['min_supported_version'] ?? null,
             'released_at' => now(),

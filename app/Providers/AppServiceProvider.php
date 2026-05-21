@@ -52,8 +52,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api-v1-ocr-samples', function (Request $request) {
             $anon = $request->attributes->get('anon_token');
             return $anon
-                ? Limit::perDay(100)->by('anon:'.$anon->id)
-                : Limit::perDay(100)->by($request->ip());
+                ? Limit::perDay(200)->by('anon:'.$anon->id)
+                : Limit::perDay(200)->by($request->ip());
         });
 
         RateLimiter::for('api-v1-crashes', function (Request $request) {

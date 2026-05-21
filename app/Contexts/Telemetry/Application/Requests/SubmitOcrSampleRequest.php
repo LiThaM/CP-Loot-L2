@@ -23,11 +23,16 @@ class SubmitOcrSampleRequest extends FormRequest
                 'mimes:png',
                 'max:' . (int) (self::MAX_PNG_BYTES / 1024),
             ],
-            'ground_truth' => ['required', 'string', 'max:100'],
+            // Old field name (kept for backward-compat with the running client)
+            // and new spec field (`ocr_text`). At least one must be present —
+            // see withValidator below.
+            'ground_truth' => ['nullable', 'string', 'max:500'],
+            'ocr_text' => ['nullable', 'string', 'max:500'],
             'category' => ['required', 'string', 'in:' . implode(',', OcrSample::CATEGORIES)],
-            'expected_value' => ['nullable', 'string', 'max:100'],
-            'actual_ocr' => ['nullable', 'string', 'max:100'],
+            'expected_value' => ['nullable', 'string', 'max:500'],
+            'actual_ocr' => ['nullable', 'string', 'max:500'],
             'confidence' => ['nullable', 'numeric', 'between:0,1'],
+            'bot_version' => ['nullable', 'string', 'max:50', 'regex:/^[\w.\-+]+$/'],
         ];
     }
 
@@ -35,12 +40,22 @@ class SubmitOcrSampleRequest extends FormRequest
     {
         $validator->after(function ($v) {
             $gt = (string) $this->input('ground_truth', '');
-            // Anti-chat-with-nick defense: reject "<name>: <msg>" patterns.
-            if (preg_match('/^[^:\s]{2,20}:\s/u', $gt)) {
-                $v->errors()->add(
-                    'ground_truth',
-                    'ground_truth looks like a chat line with a player name and is rejected for privacy reasons.'
-                );
+            $ocrText = (string) $this->input('ocr_text', '');
+
+            if ($gt === '' && $ocrText === '') {
+                $v->errors()->add('ocr_text', 'Either ocr_text or ground_truth is required.');
+                return;
+            }
+
+            // Anti-chat-with-nick defense: reject "<name>: <msg>" patterns on
+            // either text field. Party nicks are PII; we must not corpus them.
+            foreach (['ground_truth' => $gt, 'ocr_text' => $ocrText] as $field => $text) {
+                if ($text !== '' && preg_match('/^[^:\s]{2,20}:\s/u', $text)) {
+                    $v->errors()->add(
+                        $field,
+                        $field.' looks like a chat line with a player name and is rejected for privacy reasons.'
+                    );
+                }
             }
         });
     }

@@ -146,4 +146,20 @@ class AdminReleasesPublishTest extends TestCase
         ])->assertStatus(422)
           ->assertJsonPath('error', 'invalid_extension');
     }
+
+    public function test_unified_release_notes_field_seeds_both_locales(): void
+    {
+        Sanctum::actingAs($this->admin, ['release:upload']);
+
+        $this->postJson('/api/v1/admin/releases', [
+            'version' => '0.8.0',
+            'release_notes' => "### Added\n- shared notes for both locales",
+            'binary' => $this->fakeBinary(),
+        ])->assertStatus(201);
+
+        $release = Release::where('version', '0.8.0')->first();
+        $this->assertSame("### Added\n- shared notes for both locales", $release->release_notes_md);
+        $this->assertSame("### Added\n- shared notes for both locales", $release->release_notes_es);
+        $this->assertSame("### Added\n- shared notes for both locales", $release->release_notes_en);
+    }
 }

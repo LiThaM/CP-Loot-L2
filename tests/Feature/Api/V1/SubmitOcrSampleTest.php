@@ -47,40 +47,52 @@ class SubmitOcrSampleTest extends TestCase
     {
         $response = $this->postJson('/api/v1/ocr/samples', [
             'image' => $this->makePng(),
-            'ground_truth' => '12345/67890',
+            'ocr_text' => '12345/67890',
             'category' => 'bar',
             'actual_ocr' => '12345/67800',
             'confidence' => 0.85,
+            'bot_version' => '0.5.4-alpha',
         ], $this->headers());
 
         $response->assertStatus(201)
-            ->assertJsonPath('status', 'accepted');
+            ->assertJsonPath('status', 'created')
+            ->assertJsonStructure(['sample_id', 'image_hash']);
 
         $this->assertSame(1, OcrSample::count());
+        $this->assertSame('0.5.4-alpha', OcrSample::first()->bot_version);
+        $this->assertSame('pending', OcrSample::first()->status);
     }
 
-    public function test_duplicate_image_returns_200_with_existing_id(): void
+    public function test_duplicate_image_returns_409(): void
     {
         $png = $this->makePng();
 
         $first = $this->postJson('/api/v1/ocr/samples', [
             'image' => $png,
-            'ground_truth' => '50/100',
+            'ocr_text' => '50/100',
             'category' => 'bar',
         ], $this->headers());
         $first->assertStatus(201);
 
-        // Re-upload same bytes
         $second = $this->postJson('/api/v1/ocr/samples', [
-            'image' => $this->makePng(), // same bytes (empty truecolor of same size)
-            'ground_truth' => '50/100',
+            'image' => $this->makePng(),
+            'ocr_text' => '50/100',
             'category' => 'bar',
         ], $this->headers());
 
-        $second->assertStatus(200)
-            ->assertJsonPath('status', 'duplicate');
+        $second->assertStatus(409)
+            ->assertJsonPath('error', 'duplicate');
 
         $this->assertSame(1, OcrSample::count());
+    }
+
+    public function test_ground_truth_legacy_field_still_works(): void
+    {
+        $this->postJson('/api/v1/ocr/samples', [
+            'image' => $this->makePng(),
+            'ground_truth' => '50/100',
+            'category' => 'bar',
+        ], $this->headers())->assertStatus(201);
     }
 
     public function test_ground_truth_with_chat_pattern_is_rejected(): void
@@ -93,6 +105,16 @@ class SubmitOcrSampleTest extends TestCase
           ->assertJsonValidationErrors('ground_truth');
     }
 
+    public function test_ocr_text_with_chat_pattern_is_rejected(): void
+    {
+        $this->postJson('/api/v1/ocr/samples', [
+            'image' => $this->makePng(),
+            'ocr_text' => 'PlayerName: nice loot',
+            'category' => 'chat',
+        ], $this->headers())->assertStatus(422)
+          ->assertJsonValidationErrors('ocr_text');
+    }
+
     public function test_invalid_category_is_rejected(): void
     {
         $this->postJson('/api/v1/ocr/samples', [
@@ -101,4 +123,14 @@ class SubmitOcrSampleTest extends TestCase
             'category' => 'invalid_cat',
         ], $this->headers())->assertStatus(422);
     }
+
+    public function test_level_category_is_accepted(): void
+    {
+        $this->postJson('/api/v1/ocr/samples', [
+            'image' => $this->makePng(),
+            'ocr_text' => 'Lvl 77',
+            'category' => 'level',
+        ], $this->headers())->assertStatus(201);
+    }
+
 }
