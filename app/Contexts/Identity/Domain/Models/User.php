@@ -15,7 +15,7 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
-    protected $fillable = ['name', 'email', 'password', 'cp_id', 'role_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at'];
+    protected $fillable = ['name', 'email', 'password', 'cp_id', 'role_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at', 'main_class_id', 'main_race', 'main_level'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -51,5 +51,15 @@ class User extends Authenticatable
     public function getTotalAdenaAttribute()
     {
         return $this->pointsLogs()->sum('adena');
+    }
+
+    public function characters()
+    {
+        return $this->hasMany(Character::class);
+    }
+
+    public function mainClass()
+    {
+        return $this->belongsTo(L2Class::class, 'main_class_id');
     }
 }

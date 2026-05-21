@@ -116,6 +116,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Secondary L2 characters of the authenticated user.
+    Route::post('/profile/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'store'])
+        ->name('profile.characters.store');
+    Route::patch('/profile/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'update'])
+        ->name('profile.characters.update');
+    Route::delete('/profile/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'destroy'])
+        ->name('profile.characters.destroy');
+    // JSON listing for another CP member — feeds the per-attendee char
+    // picker in the loot modal.
+    Route::get('/api/users/{user}/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'listForUser'])
+        ->name('api.users.characters');
 
     Route::get('/excluded', function (Request $request) {
         $user = $request->user();

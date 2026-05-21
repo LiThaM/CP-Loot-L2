@@ -12,6 +12,7 @@ class LootReportAttendee extends Model
     protected $fillable = [
         'loot_report_id',
         'user_id',
+        'character_id',
         'external_name',
         'is_external',
         'share_adena',
@@ -32,6 +33,11 @@ class LootReportAttendee extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function character()
+    {
+        return $this->belongsTo(\App\Contexts\Identity\Domain\Models\Character::class, 'character_id');
     }
 
     public function displayName(): string

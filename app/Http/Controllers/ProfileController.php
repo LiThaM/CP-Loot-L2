@@ -18,9 +18,30 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+        $user->loadMissing('characters.l2Class', 'mainClass');
+
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'characters' => $user->characters->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'l2_class_id' => $c->l2_class_id,
+                'class_name' => $c->l2Class?->name,
+                'race' => $c->race,
+                'level' => $c->level,
+            ])->values(),
+            'main_character' => [
+                'name' => $user->name,
+                'l2_class_id' => $user->main_class_id,
+                'class_name' => $user->mainClass?->name,
+                'race' => $user->main_race,
+                'level' => $user->main_level,
+            ],
+            'l2_classes' => \App\Contexts\Identity\Domain\Models\L2Class::orderBy('race')->orderBy('class_type')->orderBy('name')
+                ->get(['id', 'name', 'race', 'class_type']),
+            'l2_races' => \App\Contexts\Identity\Application\Services\CharacterCatalogService::RACES,
         ]);
     }
 
@@ -30,6 +51,19 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $request->user()->fill($request->validated());
+
+        // Derive main_race from the chosen main_class so the two stay
+        // coherent. Anything the form posted as `main_race` is overwritten
+        // when a class id is present — same pattern the Character model
+        // uses for secondary chars.
+        if ($request->user()->main_class_id) {
+            $class = \App\Contexts\Identity\Domain\Models\L2Class::find($request->user()->main_class_id);
+            if ($class) {
+                $request->user()->main_race = $class->race;
+            }
+        } else {
+            $request->user()->main_race = null;
+        }
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;

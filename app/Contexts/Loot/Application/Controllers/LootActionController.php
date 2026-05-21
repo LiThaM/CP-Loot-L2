@@ -36,6 +36,7 @@ class LootActionController extends Controller
             // New shape: attendees can include externals.
             'attendees' => 'nullable|array',
             'attendees.*.user_id' => 'nullable|integer|exists:users,id',
+            'attendees.*.character_id' => 'nullable|integer|exists:characters,id',
             'attendees.*.external_name' => 'nullable|string|max:80',
             // Legacy binary distribution + new percentage. Either may arrive.
             'adena_distribution' => 'nullable|in:attendees,cp',
@@ -96,6 +97,7 @@ class LootActionController extends Controller
                 LootReportAttendee::create([
                     'loot_report_id' => $report->id,
                     'user_id' => $attendee['user_id'],
+                    'character_id' => $attendee['character_id'] ?? null,
                     'external_name' => $attendee['external_name'],
                     'is_external' => $attendee['is_external'],
                 ]);
@@ -265,12 +267,13 @@ class LootActionController extends Controller
             $userIdsToCheck = [];
             foreach ($request->attendees as $att) {
                 $userId = isset($att['user_id']) && $att['user_id'] !== '' ? (int) $att['user_id'] : null;
+                $charId = isset($att['character_id']) && $att['character_id'] !== '' ? (int) $att['character_id'] : null;
                 $name = isset($att['external_name']) && $att['external_name'] !== '' ? (string) $att['external_name'] : null;
 
                 if (($userId === null && $name === null) || ($userId !== null && $name !== null)) {
                     return null;
                 }
-                $rows[] = ['user_id' => $userId, 'external_name' => $name];
+                $rows[] = ['user_id' => $userId, 'character_id' => $charId, 'external_name' => $name];
                 if ($userId !== null) {
                     $userIdsToCheck[] = $userId;
                 }
@@ -286,15 +289,30 @@ class LootActionController extends Controller
                 ->all();
             $cpUserSet = array_flip($cpUserIds);
 
-            return array_map(function ($row) use ($cpUserSet) {
+            // character_id must belong to the same user, otherwise drop it.
+            $charOwners = [];
+            $charIds = array_filter(array_column($rows, 'character_id'));
+            if (!empty($charIds)) {
+                $charOwners = \App\Contexts\Identity\Domain\Models\Character::whereIn('id', $charIds)
+                    ->pluck('user_id', 'id')
+                    ->toArray();
+            }
+
+            return array_map(function ($row) use ($cpUserSet, $charOwners) {
                 if ($row['user_id'] !== null && !isset($cpUserSet[$row['user_id']])) {
                     // Bot user / member of another CP / banned — record as
                     // external using the user's display name if we have it.
                     $name = User::whereKey($row['user_id'])->value('name') ?? '(unknown)';
-                    return ['user_id' => null, 'external_name' => $name, 'is_external' => true];
+                    return ['user_id' => null, 'character_id' => null, 'external_name' => $name, 'is_external' => true];
+                }
+                $charId = $row['character_id'];
+                if ($charId !== null && (!isset($charOwners[$charId]) || $charOwners[$charId] !== $row['user_id'])) {
+                    // Char belongs to another user — drop to default (main).
+                    $charId = null;
                 }
                 return [
                     'user_id' => $row['user_id'],
+                    'character_id' => $charId,
                     'external_name' => $row['external_name'],
                     'is_external' => $row['user_id'] === null,
                 ];
@@ -310,6 +328,7 @@ class LootActionController extends Controller
                 ->all();
             return array_map(fn ($uid) => [
                 'user_id' => (int) $uid,
+                'character_id' => null,
                 'external_name' => null,
                 'is_external' => false,
             ], $cpUserIds);

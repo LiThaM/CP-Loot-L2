@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             ChangelogSeeder::class,
             InitialReleaseSeeder::class,
             ClientApiKeySeeder::class,
+            L2ClassSeeder::class,
         ]);
 
         if (! app()->environment(['local', 'testing'])) {

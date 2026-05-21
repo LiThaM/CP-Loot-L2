@@ -4,15 +4,16 @@ import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import UpdatePreferencesForm from './Partials/UpdatePreferencesForm.vue';
+import CharactersSection from './Partials/CharactersSection.vue';
 import { Head } from '@inertiajs/vue3';
 
 defineProps({
-    mustVerifyEmail: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
+    mustVerifyEmail: { type: Boolean },
+    status: { type: String },
+    characters: { type: Array, default: () => [] },
+    mainCharacter: { type: Object, default: () => ({}) },
+    l2Classes: { type: Array, default: () => [] },
+    l2Races: { type: Array, default: () => [] },
 });
 </script>
 
@@ -37,6 +38,10 @@ defineProps({
             <div class="md:col-span-2 l2-panel p-6 rounded-2xl border-gray-200 dark:border-gray-800">
                 <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ $t('profile.preferences.title') }}</div>
                 <UpdatePreferencesForm />
+            </div>
+            <div class="md:col-span-2 l2-panel p-6 rounded-2xl border-gray-200 dark:border-gray-800">
+                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ $t('profile.chars.title') }}</div>
+                <CharactersSection :characters="characters" :main-character="mainCharacter" :l2-classes="l2Classes" :l2-races="l2Races" />
             </div>
             <div class="md:col-span-2 l2-panel p-6 rounded-2xl border-gray-200 dark:border-gray-800">
                 <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ $t('profile.delete.title') }}</div>

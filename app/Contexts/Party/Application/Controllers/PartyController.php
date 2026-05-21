@@ -818,6 +818,7 @@ class PartyController extends Controller
                 LootReportAttendee::create([
                     'loot_report_id' => $report->id,
                     'user_id' => $att->user_id,
+                    'character_id' => $att->character_id, // inherit char from source farm
                     'external_name' => $att->external_name,
                     'is_external' => $att->is_external,
                     'share_adena' => $perAttendee,
