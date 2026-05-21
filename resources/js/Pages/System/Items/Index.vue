@@ -206,7 +206,8 @@ const getGradeColor = (itemGrade) => {
                                         :updated-by-name="item.market_price_updated_by_name"
                                         :locale-tag="localeTag"
                                         :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
-                                        :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by :user :ago')"
+                                        :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
+                                        :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
                                         @update="(p) => onPriceUpdate(item, p)"
                                     />
                                 </td>

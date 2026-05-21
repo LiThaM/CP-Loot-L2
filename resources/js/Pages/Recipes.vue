@@ -352,6 +352,7 @@ const totalRecipeCost = computed(() => {
                                                     :editable="isAuthenticated"
                                                     :locale-tag="localeTag"
                                                     :label-edit="t('market_price.edit_cta')"
+                                                    :label-empty="t('market_price.empty_cta')"
                                                     :label-updated="t('market_price.tooltip_updated', { user: '{user}', ago: '{ago}' })"
                                                     size="sm"
                                                     @update="onRecipePriceUpdate"

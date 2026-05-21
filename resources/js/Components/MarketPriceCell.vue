@@ -13,6 +13,7 @@ const props = defineProps({
     size: { type: String, default: 'md' },
     labelEdit: { type: String, default: 'Click to edit' },
     labelUpdated: { type: String, default: 'Updated by :user :ago' },
+    labelEmpty: { type: String, default: '+ Set price' },
 });
 
 const emit = defineEmits(['update']);
@@ -134,9 +135,12 @@ const formatAgo = (iso) => {
             type="button"
             :title="tooltip"
             :disabled="!editable || saving"
-            class="font-cinzel text-orange-700 dark:text-orange-300 rounded transition-colors"
+            class="font-cinzel rounded transition-colors"
             :class="[
                 sizeClass,
+                display !== null ? 'text-orange-700 dark:text-orange-300' : '',
+                display === null && editable ? 'text-orange-600/70 dark:text-orange-400/70 border border-dashed border-orange-400/40 hover:border-orange-400' : '',
+                display === null && !editable ? 'text-gray-400 dark:text-gray-500' : '',
                 editable
                     ? 'hover:bg-orange-100 dark:hover:bg-orange-900/30 cursor-pointer'
                     : 'cursor-default',
@@ -145,7 +149,8 @@ const formatAgo = (iso) => {
             @click="startEdit"
         >
             <span v-if="display !== null">{{ shortDisplay }}</span>
-            <span v-else class="text-gray-400 dark:text-gray-500">—</span>
+            <span v-else-if="editable">{{ labelEmpty }}</span>
+            <span v-else>—</span>
         </button>
     </span>
 </template>

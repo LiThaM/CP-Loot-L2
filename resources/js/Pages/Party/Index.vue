@@ -1485,7 +1485,8 @@ watch(buySearch, throttle(async (val) => {
                                 :updated-by-name="item.market_price_updated_by_name"
                                 :locale-tag="localeTag"
                                 :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
-                                :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by :user :ago')"
+                                :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
+                                :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
                                 @update="(p) => onWarehousePriceUpdate(item.id, p)"
                             />
                             <div class="text-[10px] font-cinzel text-amber-700 dark:text-amber-300 mt-1">
