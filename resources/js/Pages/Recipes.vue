@@ -82,6 +82,8 @@ const flattenTree = (nodes, depth = 0) => {
 };
 
 // Build craftable recipes map from tree nodes: { itemId: { ratios: [{item_id, qty, name, image_url}] } }
+// `qty` is the per-unit-of-parent ratio. Prefer the value from the backend
+// (per_parent_qty) — falls back to dividing need/parentNeed for older trees.
 const buildCraftableMap = (nodes) => {
     const map = {};
     const walk = (list) => {
@@ -89,7 +91,8 @@ const buildCraftableMap = (nodes) => {
             if (n.children?.length && n.craft_recipe_id && !n.is_recipe && !map[n.item_id]) {
                 const parentNeed = n.need || 1;
                 map[n.item_id] = n.children.filter(c => !c.is_recipe).map(c => ({
-                    item_id: c.item_id, qty: Math.round(c.need / parentNeed) || 1,
+                    item_id: c.item_id,
+                    qty: (c.per_parent_qty ?? Math.round(c.need / parentNeed)) || 1,
                     name: c.name, image_url: c.image_url,
                 }));
             }
@@ -116,15 +119,20 @@ const getCalcItems = (nodes) => {
             items.push({
                 item_id: n.item_id, name: n.name, image_url: n.image_url,
                 need: n.need, needBuy, craftable: isCraftable, toCraft,
+                per_parent_qty: n.per_parent_qty ?? null,
                 depth,
             });
 
-            // If user chose to craft some, show sub-materials indented
+            // If user chose to craft some, show sub-materials indented.
+            // We pass `per_parent_qty: s.qty` so the calculator shows the
+            // recipe ratio next to the total ("25 (5/unit)" rather than just
+            // "25" — makes it obvious that 5 VoP × 5 Stones each = 25).
             if (isCraftable && toCraft > 0) {
                 const subs = craftMap[n.item_id];
                 const subNodes = subs.map(s => ({
                     ...s, item_id: s.item_id, need: s.qty * toCraft,
                     children: [], craft_recipe_id: craftMap[s.item_id] ? 1 : null,
+                    per_parent_qty: s.qty,
                 }));
                 addItems(subNodes, depth + 1);
             }
@@ -299,7 +307,10 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                                 <span class="text-sm truncate" :class="[node.is_recipe ? 'text-amber-400 font-bold italic' : 'text-gray-200', node.depth === 0 ? 'font-bold' : 'font-medium']">{{ node.name || 'Unknown' }}</span>
                                                 <span v-if="node.craft_recipe_id && node.children?.length" class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">{{ $t('recipes.tree.craftable') }}</span>
                                             </div>
-                                            <span class="text-xs font-mono font-bold text-yellow-400 flex-shrink-0">x{{ node.need }}</span>
+                                            <div class="flex flex-col items-end flex-shrink-0">
+                                                <span class="text-xs font-mono font-bold text-yellow-400">x{{ node.need }}</span>
+                                                <span v-if="node.depth > 0 && node.per_parent_qty && node.per_parent_qty !== node.need" class="text-[9px] font-mono text-gray-500 leading-none mt-0.5">{{ node.per_parent_qty }} / unit</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -326,6 +337,7 @@ const fmt = (n) => n?.toLocaleString() ?? '0';
                                                             <span class="text-amber-400 font-mono mr-1">{{ it.need }}</span>
                                                             {{ it.name }}
                                                         </span>
+                                                        <span v-if="it.depth > 0 && it.per_parent_qty" class="text-[9px] font-mono text-gray-500">({{ it.per_parent_qty }}/unit)</span>
                                                     </div>
                                                     <!-- Craftable: show need + to craft + slider -->
                                                     <div v-if="it.craftable" class="mt-1.5">

@@ -162,6 +162,7 @@ class PublicCraftingController extends Controller
         int $depth,
         string $chronicle,
         array $ancestors = [],
+        int $perParentQty = 1,
     ): array {
         $craftRecipeId = $craftableMap[$itemId] ?? null;
         $children = [];
@@ -175,16 +176,32 @@ class PublicCraftingController extends Controller
 
             if ($craftRecipe) {
                 $branchAncestors = array_merge($ancestors, [$craftRecipeId]);
-                $children = $craftRecipe->materials->map(function ($mat) use ($need, $depth, $chronicle, $craftableMap, $branchAncestors) {
+                $outputQty = max(1, (int) ($craftRecipe->output_quantity ?? 1));
+                $children = $craftRecipe->materials->map(function ($mat) use ($need, $depth, $chronicle, $craftableMap, $branchAncestors, $outputQty) {
+                    $matQty = (int) ($mat->quantity ?? 1);
+                    // Per-parent ratio = how many of this child you need to
+                    // make ONE unit of the parent (the recipe ratio). The
+                    // UI shows this as "(N / unit)" subtitle so the user
+                    // doesn't read "× 5 under × 5 parent" as "5 per parent"
+                    // (which would be 25 total). For recipes that output
+                    // more than 1 unit at a time we divide accordingly.
+                    $ratioPerParent = $outputQty > 1
+                        ? (int) ceil($matQty / $outputQty)
+                        : $matQty;
                     return $this->buildNode(
                         itemId: (int) $mat->item_id,
                         name: $mat->item?->name,
                         imageUrl: $mat->item?->image_url,
-                        need: (int) ($mat->quantity ?? 1) * max(1, $need),
+                        // Total = mat per recipe × number of crafts needed
+                        // to cover the parent need. ceil() handles the case
+                        // where you must over-craft (e.g. need 5 of a thing
+                        // that comes 2 per craft → 3 crafts → 6 produced).
+                        need: $matQty * (int) ceil(max(1, $need) / $outputQty),
                         craftableMap: $craftableMap,
                         depth: $depth - 1,
                         chronicle: $chronicle,
                         ancestors: $branchAncestors,
+                        perParentQty: $ratioPerParent,
                     );
                 })->values()->all();
             }
@@ -195,6 +212,7 @@ class PublicCraftingController extends Controller
             'name' => $name,
             'image_url' => $imageUrl,
             'need' => $need,
+            'per_parent_qty' => $perParentQty,
             'craft_recipe_id' => $craftRecipeId,
             'children' => $children,
         ];
