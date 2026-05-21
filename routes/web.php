@@ -228,6 +228,13 @@ Route::middleware('auth')->group(function () {
         ->where('fingerprint', '[a-f0-9]{64}')
         ->name('system.crashes.destroy');
 
+    // External payouts (leaders + admin) — adena owed to non-CP attendees
+    // that the leader needs to settle outside the system.
+    Route::get('/system/external-payouts', [\App\Contexts\Party\Application\Controllers\ExternalPayoutsController::class, 'index'])
+        ->name('system.external_payouts.index');
+    Route::post('/system/external-payouts/{attendee}/mark-paid', [\App\Contexts\Party\Application\Controllers\ExternalPayoutsController::class, 'markPaid'])
+        ->name('system.external_payouts.mark_paid');
+
     // User Management (Admin & CP Leader Audit)
     Route::get('/system/users', [UserManagementController::class, 'index'])->name('system.users.index');
     Route::get('/system/users/{user}/logs', [UserManagementController::class, 'logs'])->name('system.users.logs');
@@ -274,6 +281,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/warehouse/buy', [PartyController::class, 'buyStock'])->name('warehouse.buy');
     Route::post('/warehouse/sell', [PartyController::class, 'sell'])->name('warehouse.sell');
     Route::get('/api/warehouse/sell/default-recipients', [PartyController::class, 'defaultSellRecipients'])->name('api.warehouse.sell.defaultRecipients');
+    Route::get('/api/warehouse/sell/source-candidates', [PartyController::class, 'sellSourceCandidates'])->name('api.warehouse.sell.sourceCandidates');
     Route::post('/cp/recipes', [CraftingController::class, 'store'])->name('cp.recipes.store');
     Route::post('/cp/recipes/{cpRecipe}/move', [CraftingController::class, 'move'])->name('cp.recipes.move');
     Route::delete('/cp/recipes/{cpRecipe}', [CraftingController::class, 'destroy'])->name('cp.recipes.destroy');

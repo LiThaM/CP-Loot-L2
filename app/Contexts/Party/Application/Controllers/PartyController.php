@@ -8,6 +8,7 @@ use App\Contexts\Loot\Domain\Models\CpRecipe;
 use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
+use App\Contexts\Loot\Domain\Models\LootReportAttendee;
 use App\Contexts\Loot\Domain\Models\Recipe;
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\PointsLog;
@@ -663,7 +664,14 @@ class PartyController extends Controller
             'item_id' => 'required|exists:items,id',
             'amount' => 'required|integer|min:1',
             'unit_price' => 'required|integer|min:1',
-            'adena_distribution' => 'required|in:cp,attendees',
+            // source_report_id is REQUIRED — the leader picks which farm
+            // session is being liquidated so the right people get paid.
+            // Falling back to "last farm with this item" was the bug.
+            'source_report_id' => 'required|integer|exists:loot_reports,id',
+            'cp_share_pct' => 'required|integer|min:0|max:100',
+            // Legacy fields tolerated for back-compat, ignored if the new
+            // ones arrive.
+            'adena_distribution' => 'nullable|in:cp,attendees',
             'recipient_ids' => 'nullable|array',
             'recipient_ids.*' => 'integer|exists:users,id',
             'image_proof' => 'required|image|max:4096',
@@ -687,6 +695,17 @@ class PartyController extends Controller
             return back()->withErrors(['item_id' => 'La Adena se gestiona como saldo, no se vende como ítem del warehouse.']);
         }
 
+        $sourceReport = LootReport::with('attendees')->find($request->source_report_id);
+        if (!$sourceReport || $sourceReport->cp_id !== $cpId || $sourceReport->status !== 'confirmed') {
+            return back()->withErrors(['source_report_id' => 'La sesión de farm seleccionada no es válida para esta CP.']);
+        }
+        $sourceHasItem = LootEntry::where('loot_report_id', $sourceReport->id)
+            ->where('item_id', $item->id)
+            ->exists();
+        if (!$sourceHasItem) {
+            return back()->withErrors(['source_report_id' => 'Esa sesión de farm no contiene este ítem.']);
+        }
+
         $incoming = LootEntry::query()
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
@@ -708,34 +727,33 @@ class PartyController extends Controller
             return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
         }
 
-        $recipientIds = [];
-        if ($request->adena_distribution === 'attendees') {
-            $requested = is_array($request->recipient_ids) ? $request->recipient_ids : [];
-            $recipientIds = User::where('cp_id', $cpId)
-                ->whereIn('id', $requested)
-                ->pluck('id')
-                ->all();
-            if (count($recipientIds) === 0) {
-                return back()->withErrors(['recipient_ids' => 'Selecciona al menos un miembro para el split.']);
-            }
+        $sourceAttendees = $sourceReport->attendees;
+        if ($sourceAttendees->isEmpty() && (int) $request->cp_share_pct < 100) {
+            return back()->withErrors(['source_report_id' => 'La sesión origen no tiene attendees registrados; o márcala con 100% al CP fund o resuelve la sesión añadiendo attendees.']);
         }
 
         $amount = (int) $request->amount;
         $unitPrice = (int) $request->unit_price;
+        $cpSharePct = (int) $request->cp_share_pct;
         $totalAdena = $amount * $unitPrice;
 
-        $sourceReport = LootReport::query()
-            ->select('loot_reports.*')
-            ->join('loot_entries', 'loot_entries.loot_report_id', '=', 'loot_reports.id')
-            ->where('loot_reports.cp_id', $cpId)
-            ->where('loot_reports.status', 'confirmed')
-            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'RETURN'])
-            ->where('loot_entries.item_id', $item->id)
-            ->orderByDesc('loot_reports.id')
-            ->first();
+        // Split math:
+        //   cpShare    = floor(total * pct / 100)                       (intent)
+        //   toAtt      = total - cpShare                                (intent)
+        //   perAtt     = floor(toAtt / N)
+        //   leftover   = toAtt - perAtt * N                             (rounding rest)
+        //   cpFund     = cpShare + leftover                             (actual into vault)
+        $cpShare = intdiv($totalAdena * $cpSharePct, 100);
+        $count = $sourceAttendees->count();
+        $toAttendees = $totalAdena - $cpShare;
+        $perAttendee = $count > 0 ? intdiv($toAttendees, $count) : 0;
+        $leftover = $count > 0 ? $toAttendees - ($perAttendee * $count) : $toAttendees;
+        $cpFundFinal = $cpShare + $leftover;
+
+        $memberIds = $sourceAttendees->where('is_external', false)->pluck('user_id')->filter()->all();
 
         try {
-            DB::transaction(function () use ($request, $cpId, $current, $item, $amount, $unitPrice, $totalAdena, $recipientIds, $sourceReport) {
+            DB::transaction(function () use ($request, $cpId, $current, $item, $amount, $unitPrice, $totalAdena, $sourceReport, $sourceAttendees, $cpSharePct, $cpShare, $perAttendee, $cpFundFinal, $memberIds) {
                 Item::whereKey($item->id)->lockForUpdate()->first();
 
                 $incoming = LootEntry::query()
@@ -765,8 +783,9 @@ class PartyController extends Controller
                 'event_type' => 'SELL',
                 'status' => 'confirmed',
                 'image_proof' => null,
-                'recipient_ids' => $request->adena_distribution === 'attendees' ? $recipientIds : null,
-                'adena_distribution' => $request->adena_distribution,
+                'recipient_ids' => !empty($memberIds) ? $memberIds : null,
+                'adena_distribution' => $cpSharePct === 100 ? 'cp' : 'attendees',
+                'cp_share_pct' => $cpSharePct,
             ]);
 
             $file = $request->file('image_proof');
@@ -790,19 +809,29 @@ class PartyController extends Controller
                 ]);
             }
 
-            if ($request->adena_distribution === 'attendees' && count($recipientIds) > 0) {
-                $split = intdiv($totalAdena, count($recipientIds));
-                if ($split > 0) {
-                    foreach ($recipientIds as $uid) {
-                        PointsLog::create([
-                            'cp_id' => $cpId,
-                            'user_id' => $uid,
-                            'action_type' => 'ADENA_GAIN',
-                            'points' => 0,
-                            'adena' => $split,
-                            'description' => 'Split de venta ('.$item->name.') - Reporte #'.$report->id.($sourceReport ? ' (origen #'.$sourceReport->id.')' : ''),
-                        ]);
-                    }
+            // Persist the per-attendee share on the SELL report (not the
+            // source farm) so we keep a per-sale history. External attendees
+            // get a row with share_adena but no PointsLog — the leader pays
+            // them outside the app and marks paid_at via the external
+            // payouts page.
+            foreach ($sourceAttendees as $att) {
+                LootReportAttendee::create([
+                    'loot_report_id' => $report->id,
+                    'user_id' => $att->user_id,
+                    'external_name' => $att->external_name,
+                    'is_external' => $att->is_external,
+                    'share_adena' => $perAttendee,
+                ]);
+
+                if (!$att->is_external && $att->user_id && $perAttendee > 0) {
+                    PointsLog::create([
+                        'cp_id' => $cpId,
+                        'user_id' => $att->user_id,
+                        'action_type' => 'ADENA_GAIN',
+                        'points' => 0,
+                        'adena' => $perAttendee,
+                        'description' => 'Split de venta ('.$item->name.') - Reporte #'.$report->id.' (origen #'.$sourceReport->id.')',
+                    ]);
                 }
             }
 
@@ -818,9 +847,12 @@ class PartyController extends Controller
                     'amount' => (int) $amount,
                     'unit_price' => (int) $unitPrice,
                     'total' => (int) $totalAdena,
-                    'adena_distribution' => $request->adena_distribution,
-                    'recipient_ids' => $request->adena_distribution === 'attendees' ? $recipientIds : [],
-                    'source_report_id' => $sourceReport?->id,
+                    'cp_share_pct' => $cpSharePct,
+                    'cp_share' => (int) $cpFundFinal,
+                    'per_attendee' => (int) $perAttendee,
+                    'attendees_count' => $sourceAttendees->count(),
+                    'external_count' => $sourceAttendees->where('is_external', true)->count(),
+                    'source_report_id' => $sourceReport->id,
                 ],
             ]);
             $recipients = collect([$current->id]);
@@ -828,17 +860,13 @@ class PartyController extends Controller
             if ($leaderId) {
                 $recipients->push($leaderId);
             }
-            if ($request->adena_distribution === 'attendees') {
-                foreach ($recipientIds as $rid) {
-                    $recipients->push($rid);
-                }
+            foreach ($memberIds as $rid) {
+                $recipients->push($rid);
             }
             $recipients = $recipients->unique()->values();
             $totalLabel = number_format((int) $totalAdena, 0, ',', '.');
             $summary = "{$current->name} vendió {$item->name} x{$amount} por {$totalLabel} Adena";
-            if ($sourceReport) {
-                $summary .= " (origen #{$sourceReport->id})";
-            }
+            $summary .= " (origen #{$sourceReport->id})";
             $now = now();
             $rows = $recipients->map(fn ($rid) => [
                 'audit_log_id' => $audit->id,
@@ -848,7 +876,7 @@ class PartyController extends Controller
                 'entity_id' => $report->id,
                 'action' => 'WAREHOUSE_SELL',
                 'summary' => $summary,
-                'meta' => json_encode(['report_id' => $report->id, 'source_report_id' => $sourceReport?->id, 'item_id' => (int) $item->id]),
+                'meta' => json_encode(['report_id' => $report->id, 'source_report_id' => $sourceReport->id, 'item_id' => (int) $item->id]),
                 'created_at' => $now,
                 'updated_at' => $now,
             ])->all();
@@ -909,6 +937,105 @@ class PartyController extends Controller
 
         return response()->json([
             'recipient_ids' => $ids,
+        ]);
+    }
+
+    /**
+     * Lists confirmed farm sessions that contain a given item and still have
+     * unsold stock attributable to them — feeds the "Sesión de farm origen"
+     * dropdown in the sell modal. The math: for each candidate report,
+     * `farmed = sum of LootEntry.amount in that report for this item`, and
+     * `sold = sum of LootEntry.amount in SELL reports whose audit row points
+     * at this same source_report_id and item_id`. Pending = farmed - sold.
+     */
+    public function sellSourceCandidates(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:items,id',
+        ]);
+
+        $current = $request->user();
+        $roleName = $current->role?->name;
+        if (! in_array($roleName, ['admin', 'cp_leader', 'accountant'], true)) {
+            abort(403);
+        }
+        if (! $current->cp_id && $roleName !== 'admin') {
+            abort(403);
+        }
+
+        $cpId = $current->cp_id;
+        $itemId = (int) $request->item_id;
+
+        $farms = LootReport::query()
+            ->select('loot_reports.id', 'loot_reports.event_type', 'loot_reports.requested_by_id', 'loot_reports.created_at', 'loot_reports.cp_share_pct')
+            ->selectSub(
+                LootEntry::query()
+                    ->selectRaw('SUM(amount)')
+                    ->whereColumn('loot_entries.loot_report_id', 'loot_reports.id')
+                    ->where('loot_entries.item_id', $itemId),
+                'farmed'
+            )
+            ->where('loot_reports.cp_id', $cpId)
+            ->where('loot_reports.status', 'confirmed')
+            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'RETURN', 'WAREHOUSE_CRAFT_CONSUME'])
+            ->whereExists(function ($q) use ($itemId) {
+                $q->select(DB::raw(1))
+                    ->from('loot_entries')
+                    ->whereColumn('loot_entries.loot_report_id', 'loot_reports.id')
+                    ->where('loot_entries.item_id', $itemId);
+            })
+            ->orderByDesc('loot_reports.id')
+            ->with('requestedBy:id,name', 'attendees')
+            ->get();
+
+        // Pre-compute sold-against-source per source_report_id by walking the
+        // audit log. AuditLog.new_values is a JSON column.
+        $soldBySource = collect(
+            DB::table('audit_logs')
+                ->where('action', 'WAREHOUSE_SELL')
+                ->get(['new_values'])
+        )->reduce(function ($acc, $row) use ($itemId) {
+            $payload = is_string($row->new_values) ? json_decode($row->new_values, true) : (array) $row->new_values;
+            if (!is_array($payload)) {
+                return $acc;
+            }
+            if ((int) ($payload['item_id'] ?? 0) !== $itemId) {
+                return $acc;
+            }
+            $srcId = (int) ($payload['source_report_id'] ?? 0);
+            if ($srcId === 0) {
+                return $acc;
+            }
+            $acc[$srcId] = ($acc[$srcId] ?? 0) + (int) ($payload['amount'] ?? 0);
+            return $acc;
+        }, []);
+
+        $candidates = $farms->map(function ($r) use ($soldBySource) {
+            $farmed = (int) ($r->farmed ?? 0);
+            $sold = (int) ($soldBySource[$r->id] ?? 0);
+            $pending = max(0, $farmed - $sold);
+
+            return [
+                'id' => $r->id,
+                'event_type' => $r->event_type,
+                'requested_by' => $r->requestedBy?->name,
+                'created_at' => $r->created_at?->toIso8601String(),
+                'cp_share_pct' => (int) ($r->cp_share_pct ?? 0),
+                'farmed' => $farmed,
+                'sold' => $sold,
+                'pending' => $pending,
+                'attendees' => $r->attendees->map(fn ($a) => [
+                    'id' => $a->id,
+                    'user_id' => $a->user_id,
+                    'name' => $a->is_external ? $a->external_name : ($a->user?->name ?? null),
+                    'is_external' => (bool) $a->is_external,
+                ])->values(),
+            ];
+        })->filter(fn ($r) => $r['pending'] > 0)->values();
+
+        return response()->json([
+            'item_id' => $itemId,
+            'candidates' => $candidates,
         ]);
     }
 

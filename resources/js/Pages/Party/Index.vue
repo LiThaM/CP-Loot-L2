@@ -673,10 +673,21 @@ const sellForm = useForm({
     item_id: null,
     amount: 1,
     unit_price: 1,
-    adena_distribution: 'cp',
-    recipient_ids: [],
+    source_report_id: null,
+    cp_share_pct: 0,
     image_proof: null,
 });
+
+const sellSourceCandidates = ref([]);
+const sellSourceLoading = ref(false);
+const sellSharePresets = [0, 10, 20, 50, 100];
+
+const sellSelectedSource = computed(() => {
+    if (!sellForm.source_report_id) return null;
+    return sellSourceCandidates.value.find((c) => Number(c.id) === Number(sellForm.source_report_id)) || null;
+});
+
+const sellAttendees = computed(() => sellSelectedSource.value?.attendees ?? []);
 
 const sellTotalAdena = computed(() => {
     const amount = Number(sellForm.amount ?? 0);
@@ -685,22 +696,31 @@ const sellTotalAdena = computed(() => {
     return Math.max(0, Math.trunc(amount) * Math.trunc(price));
 });
 
-const sellSplitCount = computed(() => {
-    if (sellForm.adena_distribution !== 'attendees') return 0;
-    return Array.isArray(sellForm.recipient_ids) ? sellForm.recipient_ids.length : 0;
+const sellSplitCount = computed(() => sellAttendees.value.length);
+
+const sellCpShareIntent = computed(() => {
+    const pct = Math.max(0, Math.min(100, Number(sellForm.cp_share_pct ?? 0)));
+    return Math.floor((sellTotalAdena.value * pct) / 100);
 });
+
+const sellToAttendees = computed(() => Math.max(0, sellTotalAdena.value - sellCpShareIntent.value));
 
 const sellPerMember = computed(() => {
     const c = sellSplitCount.value;
     if (c <= 0) return 0;
-    return Math.floor(sellTotalAdena.value / c);
+    return Math.floor(sellToAttendees.value / c);
 });
 
-const sellRemainderToCp = computed(() => {
-    const total = sellTotalAdena.value;
+const sellCpFundFinal = computed(() => {
     const c = sellSplitCount.value;
-    if (c <= 0) return total;
-    return Math.max(0, total - (sellPerMember.value * c));
+    if (c <= 0) return sellTotalAdena.value;
+    const leftover = sellToAttendees.value - sellPerMember.value * c;
+    return sellCpShareIntent.value + leftover;
+});
+
+const sellExternalOwed = computed(() => {
+    const externals = sellAttendees.value.filter((a) => a.is_external).length;
+    return externals * sellPerMember.value;
 });
 
 const openSell = (item) => {
@@ -708,11 +728,36 @@ const openSell = (item) => {
     sellForm.item_id = item.id;
     sellForm.amount = 1;
     sellForm.unit_price = 1;
-    sellForm.adena_distribution = 'cp';
-    sellForm.recipient_ids = [];
+    sellForm.source_report_id = null;
+    sellForm.cp_share_pct = 0;
     sellForm.image_proof = null;
+    sellSourceCandidates.value = [];
     sellModalOpen.value = true;
+    loadSellSourceCandidates(item.id);
 };
+
+const loadSellSourceCandidates = async (itemId) => {
+    sellSourceLoading.value = true;
+    try {
+        const { data } = await axios.get(route('api.warehouse.sell.sourceCandidates'), { params: { item_id: itemId } });
+        sellSourceCandidates.value = Array.isArray(data?.candidates) ? data.candidates : [];
+        if (sellSourceCandidates.value.length === 1) {
+            sellForm.source_report_id = sellSourceCandidates.value[0].id;
+            sellForm.cp_share_pct = sellSourceCandidates.value[0].cp_share_pct ?? 0;
+        }
+    } catch (_) {
+        sellSourceCandidates.value = [];
+    } finally {
+        sellSourceLoading.value = false;
+    }
+};
+
+watch(() => sellForm.source_report_id, (val) => {
+    const found = sellSourceCandidates.value.find((c) => Number(c.id) === Number(val));
+    if (found && found.cp_share_pct !== undefined) {
+        sellForm.cp_share_pct = found.cp_share_pct;
+    }
+});
 
 const submitSell = () => {
     sellForm.post(route('warehouse.sell'), {
@@ -728,21 +773,6 @@ const submitSell = () => {
     });
 };
 
-const loadDefaultSellRecipients = async (itemId) => {
-    try {
-        const { data } = await axios.get(route('api.warehouse.sell.defaultRecipients'), { params: { item_id: itemId } });
-        return Array.isArray(data?.recipient_ids) ? data.recipient_ids : [];
-    } catch (_) {
-        return [];
-    }
-};
-
-watch(() => sellForm.adena_distribution, async (val, oldVal) => {
-    if (val === 'attendees' && (!sellForm.recipient_ids || sellForm.recipient_ids.length === 0) && selectedSellItem?.value?.id) {
-        const ids = await loadDefaultSellRecipients(selectedSellItem.value.id);
-        sellForm.recipient_ids = ids;
-    }
-});
 
 const copyInviteLink = () => {
     const link = `${window.location.origin}/register?invite=${props.cp.invite_code}`;
@@ -1977,47 +2007,58 @@ watch(buySearch, throttle(async (val) => {
                     </div>
                 </div>
 
-                <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">{{ $t('party.adena_destination') }}</div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
-                            <input type="radio" value="cp" v-model="sellForm.adena_distribution" class="text-emerald-500">
-                            <div class="min-w-0">
-                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">{{ $t('party.cp_fund') }}</div>
-                                <div class="text-[10px] text-gray-500">{{ $t('party.no_split_desc') }}</div>
-                            </div>
-                        </label>
-                        <label class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
-                            <input type="radio" value="attendees" v-model="sellForm.adena_distribution" class="text-emerald-500">
-                            <div class="min-w-0">
-                                <div class="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">{{ $t('party.split') }}</div>
-                                <div class="text-[10px] text-gray-500">{{ $t('party.split_desc') }}</div>
-                            </div>
-                        </label>
+                <!-- Source farm session picker -->
+                <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('sell.source_session.label') }}</div>
+                    <div v-if="sellSourceLoading" class="text-xs text-gray-500 italic">…</div>
+                    <select v-else v-model.number="sellForm.source_report_id" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl h-10 px-3 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                        <option :value="null" disabled>{{ $t('sell.source_session.placeholder') }}</option>
+                        <option v-for="c in sellSourceCandidates" :key="c.id" :value="c.id">
+                            #{{ c.id }} · {{ c.event_type }} · {{ c.requested_by || '—' }} · {{ $t('sell.source_session.pending', { n: c.pending }) }}
+                        </option>
+                    </select>
+                    <div v-if="!sellSourceLoading && sellSourceCandidates.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                        {{ $t('sell.source_session.empty') }}
                     </div>
 
-                    <div v-if="sellForm.adena_distribution === 'cp'" class="mt-4 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                        {{ $t('party.cp_receives_adena', { amount: formatAdenaShort(sellTotalAdena) }) }}
+                    <div v-if="sellSelectedSource" class="mt-3 space-y-2 border-t border-gray-200 dark:border-gray-800 pt-3">
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.attendees.title') }} ({{ sellAttendees.length }})</div>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-for="att in sellAttendees" :key="att.id"
+                                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                                  :class="att.is_external
+                                      ? 'bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300'
+                                      : 'bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300'">
+                                <span v-if="att.is_external" class="uppercase tracking-widest text-[9px] opacity-70">{{ $t('loot.attendees.external_badge') }}</span>
+                                {{ att.name || '(?)' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CP fund percentage + split summary -->
+                <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('sell.split.cp_share') }}</div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button v-for="p in sellSharePresets" :key="'sp-'+p" type="button"
+                                @click="sellForm.cp_share_pct = p"
+                                class="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg border transition"
+                                :class="Number(sellForm.cp_share_pct) === p ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white/70 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-400'">
+                            {{ p }}%
+                        </button>
+                        <input v-model.number="sellForm.cp_share_pct" type="number" min="0" max="100"
+                               class="w-20 px-2 py-1.5 text-xs text-center rounded-lg border border-gray-200 bg-white/80 dark:bg-gray-900/40 dark:border-gray-700 dark:text-white">
                     </div>
 
-                    <div v-if="sellForm.adena_distribution === 'attendees'" class="mt-4 space-y-3">
-                        <div class="flex items-center justify-between gap-3">
-                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('party.split_members') }}</div>
-                            <div class="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                                {{ sellSplitCount }} • x{{ formatAdenaShort(sellPerMember) }}
-                            </div>
+                    <div v-if="sellTotalAdena > 0" class="space-y-1 pt-3 border-t border-gray-200 dark:border-gray-800">
+                        <div class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                            {{ $t('sell.split.summary.cp') }}: <span class="font-cinzel text-purple-700 dark:text-purple-300">{{ formatAdenaShort(sellCpFundFinal) }}</span>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto custom-scrollbar pr-1">
-                            <label v-for="m in members" :key="m.id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:border-emerald-500/30 transition dark:bg-black/40 dark:border-gray-800">
-                                <input type="checkbox" :value="m.id" v-model="sellForm.recipient_ids" class="text-emerald-500">
-                                <div class="text-sm text-gray-800 dark:text-gray-200 font-bold truncate">{{ m.name }}</div>
-                                <div v-if="sellForm.recipient_ids.includes(m.id)" class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                                    +{{ formatAdenaShort(sellPerMember) }}
-                                </div>
-                            </label>
+                        <div v-if="sellSplitCount > 0" class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                            {{ $t('sell.split.summary.each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(sellPerMember) }}</span> × {{ sellSplitCount }}
                         </div>
-                        <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                            {{ $t('party.remainder_to_cp', { amount: formatAdenaShort(sellRemainderToCp) }) }}
+                        <div v-if="sellExternalOwed > 0" class="text-[10px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-widest">
+                            {{ $t('sell.split.summary.externals') }}: <span class="font-cinzel">{{ formatAdenaShort(sellExternalOwed) }}</span>
                         </div>
                     </div>
                 </div>
@@ -2044,7 +2085,7 @@ watch(buySearch, throttle(async (val) => {
 
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="sellModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
-                <button @click="submitSell" :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof || (sellForm.adena_distribution === 'attendees' && (!sellForm.recipient_ids || sellForm.recipient_ids.length === 0))" class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.register_sale') }}</button>
+                <button @click="submitSell" :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof || !sellForm.source_report_id" class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.register_sale') }}</button>
             </div>
         </div>
     </div>

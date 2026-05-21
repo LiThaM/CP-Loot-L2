@@ -169,9 +169,15 @@ const lootForm = useForm({
     event_type: 'FARM', // Default
     items: [], // Array of { item_id, name, icon, amount }
     image_proof: null,
-    recipient_ids: [],
-    adena_distribution: 'cp',
+    // Modern payload: each attendee is either {user_id} (CP member) or
+    // {external_name} (non-CP farmer). The legacy `recipient_ids` and
+    // `adena_distribution` are no longer sent.
+    attendees: [],
+    cp_share_pct: 0,
 });
+
+const newExternalName = ref('');
+const sharePresets = [0, 10, 20, 50, 100];
 
 const eventTypes = [
     { value: 'FARM', labelKey: 'loot.event_types.farm', icon: '🧺' },
@@ -234,12 +240,32 @@ const normalizeAmount = (item) => {
 };
 
 const toggleRecipient = (userId) => {
-    if (lootForm.recipient_ids.includes(userId)) {
-        lootForm.recipient_ids = lootForm.recipient_ids.filter(id => id !== userId);
+    const idx = lootForm.attendees.findIndex((a) => Number(a.user_id) === Number(userId));
+    if (idx >= 0) {
+        lootForm.attendees.splice(idx, 1);
         return;
     }
-    lootForm.recipient_ids.push(userId);
+    lootForm.attendees.push({ user_id: userId });
 };
+
+const addExternalAttendee = () => {
+    const name = String(newExternalName.value || '').trim();
+    if (name.length < 2) return;
+    const exists = lootForm.attendees.some((a) => a.external_name && a.external_name.toLowerCase() === name.toLowerCase());
+    if (exists) {
+        newExternalName.value = '';
+        return;
+    }
+    lootForm.attendees.push({ external_name: name });
+    newExternalName.value = '';
+};
+
+const removeAttendee = (idx) => {
+    lootForm.attendees.splice(idx, 1);
+};
+
+const isMemberSelected = (userId) => lootForm.attendees.some((a) => Number(a.user_id) === Number(userId));
+const lootExternalAttendees = computed(() => lootForm.attendees.filter((a) => a.external_name));
 
 const submitLoot = () => {
     lootForm.post(route('loot.report.store'), {
@@ -297,24 +323,36 @@ const lootAdenaTotal = computed(() => {
 });
 
 const lootSelectedMembers = computed(() => {
-    const ids = Array.isArray(lootForm.recipient_ids) ? lootForm.recipient_ids : [];
-    if (ids.length === 0) return [];
-    const set = new Set(ids.map((id) => Number(id)));
-    return (cpMembers.value || []).filter((m) => set.has(Number(m.id)));
+    const memberIds = new Set(
+        lootForm.attendees
+            .filter((a) => a.user_id)
+            .map((a) => Number(a.user_id))
+    );
+    if (memberIds.size === 0) return [];
+    return (cpMembers.value || []).filter((m) => memberIds.has(Number(m.id)));
 });
 
 const lootAdenaSplitPreview = computed(() => {
     const total = lootAdenaTotal.value;
     if (total <= 0) return null;
-    const ids = Array.isArray(lootForm.recipient_ids) ? lootForm.recipient_ids : [];
-    const count = ids.length;
-    const mode = String(lootForm.adena_distribution || 'cp');
-    if (mode === 'attendees' && count > 0) {
-        const perMember = Math.floor(total / count);
-        const remainderToCp = Math.max(0, total - (perMember * count));
-        return { mode, total, perMember, remainderToCp };
-    }
-    return { mode: 'cp', total, perMember: 0, remainderToCp: total };
+    const pct = Math.max(0, Math.min(100, Number(lootForm.cp_share_pct ?? 0)));
+    const count = lootForm.attendees.length;
+    const cpShareIntent = Math.floor((total * pct) / 100);
+    const toAttendees = total - cpShareIntent;
+    const perMember = count > 0 ? Math.floor(toAttendees / count) : 0;
+    const remainderToCp = count > 0 ? toAttendees - perMember * count : toAttendees;
+    const cpFundFinal = cpShareIntent + remainderToCp;
+    const externals = lootForm.attendees.filter((a) => a.external_name);
+    const externalOwed = externals.length * perMember;
+    return {
+        total,
+        pct,
+        cpFundFinal,
+        perMember,
+        externalCount: externals.length,
+        externalOwed,
+        attendeeCount: count,
+    };
 });
 
 const isAdenaName = (val) => String(val ?? '').trim().toLowerCase() === 'adena';
@@ -484,6 +522,7 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">{{ $t('nav.translations') }}</Link>
                             <Link :href="route('system.releases.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.releases.*')}">Releases</Link>
                             <Link :href="route('system.crashes.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.crashes.*')}">Crashes</Link>
+                            <Link :href="route('system.external_payouts.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.external_payouts.*')}">{{ $t('system.external_payouts.nav') }}</Link>
                             <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
                         </template>
                         <template v-else>
@@ -902,59 +941,99 @@ watch(() => alerts.value.items, (items) => {
                         </div>
                     </div>
 
-                    <!-- Step 3: Asistentes -->
-                    <div v-if="cpMembers.length > 0" class="space-y-3">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.attendees') }}</label>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            <button
-                                v-for="member in cpMembers"
-                                :key="member.id"
-                                type="button"
-                                @click="toggleRecipient(member.id)"
-                                class="p-3 border rounded-xl text-left transition-all flex items-center group"
-                                :class="lootForm.recipient_ids.includes(member.id) ? 'bg-purple-600/15 border-purple-500 text-purple-700 dark:text-white shadow-lg shadow-purple-950/20' : 'bg-white/70 border-gray-200 text-gray-700 hover:border-gray-300 dark:bg-gray-900/50 dark:border-gray-800 dark:text-gray-500 dark:hover:border-gray-600'"
-                            >
-                                <div class="w-6 h-6 rounded bg-gray-200 text-gray-800 mr-2 flex items-center justify-center text-[10px] font-black dark:bg-gray-800 dark:text-gray-200" :class="lootForm.recipient_ids.includes(member.id) ? 'bg-purple-500 text-white' : ''">
-                                    {{ lootForm.recipient_ids.includes(member.id) ? '✓' : '+' }}
-                                </div>
-                                <span class="text-xs font-bold uppercase tracking-tight truncate">{{ member.name }}</span>
-                                <span
-                                    v-if="lootAdenaSplitPreview && lootAdenaSplitPreview.mode === 'attendees' && lootForm.recipient_ids.includes(member.id) && lootAdenaSplitPreview.perMember > 0"
-                                    class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300"
+                    <!-- Step 3: Asistentes (miembros CP + externos) -->
+                    <div class="space-y-3">
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.attendees.title') }}</label>
+
+                        <div v-if="cpMembers.length > 0">
+                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-2">{{ $t('loot.attendees.cp_members_label') }}</div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <button
+                                    v-for="member in cpMembers"
+                                    :key="member.id"
+                                    type="button"
+                                    @click="toggleRecipient(member.id)"
+                                    class="p-3 border rounded-xl text-left transition-all flex items-center group"
+                                    :class="isMemberSelected(member.id) ? 'bg-purple-600/15 border-purple-500 text-purple-700 dark:text-white shadow-lg shadow-purple-950/20' : 'bg-white/70 border-gray-200 text-gray-700 hover:border-gray-300 dark:bg-gray-900/50 dark:border-gray-800 dark:text-gray-500 dark:hover:border-gray-600'"
                                 >
-                                    +{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}
+                                    <div class="w-6 h-6 rounded bg-gray-200 text-gray-800 mr-2 flex items-center justify-center text-[10px] font-black dark:bg-gray-800 dark:text-gray-200" :class="isMemberSelected(member.id) ? 'bg-purple-500 text-white' : ''">
+                                        {{ isMemberSelected(member.id) ? '✓' : '+' }}
+                                    </div>
+                                    <span class="text-xs font-bold uppercase tracking-tight truncate">{{ member.name }}</span>
+                                    <span
+                                        v-if="lootAdenaSplitPreview && isMemberSelected(member.id) && lootAdenaSplitPreview.perMember > 0"
+                                        class="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300"
+                                    >
+                                        +{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-gray-200 dark:border-gray-800">
+                            <div class="flex gap-2">
+                                <input
+                                    v-model="newExternalName"
+                                    type="text"
+                                    :placeholder="$t('loot.attendees.external_name_ph')"
+                                    @keyup.enter.prevent="addExternalAttendee"
+                                    class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white/80 dark:bg-gray-900/40 dark:border-gray-700 dark:text-white"
+                                />
+                                <button type="button" @click="addExternalAttendee" class="px-3 py-2 text-xs font-bold uppercase tracking-widest rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                    {{ $t('loot.attendees.add_external') }}
+                                </button>
+                            </div>
+                            <div v-if="lootExternalAttendees.length > 0" class="mt-3 flex flex-wrap gap-2">
+                                <span
+                                    v-for="(ext, idx) in lootForm.attendees"
+                                    :key="'ext-'+idx"
+                                    v-show="ext.external_name"
+                                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-semibold"
+                                >
+                                    <span class="uppercase tracking-widest text-[9px] opacity-70">{{ $t('loot.attendees.external_badge') }}</span>
+                                    {{ ext.external_name }}
+                                    <button type="button" @click="removeAttendee(idx)" class="text-amber-700/60 hover:text-red-500">×</button>
                                 </span>
-                            </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Step 4: Adena Distribution -->
+                    <!-- Step 4: CP fund percentage + split preview -->
                     <div v-if="hasAdena" class="space-y-2">
-                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.modal.adena_distribution') }}</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <label class="flex items-center gap-2 p-3 border rounded-xl bg-white/70 border-gray-200 text-gray-800 cursor-pointer dark:bg-gray-900/40 dark:border-gray-800 dark:text-gray-200">
-                                <input type="radio" name="adenaDistribution" value="attendees" v-model="lootForm.adena_distribution">
-                                <span class="text-xs font-bold uppercase tracking-widest">{{ $t('loot.modal.adena_attendees') }}</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 border rounded-xl bg-white/70 border-gray-200 text-gray-800 cursor-pointer dark:bg-gray-900/40 dark:border-gray-800 dark:text-gray-200">
-                                <input type="radio" name="adenaDistribution" value="cp" v-model="lootForm.adena_distribution">
-                                <span class="text-xs font-bold uppercase tracking-widest">{{ $t('loot.modal.adena_cp') }}</span>
-                            </label>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.split.cp_share') }}</label>
+                        <div class="flex gap-2 flex-wrap">
+                            <button
+                                v-for="p in sharePresets"
+                                :key="'preset-'+p"
+                                type="button"
+                                @click="lootForm.cp_share_pct = p"
+                                class="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg border transition"
+                                :class="Number(lootForm.cp_share_pct) === p ? 'bg-purple-600 text-white border-purple-600' : 'bg-white/70 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-purple-400'"
+                            >
+                                {{ p }}%
+                            </button>
+                            <input
+                                v-model.number="lootForm.cp_share_pct"
+                                type="number"
+                                min="0"
+                                max="100"
+                                class="w-20 px-2 py-1.5 text-xs text-center rounded-lg border border-gray-200 bg-white/80 dark:bg-gray-900/40 dark:border-gray-700 dark:text-white"
+                            />
                         </div>
-                        <div v-if="lootAdenaSplitPreview && lootAdenaSplitPreview.mode === 'attendees'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.adena_split_title') }}</div>
-                            <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+
+                        <div v-if="lootAdenaSplitPreview" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-2">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
                                 {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(lootAdenaSplitPreview.total) }}</span>
-                                • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}</span>
                             </div>
-                            <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                                {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(lootAdenaSplitPreview.remainderToCp) }) }}
+                            <div class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('loot.split.preview.cp_fund') }}: <span class="font-cinzel text-purple-700 dark:text-purple-300">{{ formatAdenaShort(lootAdenaSplitPreview.cpFundFinal) }}</span> ({{ lootAdenaSplitPreview.pct }}%)
                             </div>
-                        </div>
-                        <div v-else-if="lootAdenaSplitPreview && lootAdenaSplitPreview.mode === 'cp'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800">
-                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.adena_to_cp_title') }}</div>
-                            <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-                                {{ $t('loot.adena_to_cp_desc', { amount: formatAdenaShort(lootAdenaSplitPreview.total) }) }}
+                            <div v-if="lootAdenaSplitPreview.attendeeCount > 0" class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('loot.split.preview.per_member') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(lootAdenaSplitPreview.perMember) }}</span>
+                            </div>
+                            <div v-else class="text-[10px] text-amber-600 dark:text-amber-400 italic">{{ $t('loot.split.preview.no_attendees') }}</div>
+                            <div v-if="lootAdenaSplitPreview.externalCount > 0" class="text-[10px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-widest">
+                                {{ $t('loot.split.preview.external_owed') }}: <span class="font-cinzel">{{ formatAdenaShort(lootAdenaSplitPreview.externalOwed) }}</span> ({{ lootAdenaSplitPreview.externalCount }})
                             </div>
                         </div>
                     </div>

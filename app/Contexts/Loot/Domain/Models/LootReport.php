@@ -18,11 +18,18 @@ class LootReport extends Model
         'description',
         'recipient_ids',
         'adena_distribution',
+        'cp_share_pct',
     ];
 
     protected $casts = [
         'recipient_ids' => 'array',
+        'cp_share_pct' => 'integer',
     ];
+
+    public function attendees()
+    {
+        return $this->hasMany(LootReportAttendee::class, 'loot_report_id');
+    }
 
     public function cp()
     {

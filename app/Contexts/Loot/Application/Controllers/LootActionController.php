@@ -6,6 +6,7 @@ use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Loot\Domain\Models\CpEventConfig;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
+use App\Contexts\Loot\Domain\Models\LootReportAttendee;
 use App\Contexts\Loot\Domain\Services\LootDistributionService;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Http\Controllers\Controller;
@@ -29,9 +30,16 @@ class LootActionController extends Controller
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.amount' => 'required|integer|min:1',
             'image_proof' => 'nullable|image|max:3072', // 3MB
+            // Legacy field kept so old clients keep working.
             'recipient_ids' => 'nullable|array',
             'recipient_ids.*' => 'integer|exists:users,id',
+            // New shape: attendees can include externals.
+            'attendees' => 'nullable|array',
+            'attendees.*.user_id' => 'nullable|integer|exists:users,id',
+            'attendees.*.external_name' => 'nullable|string|max:80',
+            // Legacy binary distribution + new percentage. Either may arrive.
             'adena_distribution' => 'nullable|in:attendees,cp',
+            'cp_share_pct' => 'nullable|integer|min:0|max:100',
         ]);
 
         $user = $request->user();
@@ -40,15 +48,22 @@ class LootActionController extends Controller
             return back()->withErrors(['cp_id' => 'No perteneces a ninguna CP.']);
         }
 
-        DB::transaction(function () use ($request, $user) {
-            $recipientIds = null;
-            if (is_array($request->recipient_ids) && count($request->recipient_ids) > 0) {
-                $recipientIds = User::where('cp_id', $user->cp_id)
-                    ->where('membership_status', '!=', 'banned')
-                    ->whereIn('id', $request->recipient_ids)
-                    ->pluck('id')
-                    ->all();
-            }
+        $normalizedAttendees = $this->normalizeAttendees($request, $user->cp_id);
+        if ($normalizedAttendees === null) {
+            return back()->withErrors(['attendees' => 'Cada attendee necesita user_id (miembro) o external_name (externo), no ambos.']);
+        }
+
+        $cpSharePct = $this->resolveCpSharePct($request);
+
+        DB::transaction(function () use ($request, $user, $normalizedAttendees, $cpSharePct) {
+            // Mirror the modern attendees list back into the legacy JSON column
+            // so old screens that still read `recipient_ids` keep working until
+            // the full transition is done.
+            $memberIds = collect($normalizedAttendees)
+                ->filter(fn ($a) => !$a['is_external'])
+                ->pluck('user_id')
+                ->values()
+                ->all();
 
             $report = LootReport::create([
                 'cp_id' => $user->cp_id,
@@ -56,8 +71,9 @@ class LootActionController extends Controller
                 'event_type' => $request->event_type,
                 'status' => 'pending',
                 'image_proof' => null,
-                'recipient_ids' => $recipientIds,
+                'recipient_ids' => !empty($memberIds) ? $memberIds : null,
                 'adena_distribution' => $request->input('adena_distribution'),
+                'cp_share_pct' => $cpSharePct,
             ]);
 
             if ($request->hasFile('image_proof')) {
@@ -75,6 +91,15 @@ class LootActionController extends Controller
                     'amount' => $itemData['amount'],
                 ]);
             }
+
+            foreach ($normalizedAttendees as $attendee) {
+                LootReportAttendee::create([
+                    'loot_report_id' => $report->id,
+                    'user_id' => $attendee['user_id'],
+                    'external_name' => $attendee['external_name'],
+                    'is_external' => $attendee['is_external'],
+                ]);
+            }
         });
 
         return back()->with('success', 'Sesión de loot reportada. Pendiente de aprobación por el líder.');
@@ -90,7 +115,6 @@ class LootActionController extends Controller
         $isLeader = $user->role->name === 'cp_leader';
         $isFounder = $user->cp_id && $user->cp && $user->id === $user->cp->leader_id;
 
-        // Solo el Admin o Líderes (Fundador o Co-Líderes) de la misma CP pueden resolver
         if (! $isAdmin) {
             if (! $isLeader || $user->cp_id !== $report->cp_id) {
                 abort(403, 'No tienes permiso para resolver este reporte de loot.');
@@ -101,12 +125,16 @@ class LootActionController extends Controller
             'status' => 'required|in:confirmed,rejected',
             'recipient_ids' => 'nullable|array',
             'recipient_ids.*' => 'exists:users,id',
+            'attendees' => 'nullable|array',
+            'attendees.*.user_id' => 'nullable|integer|exists:users,id',
+            'attendees.*.external_name' => 'nullable|string|max:80',
             'points_per_member' => 'nullable|integer|min:0',
             'event_type' => 'nullable|string|in:FARM,BOSS,EPIC,SIEGE',
             'items' => 'nullable|array',
             'items.*.item_id' => 'required_with:items|exists:items,id',
             'items.*.amount' => 'required_with:items|integer|min:1',
             'adena_distribution' => 'nullable|in:attendees,cp',
+            'cp_share_pct' => 'nullable|integer|min:0|max:100',
         ]);
 
         if ($report->event_type === 'RETURN') {
@@ -116,13 +144,11 @@ class LootActionController extends Controller
         }
 
         if ($request->status === 'rejected') {
-            // En lugar de borrar, marcamos como rechazado para mantener la auditoría
             $report->update(['status' => 'rejected']);
 
             return back()->with('success', 'El reporte ha sido marcado como RECHAZADO.');
         }
 
-        // Logic for "Confirmed" (Success)
         $points = $request->points_per_member ?? 0;
 
         if ($request->filled('event_type') && $request->event_type !== $report->event_type) {
@@ -130,6 +156,9 @@ class LootActionController extends Controller
         }
         if ($request->filled('adena_distribution')) {
             $report->update(['adena_distribution' => $request->adena_distribution]);
+        }
+        if ($request->filled('cp_share_pct') || $request->filled('adena_distribution')) {
+            $report->update(['cp_share_pct' => $this->resolveCpSharePct($request, $report->cp_share_pct)]);
         }
 
         if (is_array($request->items) && count($request->items) > 0) {
@@ -143,7 +172,35 @@ class LootActionController extends Controller
             }
         }
 
-        // Use custom CP points config if points were not manually provided
+        // If the leader edited the attendee list during resolve, rebuild the
+        // attendee rows. We only touch the table when the caller actually
+        // sends `attendees` (or legacy `recipient_ids`) — otherwise we keep
+        // whatever the original report already had.
+        $hasNewAttendees = $request->has('attendees') || $request->has('recipient_ids');
+        if ($hasNewAttendees) {
+            $normalized = $this->normalizeAttendees($request, $report->cp_id);
+            if ($normalized === null) {
+                return back()->withErrors(['attendees' => 'Cada attendee necesita user_id o external_name, no ambos.']);
+            }
+            DB::transaction(function () use ($report, $normalized) {
+                LootReportAttendee::where('loot_report_id', $report->id)->delete();
+                foreach ($normalized as $attendee) {
+                    LootReportAttendee::create([
+                        'loot_report_id' => $report->id,
+                        'user_id' => $attendee['user_id'],
+                        'external_name' => $attendee['external_name'],
+                        'is_external' => $attendee['is_external'],
+                    ]);
+                }
+                $memberIds = collect($normalized)
+                    ->filter(fn ($a) => !$a['is_external'])
+                    ->pluck('user_id')
+                    ->values()
+                    ->all();
+                $report->update(['recipient_ids' => !empty($memberIds) ? $memberIds : null]);
+            });
+        }
+
         if (! $request->has('points_per_member')) {
             $config = CpEventConfig::where('cp_id', $report->cp_id)
                 ->where('event_type', $report->event_type)
@@ -151,18 +208,30 @@ class LootActionController extends Controller
             $points = $config ? $config->points : 0;
         }
 
-        $attendees = $request->recipient_ids ?? [];
+        // Distribution service still consumes the JSON ids — pass the member
+        // subset of the (possibly refreshed) attendee list.
+        $attendeeUserIds = LootReportAttendee::where('loot_report_id', $report->id)
+            ->where('is_external', false)
+            ->whereNotNull('user_id')
+            ->pluck('user_id')
+            ->all();
 
-        $this->distributionService->distribute($report, $attendees, $points);
+        $this->distributionService->distribute($report, $attendeeUserIds, $points);
 
-        // Adena distribution
+        // Adena distribution on the FARM report itself (legacy path for
+        // sessions that include adena drops directly, not via SELL). The
+        // proper mixed split lives in PartyController::sell — here we only
+        // honour the simple "all to CP fund" or "split equally among
+        // attendees" semantics that the legacy column supported.
         if ($report->status !== 'rejected') {
             $entries = LootEntry::where('loot_report_id', $report->id)->with('item')->get();
             $adenaAmount = $entries->filter(fn ($e) => strtolower($e->item->name) === 'adena')->sum('amount');
-            if ($adenaAmount > 0 && $report->adena_distribution === 'attendees' && count($attendees) > 0) {
-                $split = intdiv($adenaAmount, count($attendees));
+            $cpSharePct = $report->fresh()->cp_share_pct ?? 0;
+            if ($adenaAmount > 0 && $cpSharePct < 100 && count($attendeeUserIds) > 0) {
+                $toAttendees = (int) floor($adenaAmount * (100 - $cpSharePct) / 100);
+                $split = intdiv($toAttendees, count($attendeeUserIds));
                 if ($split > 0) {
-                    foreach ($attendees as $uid) {
+                    foreach ($attendeeUserIds as $uid) {
                         PointsLog::create([
                             'cp_id' => $report->cp_id,
                             'user_id' => $uid,
@@ -173,10 +242,94 @@ class LootActionController extends Controller
                         ]);
                     }
                 }
-                // El remanente (adenaAmount % count) se mantiene en el warehouse de la CP.
+                // El remanente (toAttendees % count + cpShare) se queda en el CP fund.
             }
         }
 
         return back()->with('success', 'Sesión resuelta. Puntos otorgados a los asistentes.');
+    }
+
+    /**
+     * Normalise the attendee payload (new `attendees` array OR legacy
+     * `recipient_ids` ints) into `[{user_id, external_name, is_external}]`.
+     * Returns null when validation rules (one-of: user_id|external_name)
+     * are violated.
+     *
+     * @return array<int,array{user_id:?int,external_name:?string,is_external:bool}>|null
+     */
+    private function normalizeAttendees(Request $request, int $cpId): ?array
+    {
+        $rows = [];
+
+        if (is_array($request->attendees) && count($request->attendees) > 0) {
+            $userIdsToCheck = [];
+            foreach ($request->attendees as $att) {
+                $userId = isset($att['user_id']) && $att['user_id'] !== '' ? (int) $att['user_id'] : null;
+                $name = isset($att['external_name']) && $att['external_name'] !== '' ? (string) $att['external_name'] : null;
+
+                if (($userId === null && $name === null) || ($userId !== null && $name !== null)) {
+                    return null;
+                }
+                $rows[] = ['user_id' => $userId, 'external_name' => $name];
+                if ($userId !== null) {
+                    $userIdsToCheck[] = $userId;
+                }
+            }
+
+            // Resolve which user_ids actually belong to this CP. Users that
+            // do not belong are treated as externals (kept in the report but
+            // flagged so the leader can pay them outside the system).
+            $cpUserIds = User::whereIn('id', $userIdsToCheck)
+                ->where('cp_id', $cpId)
+                ->where('membership_status', '!=', 'banned')
+                ->pluck('id')
+                ->all();
+            $cpUserSet = array_flip($cpUserIds);
+
+            return array_map(function ($row) use ($cpUserSet) {
+                if ($row['user_id'] !== null && !isset($cpUserSet[$row['user_id']])) {
+                    // Bot user / member of another CP / banned — record as
+                    // external using the user's display name if we have it.
+                    $name = User::whereKey($row['user_id'])->value('name') ?? '(unknown)';
+                    return ['user_id' => null, 'external_name' => $name, 'is_external' => true];
+                }
+                return [
+                    'user_id' => $row['user_id'],
+                    'external_name' => $row['external_name'],
+                    'is_external' => $row['user_id'] === null,
+                ];
+            }, $rows);
+        }
+
+        // Legacy path: only recipient_ids was sent.
+        if (is_array($request->recipient_ids) && count($request->recipient_ids) > 0) {
+            $cpUserIds = User::whereIn('id', $request->recipient_ids)
+                ->where('cp_id', $cpId)
+                ->where('membership_status', '!=', 'banned')
+                ->pluck('id')
+                ->all();
+            return array_map(fn ($uid) => [
+                'user_id' => (int) $uid,
+                'external_name' => null,
+                'is_external' => false,
+            ], $cpUserIds);
+        }
+
+        return [];
+    }
+
+    /**
+     * Resolve cp_share_pct: explicit `cp_share_pct` wins, otherwise fall
+     * back to mapping the legacy `adena_distribution` column.
+     */
+    private function resolveCpSharePct(Request $request, ?int $current = null): int
+    {
+        if ($request->filled('cp_share_pct')) {
+            return max(0, min(100, (int) $request->input('cp_share_pct')));
+        }
+        if ($request->filled('adena_distribution')) {
+            return $request->input('adena_distribution') === 'cp' ? 100 : 0;
+        }
+        return $current ?? 0;
     }
 }
