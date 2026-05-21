@@ -263,6 +263,72 @@ class CraftBulkPlannerTest extends TestCase
         $this->assertSame(3, $byLabel['Helm']['qty']);
     }
 
+    public function test_warehouse_stock_of_depth_two_craftable_is_consumed(): void
+    {
+        // Cord is depth 2 here: Helm ← Crafted Leather ← Cord. With stock
+        // sitting on Cord, the planner used to ignore it (stock was only
+        // fetched for the initial top-level demand) and over-craft Cord,
+        // inflating the Thread total. Verifies the lazy-fetch fix.
+        $thread = $this->makeItem('Thread');
+        $this->makeRecipe('Recipe: Cord', $this->cord, 1, [
+            $thread->id => 25,
+        ]);
+
+        $helmet = $this->makeItem('Helm');
+        $helmetRecipe = $this->makeRecipe('Recipe: Helm', $helmet, 1, [
+            $this->craftedLeather->id => 12,
+        ]);
+
+        // 12 Crafted Leather × 4 Cord = 48 Cord needed. With 30 in stock
+        // only 18 should be sub-crafted → 18 × 25 = 450 Thread.
+        $this->addWarehouseStock($this->cord->id, 30);
+
+        $res = $this->plan([['recipe_id' => $helmetRecipe->id, 'qty' => 1]]);
+
+        $cordSubCraft = collect($res['sub_crafts'])->firstWhere('covers_item_id', $this->cord->id);
+        $this->assertNotNull($cordSubCraft, 'A Cord sub-craft is expected');
+        $this->assertSame(18, $cordSubCraft['crafts']);
+
+        $threadRow = collect($res['totals'])->firstWhere('item_id', $thread->id);
+        $this->assertNotNull($threadRow);
+        $this->assertSame(450, $threadRow['need']);
+        $this->assertSame(450, $threadRow['missing']);
+
+        // The Cord row shouldn't appear as a leaf since it's craftable and
+        // fully covered (30 from stock + 18 sub-crafted).
+        $cordRow = collect($res['totals'])->firstWhere('item_id', $this->cord->id);
+        $this->assertNull($cordRow);
+    }
+
+    public function test_sub_craft_payload_includes_recipe_materials(): void
+    {
+        // The Vue layer renders an expandable breakdown using these.
+        $res = $this->plan([['recipe_id' => $this->craftedLeatherRecipe->id, 'qty' => 1]]);
+
+        // No sub-craft expected for this simple plan, so test from a
+        // scenario where one IS produced.
+        $thread = $this->makeItem('Thread');
+        $this->makeRecipe('Recipe: Cord', $this->cord, 1, [$thread->id => 25]);
+        $helmet = $this->makeItem('Helm');
+        $helmetRecipe = $this->makeRecipe('Recipe: Helm', $helmet, 1, [
+            $this->craftedLeather->id => 1,
+        ]);
+
+        $res = $this->plan([['recipe_id' => $helmetRecipe->id, 'qty' => 1]]);
+
+        $this->assertNotEmpty($res['sub_crafts']);
+        foreach ($res['sub_crafts'] as $sc) {
+            $this->assertArrayHasKey('materials', $sc['recipe']);
+            $this->assertNotEmpty($sc['recipe']['materials']);
+            foreach ($sc['recipe']['materials'] as $m) {
+                $this->assertArrayHasKey('item_id', $m);
+                $this->assertArrayHasKey('name', $m);
+                $this->assertArrayHasKey('qty_per_craft', $m);
+                $this->assertGreaterThan(0, $m['qty_per_craft']);
+            }
+        }
+    }
+
     public function test_missing_always_equals_need_minus_have(): void
     {
         // Partial stock on a leaf — `missing` must strictly equal

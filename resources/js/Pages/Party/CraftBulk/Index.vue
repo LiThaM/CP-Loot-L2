@@ -103,11 +103,16 @@ const submitPlan = async () => {
         planning.value = false;
     }
 };
-const clearPlan = () => { planResult.value = null; planError.value = ''; expandedRows.value = {}; };
+const clearPlan = () => { planResult.value = null; planError.value = ''; expandedRows.value = {}; expandedSubCrafts.value = {}; };
 
 // Per-row toggle for the "Para qué se usa este material" breakdown.
 const expandedRows = ref({});
 const toggleRow = (id) => { expandedRows.value[id] = !expandedRows.value[id]; };
+
+// Per-sub-craft toggle so users can inspect the recipe of each
+// intermediate craft (materials × qty per craft and total).
+const expandedSubCrafts = ref({});
+const toggleSubCraft = (i) => { expandedSubCrafts.value[i] = !expandedSubCrafts.value[i]; };
 
 // Compact summary "Helmet, Crafted Leather, +1 más" used as a hint next
 // to the material name when the row is collapsed.
@@ -286,16 +291,38 @@ const usageHint = (usages) => {
                                 <p class="text-[10px] text-gray-500 mt-0.5">{{ $t('party.craft_bulk.right.sub_crafts_hint') }}</p>
                             </div>
                             <div class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-                                <div v-for="(sc, i) in planResult.sub_crafts" :key="i" class="px-4 py-2.5 flex items-center gap-3">
-                                    <img v-if="sc.recipe?.output_item?.image_url" :src="sc.recipe.output_item.image_url" class="w-7 h-7 rounded" />
-                                    <div class="flex-1 min-w-0">
-                                        <div class="font-semibold text-gray-900 dark:text-gray-200 truncate">{{ sc.recipe?.output_item?.name || sc.recipe?.name }}</div>
-                                        <div class="text-[10px] text-gray-500">
-                                            {{ $t('party.craft_bulk.right.sub_craft_line', { n: sc.crafts, produces: sc.produces, item: sc.covers_item_name, missing: sc.covers_missing }) }}
+                                <template v-for="(sc, i) in planResult.sub_crafts" :key="i">
+                                    <div :class="[(sc.recipe?.materials?.length ?? 0) > 0 ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/40' : '', 'px-4 py-2.5 flex items-center gap-3']"
+                                         @click="(sc.recipe?.materials?.length ?? 0) > 0 && toggleSubCraft(i)">
+                                        <svg v-if="(sc.recipe?.materials?.length ?? 0) > 0" class="w-3 h-3 flex-shrink-0 text-gray-400 transition-transform"
+                                             :class="expandedSubCrafts[i] ? 'rotate-90' : ''"
+                                             fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span v-else class="w-3 h-3 flex-shrink-0"></span>
+                                        <img v-if="sc.recipe?.output_item?.image_url" :src="sc.recipe.output_item.image_url" class="w-7 h-7 rounded" />
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-semibold text-gray-900 dark:text-gray-200 truncate">{{ sc.recipe?.output_item?.name || sc.recipe?.name }}</div>
+                                            <div class="text-[10px] text-gray-500">
+                                                {{ $t('party.craft_bulk.right.sub_craft_line', { n: sc.crafts, produces: sc.produces, item: sc.covers_item_name, missing: sc.covers_missing }) }}
+                                            </div>
                                         </div>
+                                        <span class="text-xs font-mono font-bold text-purple-600 dark:text-purple-300">× {{ sc.crafts }}</span>
                                     </div>
-                                    <span class="text-xs font-mono font-bold text-purple-600 dark:text-purple-300">× {{ sc.crafts }}</span>
-                                </div>
+                                    <div v-if="expandedSubCrafts[i] && (sc.recipe?.materials?.length ?? 0) > 0"
+                                         class="bg-gray-50 dark:bg-gray-900/40 px-4 py-2.5">
+                                        <div class="text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">{{ $t('party.craft_bulk.right.sub_craft_recipe') }}</div>
+                                        <ul class="space-y-1 text-xs">
+                                            <li v-for="m in sc.recipe.materials" :key="m.item_id" class="flex items-center gap-2">
+                                                <img v-if="m.image_url" :src="m.image_url" class="w-5 h-5 rounded flex-shrink-0" />
+                                                <span v-else class="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 flex-shrink-0"></span>
+                                                <span class="flex-1 text-gray-700 dark:text-gray-300 truncate">{{ m.name }}</span>
+                                                <span class="font-mono text-gray-500 tabular-nums">× {{ fmt(m.qty_per_craft) }} {{ $t('party.craft_bulk.right.per_craft') }}</span>
+                                                <span class="font-mono text-amber-600 dark:text-amber-300 w-20 text-right tabular-nums">{{ fmt(m.qty_per_craft * sc.crafts) }}</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </template>

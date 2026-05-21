@@ -70,8 +70,12 @@ class CraftBulkPlannerService
             $this->addRecipeDemand($demand, $sources, $recipe, $req['qty'], $label);
         }
 
-        // Stock and craftable map computed ONCE for the whole plan.
-        $stock = $this->stockForCp($cpId, array_keys($demand));
+        // Stock is fetched lazily inside the loop: any item that first
+        // shows up in `$demand` (top-level or via a sub-craft) gets its
+        // warehouse stock pulled before being processed, so an
+        // intermediate craftable like Cord still consumes its stock even
+        // when it only appears at depth 2+.
+        $stock = [];
         $craftableMap = Item::craftableRecipeIdByItemId($chronicle);
 
         // Sub-craft loop: walk the demand, consume stock, queue sub-crafts
@@ -84,6 +88,10 @@ class CraftBulkPlannerService
         // Each entry of $demand may grow as sub-crafts add their own
         // material needs. Process iteratively rather than recursively.
         while (!empty($demand) && $iterations++ < 50) {
+            $newItemIds = array_values(array_diff(array_keys($demand), array_keys($stock)));
+            if (!empty($newItemIds)) {
+                $stock = $stock + $this->stockForCp($cpId, $newItemIds);
+            }
             $next = [];
             foreach ($demand as $itemId => $needed) {
                 if ($needed <= 0) {
@@ -146,13 +154,7 @@ class CraftBulkPlannerService
             $warnings[] = 'Planner reached its iteration safety limit. Result may be incomplete.';
         }
 
-        // Pull the stock for any items that only showed up in sub-craft
-        // demand (we may not have fetched them on the first pass).
         $allItemIds = array_unique(array_merge(array_keys($leaves), array_keys($consumed)));
-        $missingFromInitialStock = array_diff($allItemIds, array_keys($stock));
-        if (!empty($missingFromInitialStock)) {
-            $stock = $stock + $this->stockForCp($cpId, $missingFromInitialStock);
-        }
 
         $itemMeta = Item::whereIn('id', $allItemIds)
             ->get(['id', 'name', 'image_url'])
@@ -222,6 +224,14 @@ class CraftBulkPlannerService
                 'name' => $r->outputItem->name,
                 'image_url' => $r->outputItem->image_url,
             ] : null,
+            'materials' => $r->relationLoaded('materials')
+                ? $r->materials->map(fn ($m) => [
+                    'item_id' => (int) $m->item_id,
+                    'name' => $m->item?->name,
+                    'image_url' => $m->item?->image_url,
+                    'qty_per_craft' => (int) ($m->quantity ?? 1),
+                ])->values()->all()
+                : [],
         ];
     }
 
