@@ -21,6 +21,8 @@ const props = defineProps({
     isLeader: Boolean,
 });
 
+const currentUserId = computed(() => page.props.auth?.user?.id ?? null);
+
 const search = ref('');
 const filteredUsers = computed(() => {
     return props.users.filter(user => 
@@ -519,9 +521,12 @@ const toggleUserLogs = async (user) => {
                     <div class="space-y-4">
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.system_role') }}</label>
-                            <select v-model="editForm.role_id" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl dark:bg-black/50 dark:border-gray-700 dark:text-gray-300">
-                                <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                            <select v-model="editForm.role_id" :disabled="selectedUser?.id === currentUserId" class="w-full bg-white border-gray-200 text-gray-900 rounded-xl dark:bg-black/50 dark:border-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <option v-for="role in roles" :key="role.id" :value="role.id" :disabled="role.name === 'admin' && !isAdmin">
+                                    {{ role.name }}<span v-if="role.name === 'admin' && !isAdmin"> ({{ $t('system.users.admin_locked') }})</span>
+                                </option>
                             </select>
+                            <p v-if="selectedUser?.id === currentUserId" class="mt-1 text-[10px] text-amber-600 dark:text-amber-400 italic">{{ $t('system.users.cannot_self_edit') }}</p>
                         </div>
                         <div v-if="isAdmin">
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('system.users.assign_cp') }}</label>

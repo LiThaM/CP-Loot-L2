@@ -85,6 +85,31 @@ class UserManagementController extends Controller
 
         $newRole = Role::find($request->role_id);
 
+        // --- Reglas globales de seguridad -----------------------------------
+        //
+        // Nadie puede cambiar su propio rol — ni siquiera el admin global.
+        // Si quieres ascenderte o degradarte, lo tiene que hacer OTRO admin
+        // (o un acceso a la BD). Esto evita escaladas accidentales y la
+        // posibilidad de que un admin se quite los privilegios por error.
+        if ($currentUser->id === $user->id && (int) $request->role_id !== (int) $user->role_id) {
+            abort(403, 'No puedes cambiar tu propio rol.');
+        }
+
+        // SOLO los admins globales pueden asignar el rol `admin`. Antes esto
+        // se aplicaba a co-líderes pero NO a líderes fundadores — bug grave
+        // de escalada de privilegios (un líder fundador podía promocionarse
+        // a sí mismo o a un miembro a admin global).
+        if (! $isAdmin && $newRole->name === 'admin') {
+            abort(403, 'No puedes asignar el rol de administrador global.');
+        }
+
+        // Recíproca: solo un admin puede degradar a otro admin. (Sin admin
+        // no llegas aquí ya por la nueva regla, pero formalizamos la
+        // intención para que sea explícito en code review.)
+        if (! $isAdmin && $user->role->name === 'admin') {
+            abort(403, 'Solo un administrador global puede cambiar el rol de otro administrador.');
+        }
+
         // Lógica de seguridad para no-administradores
         if (! $isAdmin) {
             // Solo pueden modificar usuarios de su propia CP
@@ -92,18 +117,13 @@ class UserManagementController extends Controller
                 abort(403, 'No puedes gestionar usuarios ajenos a tu CP.');
             }
 
-            // El Líder Fundador puede hacer cualquier cambio dentro de su CP
-            // Pero un Co-Líder tiene restricciones
+            // El Líder Fundador puede hacer cualquier cambio DENTRO de su CP
+            // (asignar roles cp_leader / accountant / member). Un Co-Líder
+            // tiene restricciones adicionales.
             if ($isCoLeader) {
                 // Un Co-Líder NO puede degradar ni cambiar el rol de otros líderes
                 if ($user->role->name === 'cp_leader') {
                     abort(403, 'Solo el líder fundador puede gestionar a otros líderes.');
-                }
-
-                // Un Co-Líder solo puede asignar roles de su nivel o inferior (cp_leader, accountant, member)
-                // En la práctica, esto significa que no puede asignar el rol 'admin'
-                if ($newRole->name === 'admin') {
-                    abort(403, 'No puedes asignar el rol de administrador global.');
                 }
             }
 
