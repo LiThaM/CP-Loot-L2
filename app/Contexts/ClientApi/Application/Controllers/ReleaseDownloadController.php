@@ -17,7 +17,18 @@ class ReleaseDownloadController extends Controller
             ->where('version', $version)
             ->first();
 
-        if (!$release || !$release->storage_path) {
+        if (!$release) {
+            return response()->json(['error' => 'not_found'], 404);
+        }
+
+        if ($release->binary_purged_at !== null) {
+            return response()->json([
+                'error' => 'binary_no_longer_available',
+                'purged_at' => $release->binary_purged_at->toIso8601String(),
+            ], 410);
+        }
+
+        if (!$release->storage_path) {
             return response()->json(['error' => 'not_found'], 404);
         }
 
@@ -46,7 +57,18 @@ class ReleaseDownloadController extends Controller
         }
 
         $release = Release::published()->where('version', $version)->first();
-        if (!$release || !$release->storage_path) {
+        if (!$release) {
+            return response()->json(['error' => 'not_found'], 404);
+        }
+
+        if ($release->binary_purged_at !== null) {
+            return response()->json([
+                'error' => 'binary_no_longer_available',
+                'purged_at' => $release->binary_purged_at->toIso8601String(),
+            ], 410);
+        }
+
+        if (!$release->storage_path) {
             return response()->json(['error' => 'not_found'], 404);
         }
 

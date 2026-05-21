@@ -23,12 +23,14 @@ class Release extends Model
         'released_at',
         'published_at',
         'download_count',
+        'binary_purged_at',
     ];
 
     protected $casts = [
         'critical_update' => 'boolean',
         'released_at' => 'datetime',
         'published_at' => 'datetime',
+        'binary_purged_at' => 'datetime',
         'size_bytes' => 'integer',
         'download_count' => 'integer',
     ];
@@ -43,8 +45,18 @@ class Release extends Model
         return $query->where('channel', $channel);
     }
 
+    public function scopeWithBinary($query)
+    {
+        return $query->whereNull('binary_purged_at');
+    }
+
     public function isPublished(): bool
     {
         return $this->published_at !== null;
+    }
+
+    public function isBinaryAvailable(): bool
+    {
+        return $this->binary_purged_at === null && !empty($this->storage_path);
     }
 }

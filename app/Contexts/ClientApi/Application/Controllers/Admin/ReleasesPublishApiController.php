@@ -12,6 +12,7 @@ class ReleasesPublishApiController extends Controller
 {
     public const MAX_BINARY_BYTES = 314_572_800; // 300 MB
     public const ALLOWED_EXTENSIONS = ['exe', 'zip'];
+    public const KEEP_BINARIES_PER_CHANNEL = 3;
 
     public function store(Request $request): JsonResponse
     {
@@ -115,6 +116,10 @@ class ReleasesPublishApiController extends Controller
             if (array_key_exists('publish_now', $data) || $shouldPublish) {
                 $payload['published_at'] = $shouldPublish ? now() : null;
             }
+            // Re-upload of a version whose binary was previously purged
+            // resurrects the blob — clear the purge mark so the row reflects
+            // the new physical file.
+            $payload['binary_purged_at'] = null;
             $existing->update($payload);
             $release = $existing->fresh();
             $created = false;
@@ -124,6 +129,12 @@ class ReleasesPublishApiController extends Controller
             $release = Release::create($payload);
             $created = true;
         }
+
+        // Retention: keep at most KEEP_BINARIES_PER_CHANNEL physical binaries
+        // per channel, ordered by released_at desc. Older releases keep their
+        // DB row (for stats / changelog) but the blob is removed and the row
+        // is flagged with binary_purged_at + storage_path nulled.
+        $purgedCount = $this->purgeOldBinaries($release->channel);
 
         return response()->json([
             'status' => $created ? 'created' : 'updated',
@@ -136,6 +147,7 @@ class ReleasesPublishApiController extends Controller
             'download_url' => $release->published_at
                 ? url('/api/v1/releases/'.$release->version.'/download')
                 : null,
+            'purged_binaries' => $purgedCount,
         ], $created ? 201 : 200);
     }
 
@@ -205,6 +217,57 @@ class ReleasesPublishApiController extends Controller
                 ? url('/api/v1/releases/'.$release->version.'/download')
                 : null,
         ], 200);
+    }
+
+    /**
+     * Delete the physical binaries of any release in $channel that falls
+     * outside the KEEP_BINARIES_PER_CHANNEL most recent (by released_at).
+     * The DB row is preserved; storage_path is nulled and binary_purged_at
+     * is stamped so the download endpoint can answer 410 Gone.
+     *
+     * Not wrapped in a DB transaction by design: Storage::delete is not
+     * transactional, and we'd rather leave an orphan blob than a row that
+     * says "available" while the file is gone.
+     */
+    private function purgeOldBinaries(string $channel): int
+    {
+        $keepIds = Release::query()
+            ->where('channel', $channel)
+            ->whereNotNull('storage_path')
+            ->whereNull('binary_purged_at')
+            ->orderByDesc('released_at')
+            ->orderByDesc('id')
+            ->take(self::KEEP_BINARIES_PER_CHANNEL)
+            ->pluck('id')
+            ->all();
+
+        $stale = Release::query()
+            ->where('channel', $channel)
+            ->whereNotNull('storage_path')
+            ->whereNull('binary_purged_at')
+            ->whereNotIn('id', $keepIds)
+            ->get();
+
+        if ($stale->isEmpty()) {
+            return 0;
+        }
+
+        $disk = Storage::disk('client_blobs');
+        $purged = 0;
+        foreach ($stale as $r) {
+            try {
+                $disk->delete($r->storage_path);
+            } catch (\Throwable $e) {
+                // Continue: even if the blob is already gone, mark the row
+                // purged so the download endpoint stops serving it.
+            }
+            $r->update([
+                'binary_purged_at' => now(),
+                'storage_path' => null,
+            ]);
+            $purged++;
+        }
+        return $purged;
     }
 
     private function isNewerThanLatest(string $newVersion, string $channel, ?int $excludeId): bool

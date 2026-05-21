@@ -7,6 +7,7 @@ use App\Contexts\ClientApi\Application\Controllers\HealthController;
 use App\Contexts\ClientApi\Application\Controllers\Items\Lu4Controller;
 use App\Contexts\ClientApi\Application\Controllers\MeDataController;
 use App\Contexts\ClientApi\Application\Controllers\ReleaseDownloadController;
+use App\Contexts\ClientApi\Application\Controllers\ReleasesListController;
 use App\Contexts\ClientApi\Application\Controllers\TicketsController;
 use App\Contexts\ClientApi\Application\Controllers\VersionController;
 use App\Contexts\Telemetry\Application\Controllers\DigitTemplatesController;
@@ -33,6 +34,13 @@ Route::middleware(['api.log'])->group(function () {
     Route::get('/releases/latest', [VersionController::class, 'latest'])
         ->middleware('throttle:api-v1')
         ->name('api.v1.releases.latest');
+
+    // Listado histórico — la web puede pintar el changelog completo aunque
+    // los binarios viejos hayan sido purgados. ?include_purged=true para
+    // incluir las filas cuyo .zip ya no está en storage.
+    Route::get('/releases', [ReleasesListController::class, 'index'])
+        ->middleware('throttle:api-v1')
+        ->name('api.v1.releases.index');
 
     Route::get('/releases/{version}/download', [ReleaseDownloadController::class, 'redirect'])
         ->middleware('throttle:api-v1')

@@ -17,8 +17,12 @@ class VersionController extends Controller
             $channel = 'stable';
         }
 
+        // Purged releases keep their DB row for stats / changelog but their
+        // download_url is dead, so /version skips them and falls back to the
+        // newest release whose binary is still in storage.
         $release = Release::published()
             ->channel($channel)
+            ->withBinary()
             ->orderByDesc('released_at')
             ->firstOrFail();
 
