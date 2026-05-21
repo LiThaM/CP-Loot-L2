@@ -23,10 +23,15 @@ class VersionResource extends JsonResource
             }
         }
 
+        // Locale-preferred notes with cascading fallback: pick the active
+        // locale first, then the other locale, finally the legacy single-text
+        // column. This keeps `release_notes` populated whenever ANY of the
+        // three columns is set — historical releases that only have one are
+        // still surfaced to the desktop client's update modal.
         $locale = app()->getLocale();
         $localized = $locale === 'en'
-            ? ($this->release_notes_en ?: $this->release_notes_md)
-            : ($this->release_notes_es ?: $this->release_notes_md);
+            ? ($this->release_notes_en ?: $this->release_notes_es ?: $this->release_notes_md)
+            : ($this->release_notes_es ?: $this->release_notes_en ?: $this->release_notes_md);
 
         return [
             'latest_version' => $this->version,

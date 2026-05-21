@@ -105,4 +105,39 @@ class VersionControllerTest extends TestCase
         $this->assertSame('### Añadido\n- Burst archive para AOE', $body['release_notes_es']);
         $this->assertSame('### Added\n- Burst archive for AOE', $body['release_notes_en']);
     }
+
+    public function test_release_notes_falls_back_across_columns_when_only_one_is_populated(): void
+    {
+        Release::create([
+            'version' => '0.5.5-alpha',
+            'channel' => 'stable',
+            'release_notes_md' => null,
+            'release_notes_es' => null,
+            'release_notes_en' => '### English-only release notes',
+            'released_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        // Default locale is `es` in tests; the cascading fallback should still
+        // surface the English notes so the desktop modal isn't empty.
+        $body = $this->getJson('/api/v1/version')->assertStatus(200)->json();
+        $this->assertSame('### English-only release notes', $body['release_notes']);
+    }
+
+    public function test_release_notes_is_null_when_all_columns_are_null(): void
+    {
+        Release::create([
+            'version' => '0.5.6-alpha',
+            'channel' => 'stable',
+            'release_notes_md' => null,
+            'release_notes_es' => null,
+            'release_notes_en' => null,
+            'released_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        $body = $this->getJson('/api/v1/version')->assertStatus(200)->json();
+        $this->assertNull($body['release_notes']);
+        $this->assertNull($body['release_notes_url']);
+    }
 }

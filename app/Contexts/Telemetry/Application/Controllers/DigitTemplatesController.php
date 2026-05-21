@@ -10,7 +10,7 @@ use App\Contexts\Telemetry\Domain\Models\DigitTemplateSubmission;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -197,10 +197,13 @@ class DigitTemplatesController extends Controller
         $total = (clone $base)->count();
         $contributors = (clone $base)->distinct('anon_token_id')->count('anon_token_id');
 
+        // `char` is a MySQL reserved word, so `selectRaw('char, …')` blows up
+        // with a 1064 syntax error in prod. The query builder auto-quotes
+        // identifiers, so we go through select() + DB::raw() instead.
         $byChar = (clone $base)
-            ->selectRaw('char, COUNT(*) as c')
+            ->select(['char as char_value', DB::raw('COUNT(*) as c')])
             ->groupBy('char')
-            ->pluck('c', 'char')
+            ->pluck('c', 'char_value')
             ->toArray();
 
         $disk = Storage::disk('client_blobs');
