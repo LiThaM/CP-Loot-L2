@@ -66,6 +66,18 @@ Route::middleware(['api.log'])->group(function () {
         ->middleware('throttle:api-v1')
         ->name('api.v1.ocr.samples.stats');
 
+    // POST /ocr/samples es público (sólo X-Anon-Token, sin X-Client-Key)
+    // porque la client_key viaja dentro del bundle y queremos que cualquier
+    // install legítimo pueda contribuir samples sin filtrar la key. El abuso
+    // se mitiga con: rate-limit doble (anon + IP), magic-bytes PNG, dims
+    // ≤1024x512, anti-PII por regex y `status` server-side antes de entrar
+    // al consenso (api-v1-ocr-samples limiter).
+    Route::middleware(['anon_token'])->group(function () {
+        Route::post('/ocr/samples', [OcrSamplesController::class, 'store'])
+            ->middleware('throttle:api-v1-ocr-samples')
+            ->name('api.v1.ocr.samples.store');
+    });
+
     // GET items Lu4 — público para sync periódica del cliente. Necesita client_key
     // para filtrar tráfico pero no anon_token (es de solo lectura).
     Route::middleware(['client_key'])->group(function () {
@@ -92,10 +104,6 @@ Route::middleware(['api.log'])->group(function () {
         Route::get('/templates/digits', [DigitTemplatesController::class, 'index'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.templates.digits.index');
-
-        Route::post('/ocr/samples', [OcrSamplesController::class, 'store'])
-            ->middleware('throttle:api-v1-ocr-samples')
-            ->name('api.v1.ocr.samples.store');
 
         Route::post('/telemetry/session', [TelemetrySessionController::class, 'store'])
             ->middleware('throttle:api-v1-telemetry')

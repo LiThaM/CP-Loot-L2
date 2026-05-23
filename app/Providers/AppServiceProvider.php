@@ -49,11 +49,25 @@ class AppServiceProvider extends ServiceProvider
                 : Limit::perDay(20)->by($request->ip());
         });
 
+        // /ocr/samples es público (sin client_key). Defensa en profundidad:
+        //   1. 200/día/anon — tope nominal por install
+        //   2. 30/hora/anon — frena bursts del mismo install
+        //   3. 60/min/IP    — mitiga IPs rotando anon_tokens
+        // Si por alguna razón el middleware anon_token no resolvió token
+        // (no debería pasar en producción), caemos a un solo limit por IP.
         RateLimiter::for('api-v1-ocr-samples', function (Request $request) {
             $anon = $request->attributes->get('anon_token');
-            return $anon
-                ? Limit::perDay(200)->by('anon:'.$anon->id)
-                : Limit::perDay(200)->by($request->ip());
+            $ipLimit = Limit::perMinute(60)->by($request->ip());
+
+            if ($anon === null) {
+                return [$ipLimit];
+            }
+
+            return [
+                Limit::perDay(200)->by('anon:'.$anon->id),
+                Limit::perHour(30)->by('anon:'.$anon->id),
+                $ipLimit,
+            ];
         });
 
         RateLimiter::for('api-v1-crashes', function (Request $request) {

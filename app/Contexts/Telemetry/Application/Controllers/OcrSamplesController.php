@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Storage;
 
 class OcrSamplesController extends Controller
 {
+    public const MAX_PNG_WIDTH = 1024;
+    public const MAX_PNG_HEIGHT = 512;
+
     public function store(SubmitOcrSampleRequest $request): JsonResponse
     {
         /** @var AnonToken $anon */
@@ -25,6 +28,27 @@ class OcrSamplesController extends Controller
         // Magic bytes check — clients may try to disguise other formats.
         if (substr($bytes, 0, 8) !== "\x89PNG\r\n\x1A\n") {
             return response()->json(['error' => 'invalid_png'], 422);
+        }
+
+        // PNG dimensions live in the IHDR chunk: 8B signature + 4B IHDR
+        // length + 4B "IHDR" tag, then width(4B BE) + height(4B BE). We
+        // refuse oversized crops here to keep storage cheap and reject
+        // anyone trying to upload non-chat full screenshots.
+        if (strlen($bytes) < 24) {
+            return response()->json(['error' => 'invalid_png'], 422);
+        }
+        $dims = unpack('Nwidth/Nheight', substr($bytes, 16, 8));
+        $width = $dims['width'] ?? 0;
+        $height = $dims['height'] ?? 0;
+        if ($width <= 0 || $height <= 0
+            || $width > self::MAX_PNG_WIDTH
+            || $height > self::MAX_PNG_HEIGHT) {
+            return response()->json([
+                'error' => 'image_too_large',
+                'max_width' => self::MAX_PNG_WIDTH,
+                'max_height' => self::MAX_PNG_HEIGHT,
+                'received' => ['width' => $width, 'height' => $height],
+            ], 422);
         }
 
         $hash = hash('sha256', $bytes);
