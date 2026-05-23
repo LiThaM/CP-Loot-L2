@@ -729,18 +729,11 @@ class PartyController extends Controller
         ]);
 
         $current = $request->user();
-        $roleName = $current->role?->name;
-        $isLeader = $roleName === 'cp_leader';
-        $isAccountant = $roleName === 'accountant';
-        if ($roleName !== 'admin' && ! ($isLeader || $isAccountant)) {
+        if (! $this->canManageWarehouse($current)) {
             abort(403, 'No tienes permiso para vender ítems del warehouse.');
-        }
-        if (! $current->cp_id) {
-            abort(403);
         }
 
         $cpId = $current->cp_id;
-
         $item = Item::findOrFail($request->item_id);
         if (strtolower($item->name) === 'adena') {
             return back()->withErrors(['item_id' => 'La Adena se gestiona como saldo, no se vende como ítem del warehouse.']);
@@ -757,12 +750,163 @@ class PartyController extends Controller
             return back()->withErrors(['source_report_id' => 'Esa sesión de farm no contiene este ítem.']);
         }
 
+        $amount = (int) $request->amount;
+        $unitPrice = (int) $request->unit_price;
+        $cpSharePct = (int) $request->cp_share_pct;
+
+        $available = $this->currentStock($cpId, $item->id);
+        if ($available < $amount) {
+            return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
+        }
+
+        if ($sourceReport->attendees->isEmpty() && $cpSharePct < 100) {
+            return back()->withErrors(['source_report_id' => 'La sesión origen no tiene attendees registrados; o márcala con 100% al CP fund o resuelve la sesión añadiendo attendees.']);
+        }
+
+        $imagePath = $this->storeSellImage($request->file('image_proof'), $cpId);
+
+        try {
+            $result = DB::transaction(function () use ($cpId, $current, $item, $amount, $unitPrice, $cpSharePct, $sourceReport, $imagePath) {
+                Item::whereKey($item->id)->lockForUpdate()->first();
+                $stock = $this->currentStock($cpId, $item->id);
+                if ($stock < $amount) {
+                    throw new \RuntimeException('INSUFFICIENT_STOCK:'.$stock);
+                }
+                return $this->createSellReportForSource($cpId, $sourceReport, $item, $amount, $unitPrice, $cpSharePct, $imagePath, $current);
+            });
+        } catch (\RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
+                $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
+                return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
+            }
+            throw $e;
+        }
+
+        $totalLabel = number_format((int) $result['total_adena'], 0, ',', '.');
+        $summary = "{$current->name} vendió {$item->name} x{$amount} por {$totalLabel} Adena (origen #{$sourceReport->id})";
+        $this->emitSellAlerts($current, [$result], $item, $summary);
+
+        return back()->with('success', 'Venta registrada. Adena añadida al warehouse.');
+    }
+
+    public function sellAuto(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:items,id',
+            'total_amount' => 'required|integer|min:1',
+            'unit_price' => 'required|integer|min:1',
+            'allocations' => 'required|array|min:1',
+            'allocations.*.source_report_id' => 'required|integer|exists:loot_reports,id',
+            'allocations.*.amount' => 'required|integer|min:1',
+            'image_proof' => 'required|image|max:4096',
+        ]);
+
+        $current = $request->user();
+        if (! $this->canManageWarehouse($current)) {
+            abort(403, 'No tienes permiso para vender ítems del warehouse.');
+        }
+
+        $cpId = $current->cp_id;
+        $item = Item::findOrFail($request->item_id);
+        if (strtolower($item->name) === 'adena') {
+            return back()->withErrors(['item_id' => 'La Adena se gestiona como saldo, no se vende como ítem del warehouse.']);
+        }
+
+        $totalAmount = (int) $request->total_amount;
+        $unitPrice = (int) $request->unit_price;
+        $allocations = collect($request->input('allocations'))->map(fn ($a) => [
+            'source_report_id' => (int) $a['source_report_id'],
+            'amount' => (int) $a['amount'],
+        ])->values();
+
+        if ($allocations->sum('amount') !== $totalAmount) {
+            return back()->withErrors(['allocations' => 'La suma de las allocaciones no coincide con total_amount.']);
+        }
+
+        $sourceReports = LootReport::with('attendees')
+            ->whereIn('id', $allocations->pluck('source_report_id'))
+            ->where('cp_id', $cpId)
+            ->where('status', 'confirmed')
+            ->get()
+            ->keyBy('id');
+
+        foreach ($allocations as $alloc) {
+            $src = $sourceReports[$alloc['source_report_id']] ?? null;
+            if (! $src) {
+                return back()->withErrors(['allocations' => 'Una de las sesiones de farm no es válida para esta CP.']);
+            }
+            $hasItem = LootEntry::where('loot_report_id', $src->id)->where('item_id', $item->id)->exists();
+            if (! $hasItem) {
+                return back()->withErrors(['allocations' => "El farm #{$src->id} no contiene este ítem."]);
+            }
+            $pending = $this->pendingFromSource($src->id, $item->id);
+            if ($alloc['amount'] > $pending) {
+                return back()->withErrors(['allocations' => "El farm #{$src->id} sólo tiene {$pending} disponibles (pediste {$alloc['amount']})."]);
+            }
+            if ($src->attendees->isEmpty() && (int) $src->cp_share_pct < 100) {
+                return back()->withErrors(['allocations' => "El farm #{$src->id} no tiene attendees; véndelo por separado con CP 100%."]);
+            }
+        }
+
+        $available = $this->currentStock($cpId, $item->id);
+        if ($available < $totalAmount) {
+            return back()->withErrors(['total_amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
+        }
+
+        $batchId = (string) Str::uuid();
+        $imagePath = $this->storeSellImage($request->file('image_proof'), $cpId, $batchId);
+
+        try {
+            $results = DB::transaction(function () use ($cpId, $current, $item, $allocations, $sourceReports, $unitPrice, $imagePath, $batchId, $totalAmount) {
+                Item::whereKey($item->id)->lockForUpdate()->first();
+                $stock = $this->currentStock($cpId, $item->id);
+                if ($stock < $totalAmount) {
+                    throw new \RuntimeException('INSUFFICIENT_STOCK:'.$stock);
+                }
+                $out = [];
+                foreach ($allocations as $alloc) {
+                    $src = $sourceReports[$alloc['source_report_id']];
+                    $out[] = $this->createSellReportForSource(
+                        $cpId, $src, $item, $alloc['amount'], $unitPrice, (int) $src->cp_share_pct,
+                        $imagePath, $current, $batchId,
+                    );
+                }
+                return $out;
+            });
+        } catch (\RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
+                $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
+                return back()->withErrors(['total_amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
+            }
+            throw $e;
+        }
+
+        $totalAdena = collect($results)->sum('total_adena');
+        $totalLabel = number_format((int) $totalAdena, 0, ',', '.');
+        $n = count($results);
+        $summary = "{$current->name} vendió {$item->name} x{$totalAmount} por {$totalLabel} Adena ({$n} ventas auto)";
+        $this->emitSellAlerts($current, $results, $item, $summary);
+
+        return back()->with('success', "Venta registrada en {$n} reports.");
+    }
+
+    private function canManageWarehouse(?User $user): bool
+    {
+        if (! $user || ! $user->cp_id) {
+            return false;
+        }
+        $role = $user->role?->name;
+        return in_array($role, ['admin', 'cp_leader', 'accountant'], true);
+    }
+
+    private function currentStock(int $cpId, int $itemId): int
+    {
         $incoming = LootEntry::query()
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
             ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
-            ->where('loot_entries.item_id', $request->item_id)
+            ->where('loot_entries.item_id', $itemId)
             ->sum('loot_entries.amount');
 
         $outgoing = LootEntry::query()
@@ -770,22 +914,56 @@ class PartyController extends Controller
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
             ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
-            ->where('loot_entries.item_id', $request->item_id)
+            ->where('loot_entries.item_id', $itemId)
             ->sum('loot_entries.amount');
 
-        $available = max(0, (int) $incoming - (int) $outgoing);
-        if ($available < (int) $request->amount) {
-            return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
-        }
+        return max(0, (int) $incoming - (int) $outgoing);
+    }
 
+    // How many units of `$itemId` from this single source farm are still
+    // in the vault (i.e. not yet sold via a SELL referencing this farm in
+    // its audit_log new_values). Walks audit logs in PHP rather than
+    // relying on whereJsonContains — same pattern as sellSourceCandidates,
+    // which is the authoritative source for "pending" math.
+    private function pendingFromSource(int $sourceReportId, int $itemId): int
+    {
+        $farmed = (int) LootEntry::where('loot_report_id', $sourceReportId)
+            ->where('item_id', $itemId)
+            ->sum('amount');
+
+        $sold = DB::table('audit_logs')
+            ->where('action', 'WAREHOUSE_SELL')
+            ->get(['new_values'])
+            ->reduce(function ($acc, $row) use ($sourceReportId, $itemId) {
+                $payload = is_string($row->new_values) ? json_decode($row->new_values, true) : (array) $row->new_values;
+                if (! is_array($payload)) return $acc;
+                if ((int) ($payload['item_id'] ?? 0) !== $itemId) return $acc;
+                if ((int) ($payload['source_report_id'] ?? 0) !== $sourceReportId) return $acc;
+                return $acc + (int) ($payload['amount'] ?? 0);
+            }, 0);
+
+        return max(0, $farmed - $sold);
+    }
+
+    private function storeSellImage($file, int $cpId, ?string $batchId = null): string
+    {
+        $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+        $name = $batchId ? "auto_{$batchId}.{$ext}" : Str::uuid().".{$ext}";
+        return $file->storeAs("warehouse_sell/{$cpId}", $name, 'public');
+    }
+
+    private function createSellReportForSource(
+        int $cpId,
+        LootReport $sourceReport,
+        Item $item,
+        int $amount,
+        int $unitPrice,
+        int $cpSharePct,
+        string $imagePath,
+        User $actor,
+        ?string $batchId = null,
+    ): array {
         $sourceAttendees = $sourceReport->attendees;
-        if ($sourceAttendees->isEmpty() && (int) $request->cp_share_pct < 100) {
-            return back()->withErrors(['source_report_id' => 'La sesión origen no tiene attendees registrados; o márcala con 100% al CP fund o resuelve la sesión añadiendo attendees.']);
-        }
-
-        $amount = (int) $request->amount;
-        $unitPrice = (int) $request->unit_price;
-        $cpSharePct = (int) $request->cp_share_pct;
         $totalAdena = $amount * $unitPrice;
 
         // Split math:
@@ -803,147 +981,139 @@ class PartyController extends Controller
 
         $memberIds = $sourceAttendees->where('is_external', false)->pluck('user_id')->filter()->all();
 
-        try {
-            DB::transaction(function () use ($request, $cpId, $current, $item, $amount, $unitPrice, $totalAdena, $sourceReport, $sourceAttendees, $cpSharePct, $cpShare, $perAttendee, $cpFundFinal, $memberIds) {
-                Item::whereKey($item->id)->lockForUpdate()->first();
+        $report = LootReport::create([
+            'cp_id' => $cpId,
+            'requested_by_id' => $actor->id,
+            'event_type' => 'SELL',
+            'status' => 'confirmed',
+            'image_proof' => $imagePath,
+            'recipient_ids' => !empty($memberIds) ? $memberIds : null,
+            'adena_distribution' => $cpSharePct === 100 ? 'cp' : 'attendees',
+            'cp_share_pct' => $cpSharePct,
+        ]);
 
-                $incoming = LootEntry::query()
-                    ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
-                    ->where('loot_reports.cp_id', $cpId)
-                    ->where('loot_reports.status', 'confirmed')
-                    ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
-                    ->where('loot_entries.item_id', $item->id)
-                    ->sum('loot_entries.amount');
+        LootEntry::create([
+            'loot_report_id' => $report->id,
+            'item_id' => $item->id,
+            'amount' => $amount,
+        ]);
 
-                $outgoing = LootEntry::query()
-                    ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
-                    ->where('loot_reports.cp_id', $cpId)
-                    ->where('loot_reports.status', 'confirmed')
-                    ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
-                    ->where('loot_entries.item_id', $item->id)
-                    ->sum('loot_entries.amount');
-
-                $available = max(0, (int) $incoming - (int) $outgoing);
-                if ($available < (int) $amount) {
-                    throw new \RuntimeException('INSUFFICIENT_STOCK:'.$available);
-                }
-
-            $report = LootReport::create([
-                'cp_id' => $cpId,
-                'requested_by_id' => $current->id,
-                'event_type' => 'SELL',
-                'status' => 'confirmed',
-                'image_proof' => null,
-                'recipient_ids' => !empty($memberIds) ? $memberIds : null,
-                'adena_distribution' => $cpSharePct === 100 ? 'cp' : 'attendees',
-                'cp_share_pct' => $cpSharePct,
-            ]);
-
-            $file = $request->file('image_proof');
-            $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
-            $imagePath = $file->storeAs("warehouse_sell/{$cpId}", "{$report->id}.{$ext}", 'public');
-            $report->image_proof = $imagePath;
-            $report->save();
-
+        $adenaItem = Item::whereRaw('LOWER(name) = ?', ['adena'])->first();
+        if ($adenaItem) {
             LootEntry::create([
                 'loot_report_id' => $report->id,
-                'item_id' => $item->id,
-                'amount' => $amount,
+                'item_id' => $adenaItem->id,
+                'amount' => $totalAdena,
             ]);
-
-            $adenaItem = Item::whereRaw('LOWER(name) = ?', ['adena'])->first();
-            if ($adenaItem) {
-                LootEntry::create([
-                    'loot_report_id' => $report->id,
-                    'item_id' => $adenaItem->id,
-                    'amount' => $totalAdena,
-                ]);
-            }
-
-            // Persist the per-attendee share on the SELL report (not the
-            // source farm) so we keep a per-sale history. External attendees
-            // get a row with share_adena but no PointsLog — the leader pays
-            // them outside the app and marks paid_at via the external
-            // payouts page.
-            foreach ($sourceAttendees as $att) {
-                LootReportAttendee::create([
-                    'loot_report_id' => $report->id,
-                    'user_id' => $att->user_id,
-                    'character_id' => $att->character_id, // inherit char from source farm
-                    'external_name' => $att->external_name,
-                    'is_external' => $att->is_external,
-                    'share_adena' => $perAttendee,
-                ]);
-
-                if (!$att->is_external && $att->user_id && $perAttendee > 0) {
-                    PointsLog::create([
-                        'cp_id' => $cpId,
-                        'user_id' => $att->user_id,
-                        'action_type' => 'ADENA_GAIN',
-                        'points' => 0,
-                        'adena' => $perAttendee,
-                        'description' => 'Split de venta ('.$item->name.') - Reporte #'.$report->id.' (origen #'.$sourceReport->id.')',
-                    ]);
-                }
-            }
-
-            $audit = AuditLog::create([
-                'entity_type' => 'LootReport',
-                'entity_id' => $report->id,
-                'user_id' => $current->id,
-                'action' => 'WAREHOUSE_SELL',
-                'old_values' => null,
-                'new_values' => [
-                    'item_id' => (int) $item->id,
-                    'item_name' => $item->name,
-                    'amount' => (int) $amount,
-                    'unit_price' => (int) $unitPrice,
-                    'total' => (int) $totalAdena,
-                    'cp_share_pct' => $cpSharePct,
-                    'cp_share' => (int) $cpFundFinal,
-                    'per_attendee' => (int) $perAttendee,
-                    'attendees_count' => $sourceAttendees->count(),
-                    'external_count' => $sourceAttendees->where('is_external', true)->count(),
-                    'source_report_id' => $sourceReport->id,
-                ],
-            ]);
-            $recipients = collect([$current->id]);
-            $leaderId = optional($current->cp)->leader_id;
-            if ($leaderId) {
-                $recipients->push($leaderId);
-            }
-            foreach ($memberIds as $rid) {
-                $recipients->push($rid);
-            }
-            $recipients = $recipients->unique()->values();
-            $totalLabel = number_format((int) $totalAdena, 0, ',', '.');
-            $summary = "{$current->name} vendió {$item->name} x{$amount} por {$totalLabel} Adena";
-            $summary .= " (origen #{$sourceReport->id})";
-            $now = now();
-            $rows = $recipients->map(fn ($rid) => [
-                'audit_log_id' => $audit->id,
-                'recipient_user_id' => $rid,
-                'actor_user_id' => $current->id,
-                'entity_type' => 'LootReport',
-                'entity_id' => $report->id,
-                'action' => 'WAREHOUSE_SELL',
-                'summary' => $summary,
-                'meta' => json_encode(['report_id' => $report->id, 'source_report_id' => $sourceReport->id, 'item_id' => (int) $item->id]),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ])->all();
-            DB::table('audit_alerts')->insert($rows);
-            });
-        } catch (\RuntimeException $e) {
-            if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
-                $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
-
-                return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
-            }
-            throw $e;
         }
 
-        return back()->with('success', 'Venta registrada. Adena añadida al warehouse.');
+        // Persist the per-attendee share on the SELL report (not the
+        // source farm) so we keep a per-sale history. External attendees
+        // get a row with share_adena but no PointsLog — the leader pays
+        // them outside the app and marks paid_at via the external
+        // payouts page.
+        foreach ($sourceAttendees as $att) {
+            LootReportAttendee::create([
+                'loot_report_id' => $report->id,
+                'user_id' => $att->user_id,
+                'character_id' => $att->character_id,
+                'external_name' => $att->external_name,
+                'is_external' => $att->is_external,
+                'share_adena' => $perAttendee,
+            ]);
+
+            if (!$att->is_external && $att->user_id && $perAttendee > 0) {
+                PointsLog::create([
+                    'cp_id' => $cpId,
+                    'user_id' => $att->user_id,
+                    'action_type' => 'ADENA_GAIN',
+                    'points' => 0,
+                    'adena' => $perAttendee,
+                    'description' => 'Split de venta ('.$item->name.') - Reporte #'.$report->id.' (origen #'.$sourceReport->id.')',
+                ]);
+            }
+        }
+
+        $audit = AuditLog::create([
+            'entity_type' => 'LootReport',
+            'entity_id' => $report->id,
+            'user_id' => $actor->id,
+            'action' => 'WAREHOUSE_SELL',
+            'old_values' => null,
+            'new_values' => [
+                'item_id' => (int) $item->id,
+                'item_name' => $item->name,
+                'amount' => (int) $amount,
+                'unit_price' => (int) $unitPrice,
+                'total' => (int) $totalAdena,
+                'cp_share_pct' => $cpSharePct,
+                'cp_share' => (int) $cpFundFinal,
+                'per_attendee' => (int) $perAttendee,
+                'attendees_count' => $count,
+                'external_count' => $sourceAttendees->where('is_external', true)->count(),
+                'source_report_id' => $sourceReport->id,
+                'auto_allocation_batch_id' => $batchId,
+            ],
+        ]);
+
+        return [
+            'report' => $report,
+            'audit_log_id' => $audit->id,
+            'source_report_id' => $sourceReport->id,
+            'amount' => $amount,
+            'total_adena' => $totalAdena,
+            'cp_share' => $cpFundFinal,
+            'per_attendee' => $perAttendee,
+            'attendees_count' => $count,
+            'member_ids' => $memberIds,
+        ];
+    }
+
+    // Insert one audit_alert per unique recipient across all reports in
+    // the batch. We anchor every alert to the first report so the user
+    // lands on something meaningful when clicking the bell; the summary
+    // already communicates "X ventas auto" when relevant.
+    private function emitSellAlerts(User $actor, array $results, Item $item, string $summary): void
+    {
+        if (empty($results)) {
+            return;
+        }
+        $first = $results[0];
+        $leaderId = optional($actor->cp)->leader_id;
+
+        $recipients = collect([$actor->id]);
+        if ($leaderId) {
+            $recipients->push($leaderId);
+        }
+        foreach ($results as $r) {
+            foreach ($r['member_ids'] as $rid) {
+                $recipients->push($rid);
+            }
+        }
+        $recipients = $recipients->unique()->values();
+
+        $now = now();
+        $reportIds = collect($results)->pluck('report.id')->all();
+        $sourceIds = collect($results)->pluck('source_report_id')->all();
+
+        $rows = $recipients->map(fn ($rid) => [
+            'audit_log_id' => $first['audit_log_id'],
+            'recipient_user_id' => $rid,
+            'actor_user_id' => $actor->id,
+            'entity_type' => 'LootReport',
+            'entity_id' => $first['report']->id,
+            'action' => 'WAREHOUSE_SELL',
+            'summary' => $summary,
+            'meta' => json_encode([
+                'report_id' => $first['report']->id,
+                'report_ids' => $reportIds,
+                'source_report_ids' => $sourceIds,
+                'item_id' => (int) $item->id,
+            ]),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+        DB::table('audit_alerts')->insert($rows);
     }
 
     public function defaultSellRecipients(Request $request)

@@ -312,6 +312,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/warehouse/add', [PartyController::class, 'addStock'])->name('warehouse.add');
     Route::post('/warehouse/buy', [PartyController::class, 'buyStock'])->name('warehouse.buy');
     Route::post('/warehouse/sell', [PartyController::class, 'sell'])->name('warehouse.sell');
+    Route::post('/warehouse/sell-auto', [PartyController::class, 'sellAuto'])->name('warehouse.sell-auto');
     Route::get('/api/warehouse/sell/default-recipients', [PartyController::class, 'defaultSellRecipients'])->name('api.warehouse.sell.defaultRecipients');
     Route::get('/api/warehouse/sell/source-candidates', [PartyController::class, 'sellSourceCandidates'])->name('api.warehouse.sell.sourceCandidates');
     Route::post('/cp/recipes', [CraftingController::class, 'store'])->name('cp.recipes.store');

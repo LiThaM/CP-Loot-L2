@@ -745,6 +745,10 @@ const sellForm = useForm({
 const sellSourceCandidates = ref([]);
 const sellSourceLoading = ref(false);
 const sellSharePresets = [0, 10, 20, 50, 100];
+// Default to auto-allocation FIFO; users opt into single-source via toggle
+// when they need to override the order (e.g. liquidate one specific farm).
+const sellMode = ref('auto');
+const sellSubmitting = ref(false);
 
 const sellSelectedSource = computed(() => {
     if (!sellForm.source_report_id) return null;
@@ -759,6 +763,48 @@ const sellTotalAdena = computed(() => {
     if (!Number.isFinite(amount) || !Number.isFinite(price)) return 0;
     return Math.max(0, Math.trunc(amount) * Math.trunc(price));
 });
+
+const sellTotalPendingStock = computed(() => sellSourceCandidates.value.reduce((s, c) => s + Number(c.pending || 0), 0));
+
+const computeFifoAllocations = (candidates, requestedAmount) => {
+    const sorted = [...candidates].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    let remaining = Math.max(0, Math.trunc(requestedAmount || 0));
+    const out = [];
+    for (const c of sorted) {
+        if (remaining <= 0) break;
+        const pending = Number(c.pending || 0);
+        const take = Math.min(pending, remaining);
+        if (take > 0) {
+            out.push({ source_report_id: c.id, amount: take, candidate: c });
+            remaining -= take;
+        }
+    }
+    return { allocations: out, shortage: remaining };
+};
+
+const sellAutoAllocation = computed(() => computeFifoAllocations(sellSourceCandidates.value, sellForm.amount));
+
+const sellAutoSummary = computed(() => {
+    const unitPrice = Math.max(0, Math.trunc(Number(sellForm.unit_price || 0)));
+    let cpTotal = 0;
+    let attendeesTotal = 0;
+    const rows = sellAutoAllocation.value.allocations.map((a) => {
+        const c = a.candidate;
+        const total = a.amount * unitPrice;
+        const cpShare = Math.floor((total * Number(c.cp_share_pct || 0)) / 100);
+        const toAtt = total - cpShare;
+        const count = (c.attendees || []).length;
+        const perAtt = count > 0 ? Math.floor(toAtt / count) : 0;
+        const leftover = count > 0 ? toAtt - perAtt * count : toAtt;
+        const cpFinal = cpShare + leftover;
+        cpTotal += cpFinal;
+        attendeesTotal += perAtt * count;
+        return { ...a, total, cpFinal, perAtt, count, blockedNoAttendees: count === 0 && Number(c.cp_share_pct || 0) < 100 };
+    });
+    return { rows, cpTotal, attendeesTotal, totalAdena: cpTotal + attendeesTotal };
+});
+
+const sellAutoHasBlocked = computed(() => sellAutoSummary.value.rows.some((r) => r.blockedNoAttendees));
 
 const sellSplitCount = computed(() => sellAttendees.value.length);
 
@@ -791,11 +837,12 @@ const openSell = (item) => {
     selectedSellItem.value = item;
     sellForm.item_id = item.id;
     sellForm.amount = 1;
-    sellForm.unit_price = 1;
+    sellForm.unit_price = item.market_price ?? 1;
     sellForm.source_report_id = null;
     sellForm.cp_share_pct = 0;
     sellForm.image_proof = null;
     sellSourceCandidates.value = [];
+    sellMode.value = 'auto';
     sellModalOpen.value = true;
     loadSellSourceCandidates(item.id);
 };
@@ -824,7 +871,38 @@ watch(() => sellForm.source_report_id, (val) => {
 });
 
 const submitSell = () => {
-    sellForm.post(route('warehouse.sell'), {
+    if (sellMode.value === 'manual') {
+        sellForm.post(route('warehouse.sell'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                sellModalOpen.value = false;
+                showToast(t('warehouse.toast.sale_recorded'));
+            },
+            onError: () => {
+                showToast(t('warehouse.toast.sale_failed'), 'error');
+            }
+        });
+        return;
+    }
+
+    if (sellAutoAllocation.value.shortage > 0) {
+        showToast(t('warehouse.toast.sale_failed'), 'error');
+        return;
+    }
+
+    const payload = new FormData();
+    payload.append('item_id', String(sellForm.item_id));
+    payload.append('total_amount', String(sellForm.amount));
+    payload.append('unit_price', String(sellForm.unit_price));
+    payload.append('image_proof', sellForm.image_proof);
+    sellAutoAllocation.value.allocations.forEach((a, idx) => {
+        payload.append(`allocations[${idx}][source_report_id]`, String(a.source_report_id));
+        payload.append(`allocations[${idx}][amount]`, String(a.amount));
+    });
+
+    sellSubmitting.value = true;
+    router.post(route('warehouse.sell-auto'), payload, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
@@ -833,6 +911,9 @@ const submitSell = () => {
         },
         onError: () => {
             showToast(t('warehouse.toast.sale_failed'), 'error');
+        },
+        onFinish: () => {
+            sellSubmitting.value = false;
         }
     });
 };
@@ -2117,61 +2198,120 @@ watch(buySearch, throttle(async (val) => {
                     </div>
                 </div>
 
-                <!-- Source farm session picker -->
-                <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('sell.source_session.label') }}</div>
+                <!-- Mode toggle -->
+                <div class="flex items-center justify-between bg-white/70 border border-gray-200 rounded-2xl px-4 py-2 dark:bg-black/30 dark:border-gray-800">
+                    <div class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                        {{ sellMode === 'auto' ? tFromProps('warehouse.sell.auto.mode_active', 'Reparto automático FIFO') : tFromProps('warehouse.sell.auto.mode_manual', 'Eligiendo un farm específico') }}
+                    </div>
+                    <button type="button" @click="sellMode = sellMode === 'auto' ? 'manual' : 'auto'"
+                            class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg border transition bg-white/70 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-400">
+                        {{ sellMode === 'auto' ? tFromProps('warehouse.sell.auto.mode_toggle', 'Elegir farm específico') : tFromProps('warehouse.sell.auto.mode_back_to_auto', 'Volver a reparto automático') }}
+                    </button>
+                </div>
+
+                <!-- AUTO preview -->
+                <div v-if="sellMode === 'auto'" class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
                     <div v-if="sellSourceLoading" class="text-xs text-gray-500 italic">…</div>
-                    <select v-else v-model.number="sellForm.source_report_id" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl h-10 px-3 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
-                        <option :value="null" disabled>{{ $t('sell.source_session.placeholder') }}</option>
-                        <option v-for="c in sellSourceCandidates" :key="c.id" :value="c.id">
-                            #{{ c.id }} · {{ c.event_type }} · {{ c.requested_by || '—' }} · {{ $t('sell.source_session.pending', { n: c.pending }) }}
-                        </option>
-                    </select>
-                    <div v-if="!sellSourceLoading && sellSourceCandidates.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
-                        {{ $t('sell.source_session.empty') }}
-                    </div>
-
-                    <div v-if="sellSelectedSource" class="mt-3 space-y-2 border-t border-gray-200 dark:border-gray-800 pt-3">
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.attendees.title') }} ({{ sellAttendees.length }})</div>
-                        <div class="flex flex-wrap gap-2">
-                            <span v-for="att in sellAttendees" :key="att.id"
-                                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-                                  :class="att.is_external
-                                      ? 'bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300'
-                                      : 'bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300'">
-                                <span v-if="att.is_external" class="uppercase tracking-widest text-[9px] opacity-70">{{ $t('loot.attendees.external_badge') }}</span>
-                                {{ att.name || '(?)' }}
-                            </span>
+                    <template v-else>
+                        <div v-if="sellAutoAllocation.shortage > 0" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                            {{ tFromProps('warehouse.sell.auto.shortage', 'Faltan {n} uds — stock total disponible: {available}').replace('{n}', String(sellAutoAllocation.shortage)).replace('{available}', String(sellTotalPendingStock)) }}
                         </div>
-                    </div>
+                        <div v-else-if="sellAutoSummary.rows.length > 0">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">
+                                {{ tFromProps('warehouse.sell.auto.preview_title', 'Se crearán {n} ventas:').replace('{n}', String(sellAutoSummary.rows.length)) }}
+                            </div>
+                            <div class="space-y-2">
+                                <div v-for="row in sellAutoSummary.rows" :key="row.source_report_id"
+                                     class="rounded-xl border px-3 py-2"
+                                     :class="row.blockedNoAttendees ? 'border-red-500/40 bg-red-500/10' : 'border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-black/40'">
+                                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                                        <div class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                            <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ row.amount }}</span>
+                                            {{ tFromProps('warehouse.sell.auto.from_farm', 'del farm') }} #{{ row.source_report_id }}
+                                            <span class="text-[10px] text-gray-500 uppercase tracking-widest ml-1">{{ row.candidate.event_type }} · CP {{ row.candidate.cp_share_pct }}%</span>
+                                        </div>
+                                        <div class="text-[10px] text-gray-600 dark:text-gray-400">
+                                            <span class="font-cinzel text-purple-700 dark:text-purple-300">{{ formatAdenaShort(row.cpFinal) }}</span> CP ·
+                                            <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(row.perAtt) }}</span> × {{ row.count }}
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5 mt-1.5" v-if="(row.candidate.attendees || []).length > 0">
+                                        <span v-for="att in row.candidate.attendees" :key="att.id"
+                                              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                                              :class="att.is_external
+                                                  ? 'bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300'
+                                                  : 'bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300'">
+                                            {{ att.name || '(?)' }}
+                                        </span>
+                                    </div>
+                                    <div v-if="row.blockedNoAttendees" class="mt-1.5 text-[10px] text-red-700 dark:text-red-400 font-bold">
+                                        {{ tFromProps('warehouse.sell.auto.no_attendees_in_source', 'El farm #{id} no tiene attendees; véndelo por separado con CP 100%').replace('{id}', String(row.source_report_id)) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                            {{ tFromProps('sell.source_session.empty', 'Sin farms candidatos para vender este item.') }}
+                        </div>
+                    </template>
                 </div>
 
-                <!-- CP fund percentage + split summary -->
-                <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
-                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('sell.split.cp_share') }}</div>
-                    <div class="flex gap-2 flex-wrap">
-                        <button v-for="p in sellSharePresets" :key="'sp-'+p" type="button"
-                                @click="sellForm.cp_share_pct = p"
-                                class="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg border transition"
-                                :class="Number(sellForm.cp_share_pct) === p ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white/70 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-400'">
-                            {{ p }}%
-                        </button>
-                        <input v-model.number="sellForm.cp_share_pct" type="number" min="0" max="100"
-                               class="w-20 px-2 py-1.5 text-xs text-center rounded-lg border border-gray-200 bg-white/80 dark:bg-gray-900/40 dark:border-gray-700 dark:text-white">
+                <!-- MANUAL: Source farm session picker + cp_share_pct -->
+                <template v-if="sellMode === 'manual'">
+                    <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('sell.source_session.label') }}</div>
+                        <div v-if="sellSourceLoading" class="text-xs text-gray-500 italic">…</div>
+                        <select v-else v-model.number="sellForm.source_report_id" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl h-10 px-3 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                            <option :value="null" disabled>{{ $t('sell.source_session.placeholder') }}</option>
+                            <option v-for="c in sellSourceCandidates" :key="c.id" :value="c.id">
+                                #{{ c.id }} · {{ c.event_type }} · {{ c.requested_by || '—' }} · {{ $t('sell.source_session.pending', { n: c.pending }) }}
+                            </option>
+                        </select>
+                        <div v-if="!sellSourceLoading && sellSourceCandidates.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                            {{ $t('sell.source_session.empty') }}
+                        </div>
+
+                        <div v-if="sellSelectedSource" class="mt-3 space-y-2 border-t border-gray-200 dark:border-gray-800 pt-3">
+                            <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.attendees.title') }} ({{ sellAttendees.length }})</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="att in sellAttendees" :key="att.id"
+                                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                                      :class="att.is_external
+                                          ? 'bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300'
+                                          : 'bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300'">
+                                    <span v-if="att.is_external" class="uppercase tracking-widest text-[9px] opacity-70">{{ $t('loot.attendees.external_badge') }}</span>
+                                    {{ att.name || '(?)' }}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div v-if="sellTotalAdena > 0" class="space-y-1 pt-3 border-t border-gray-200 dark:border-gray-800">
-                        <div class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-                            {{ $t('sell.split.summary.cp') }}: <span class="font-cinzel text-purple-700 dark:text-purple-300">{{ formatAdenaShort(sellCpFundFinal) }}</span>
+                    <div class="bg-white/70 border border-gray-200 rounded-2xl p-4 dark:bg-black/30 dark:border-gray-800 space-y-3">
+                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('sell.split.cp_share') }}</div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button v-for="p in sellSharePresets" :key="'sp-'+p" type="button"
+                                    @click="sellForm.cp_share_pct = p"
+                                    class="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg border transition"
+                                    :class="Number(sellForm.cp_share_pct) === p ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white/70 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-400'">
+                                {{ p }}%
+                            </button>
+                            <input v-model.number="sellForm.cp_share_pct" type="number" min="0" max="100"
+                                   class="w-20 px-2 py-1.5 text-xs text-center rounded-lg border border-gray-200 bg-white/80 dark:bg-gray-900/40 dark:border-gray-700 dark:text-white">
                         </div>
-                        <div v-if="sellSplitCount > 0" class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-                            {{ $t('sell.split.summary.each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(sellPerMember) }}</span> × {{ sellSplitCount }}
-                        </div>
-                        <div v-if="sellExternalOwed > 0" class="text-[10px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-widest">
-                            {{ $t('sell.split.summary.externals') }}: <span class="font-cinzel">{{ formatAdenaShort(sellExternalOwed) }}</span>
+
+                        <div v-if="sellTotalAdena > 0" class="space-y-1 pt-3 border-t border-gray-200 dark:border-gray-800">
+                            <div class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('sell.split.summary.cp') }}: <span class="font-cinzel text-purple-700 dark:text-purple-300">{{ formatAdenaShort(sellCpFundFinal) }}</span>
+                            </div>
+                            <div v-if="sellSplitCount > 0" class="text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                                {{ $t('sell.split.summary.each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(sellPerMember) }}</span> × {{ sellSplitCount }}
+                            </div>
+                            <div v-if="sellExternalOwed > 0" class="text-[10px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-widest">
+                                {{ $t('sell.split.summary.externals') }}: <span class="font-cinzel">{{ formatAdenaShort(sellExternalOwed) }}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </template>
 
                 <div>
                     <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">{{ $t('party.sale_screenshot_required') }}</div>
@@ -2195,7 +2335,18 @@ watch(buySearch, throttle(async (val) => {
 
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="sellModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
-                <button @click="submitSell" :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof || !sellForm.source_report_id" class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.register_sale') }}</button>
+                <button
+                    @click="submitSell"
+                    :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof
+                        || sellSubmitting
+                        || (sellMode === 'manual' && !sellForm.source_report_id)
+                        || (sellMode === 'auto' && (sellAutoAllocation.shortage > 0 || sellAutoHasBlocked || sellAutoAllocation.allocations.length === 0))"
+                    class="flex-[2] py-4 bg-gradient-to-tr from-emerald-700 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-emerald-950/50 disabled:opacity-30 disabled:grayscale">
+                    <span v-if="sellMode === 'auto' && sellAutoSummary.rows.length > 1">
+                        {{ tFromProps('warehouse.sell.auto.submit_multi', 'Vender en {n} reports').replace('{n}', String(sellAutoSummary.rows.length)) }}
+                    </span>
+                    <span v-else>{{ $t('party.register_sale') }}</span>
+                </button>
             </div>
         </div>
     </div>
