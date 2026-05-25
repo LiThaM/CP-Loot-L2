@@ -34,6 +34,7 @@ const props = defineProps({
 const page = usePage();
 const locale = computed(() => page.props.app?.locale || 'en');
 const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const imageProofRequired = computed(() => Boolean(props.cp?.image_proof_required ?? true));
 const t = (key, params = {}) => {
     const raw = page.props.translations?.[key];
     if (!raw || typeof raw !== 'string') return key;
@@ -226,6 +227,7 @@ const cpSettingsForm = useForm({
     name: props.cp?.name || '',
     server: props.cp?.server || '',
     logo: null,
+    image_proof_required: props.cp?.image_proof_required ?? true,
 });
 
 const logoPreview = ref(null);
@@ -536,7 +538,7 @@ const getSelectedOutputItemId = (recipe) => {
     return null;
 };
 
-const performCraft = async (entry, lucky) => {
+const performCraft = async (entry, lucky, outputItemIdArg = null) => {
     const recipe = entry?.recipe;
     if (!recipe?.id) return;
     if (!canCraftRecipe(recipe)) return;
@@ -547,7 +549,7 @@ const performCraft = async (entry, lucky) => {
     craftingCrafting.value = set;
 
     try {
-        const outputItemId = getSelectedOutputItemId(recipe);
+        const outputItemId = outputItemIdArg ?? getSelectedOutputItemId(recipe);
 
         const { data } = await axios.post(route('api.recipes.craft', { recipe: recipe.id }), {
             lucky,
@@ -574,25 +576,61 @@ const performCraft = async (entry, lucky) => {
     }
 };
 
+const craftingConfirmStep = ref('idle'); // 'idle' | 'preview' | 'outcome'
+const craftingConfirmLucky = ref(null);   // null until user picks
+const craftingConfirmOutputId = ref(null);
+
 const openCraftConfirm = (entry) => {
-    const sr = Number(entry?.recipe?.success_rate ?? 0);
-    if (sr >= 100) {
+    const recipe = entry?.recipe;
+    if (!recipe) return;
+    const sr = Number(recipe.success_rate ?? 0);
+    const outputs = Array.isArray(recipe.outputs) ? recipe.outputs : [];
+    const hasAutoCraft = !!recipe.auto_craft_plan?.auto_crafted?.length;
+    const needsOutcome = sr < 100 || outputs.length > 1;
+
+    // Nothing to ask → craft directly.
+    if (!hasAutoCraft && !needsOutcome) {
         performCraft(entry, true);
         return;
     }
+
     craftingConfirmEntry.value = entry;
+    craftingConfirmLucky.value = sr >= 100 ? true : null; // pre-pick lucky=true when 100% rate
+    craftingConfirmOutputId.value = outputs.length === 1 ? outputs[0].item_id : null;
+    craftingConfirmStep.value = hasAutoCraft ? 'preview' : 'outcome';
     craftingConfirmOpen.value = true;
 };
 
 const closeCraftConfirm = () => {
     craftingConfirmOpen.value = false;
     craftingConfirmEntry.value = null;
+    craftingConfirmStep.value = 'idle';
+    craftingConfirmLucky.value = null;
+    craftingConfirmOutputId.value = null;
 };
 
-const confirmCraft = (lucky) => {
+const advanceCraftConfirm = () => {
+    // From preview → outcome (if needed), or directly craft if nothing to ask.
     const entry = craftingConfirmEntry.value;
+    const recipe = entry?.recipe;
+    const outputs = Array.isArray(recipe?.outputs) ? recipe.outputs : [];
+    const sr = Number(recipe?.success_rate ?? 0);
+    const needsOutcome = sr < 100 || outputs.length > 1;
+    if (!needsOutcome) {
+        const oid = outputs.length === 1 ? outputs[0].item_id : null;
+        closeCraftConfirm();
+        performCraft(entry, true, oid);
+        return;
+    }
+    craftingConfirmStep.value = 'outcome';
+};
+
+const confirmCraftFinal = () => {
+    const entry = craftingConfirmEntry.value;
+    const lucky = craftingConfirmLucky.value === true;
+    const outputId = lucky ? craftingConfirmOutputId.value : null;
     closeCraftConfirm();
-    performCraft(entry, lucky);
+    performCraft(entry, lucky, outputId);
 };
 
 const toggleRecipeTree = async (entry) => {
@@ -1112,6 +1150,90 @@ const submitAddStock = () => {
     });
 };
 
+// Recheck modal — pick items, see current stock, type real, server creates
+// the delta reports (gain + loss). Image proof optional based on CP setting.
+const recheckModalOpen = ref(false);
+const recheckSearch = ref('');
+const recheckSearchResults = ref([]);
+const recheckIsSearching = ref(false);
+const recheckForm = useForm({
+    items: [], // [{item_id, name, image_url, current, real_amount}]
+    note: '',
+    image_proof: null,
+});
+
+const openRecheck = () => {
+    recheckForm.reset();
+    recheckForm.items = [];
+    recheckForm.image_proof = null;
+    recheckSearch.value = '';
+    recheckSearchResults.value = [];
+    recheckModalOpen.value = true;
+};
+
+const addRecheckItem = (item) => {
+    if (recheckForm.items.some(i => i.item_id === item.id)) return;
+    // Look up current stock from the warehouseItems prop (already loaded).
+    const inWarehouse = (props.warehouseItems || []).find(w => Number(w.id) === Number(item.id));
+    const current = inWarehouse ? Number(inWarehouse.total_amount || 0) : 0;
+    recheckForm.items.unshift({
+        item_id: item.id,
+        name: item.name,
+        image_url: item.image_url,
+        current,
+        real_amount: current,
+    });
+    recheckSearch.value = '';
+    recheckSearchResults.value = [];
+};
+
+const removeRecheckItem = (idx) => { recheckForm.items.splice(idx, 1); };
+
+const recheckDiff = computed(() => {
+    let gains = 0, losses = 0, changedCount = 0;
+    for (const r of recheckForm.items) {
+        const delta = Number(r.real_amount || 0) - Number(r.current || 0);
+        if (delta === 0) continue;
+        changedCount++;
+        if (delta > 0) gains += delta;
+        else losses += Math.abs(delta);
+    }
+    return { gains, losses, changedCount };
+});
+
+const fetchRecheckSearch = async (q) => {
+    if (!q || q.length < 3) { recheckSearchResults.value = []; return; }
+    recheckIsSearching.value = true;
+    try {
+        const { data } = await axios.get(route('api.items.search'), { params: { q } });
+        recheckSearchResults.value = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    } finally { recheckIsSearching.value = false; }
+};
+watch(recheckSearch, throttle((q) => fetchRecheckSearch(q), 300));
+
+const submitRecheck = () => {
+    if (recheckDiff.value.changedCount === 0) {
+        showToast(t('warehouse.recheck.no_changes'), 'info');
+        return;
+    }
+    const fd = new FormData();
+    recheckForm.items.forEach((row, i) => {
+        fd.append(`items[${i}][item_id]`, String(row.item_id));
+        fd.append(`items[${i}][real_amount]`, String(row.real_amount));
+    });
+    if (recheckForm.note) fd.append('note', recheckForm.note);
+    if (recheckForm.image_proof) fd.append('image_proof', recheckForm.image_proof);
+    router.post(route('warehouse.recheck'), fd, {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            recheckModalOpen.value = false;
+            showToast(t('warehouse.recheck.toast_ok'));
+        },
+        onError: () => showToast(t('warehouse.recheck.toast_failed'), 'error'),
+    });
+};
+
 const stockTotalLines = computed(() => (stockForm.items || []).length);
 const stockTotalUnits = computed(() => {
     const items = stockForm.items || [];
@@ -1606,6 +1728,9 @@ watch(buySearch, throttle(async (val) => {
                             <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('party.vault.subtitle') }}</p>
                         </div>
                         <div v-if="canManageWarehouse" class="flex items-center gap-2">
+                            <button @click="openRecheck" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-cyan-600 text-white text-[10px] font-black uppercase tracking-widest transition">
+                                🔍 {{ $t('warehouse.recheck.button') }}
+                            </button>
                             <button @click="openBuyStock" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest transition">
                                 {{ $t('party.vault.buy_items') }}
                             </button>
@@ -2014,31 +2139,85 @@ watch(buySearch, throttle(async (val) => {
                 </div>
             </div>
 
-            <Modal :show="craftingConfirmOpen" @close="closeCraftConfirm">
-                <div class="p-6">
-                    <div class="text-lg font-black text-gray-900 dark:text-gray-100">
-                        {{ $t('craft.confirm.title') }}
-                    </div>
-                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        {{ $t('craft.confirm.subtitle') }}
-                    </div>
+            <Modal :show="craftingConfirmOpen" @close="closeCraftConfirm" maxWidth="lg">
+                <div class="p-6 space-y-5">
+                    <!-- Step 1: Auto-craft preview -->
+                    <template v-if="craftingConfirmStep === 'preview'">
+                        <div>
+                            <div class="text-lg font-black text-gray-900 dark:text-gray-100">{{ $t('craft.preview.title') }}</div>
+                            <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">{{ $t('craft.preview.subtitle') }}</div>
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="ac in (craftingConfirmEntry?.recipe?.auto_craft_plan?.auto_crafted || [])" :key="ac.item_id"
+                                 class="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-2">
+                                <img v-if="ac.image_url" :src="ac.image_url" class="w-8 h-8 rounded border border-amber-500/30">
+                                <div class="text-sm font-bold text-amber-700 dark:text-amber-300">{{ ac.amount }}× {{ ac.name }}</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" @click="closeCraftConfirm"
+                                    class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-[10px] font-black uppercase tracking-widest dark:bg-gray-800 dark:hover:bg-gray-700">
+                                {{ $t('craft.preview.skip') }}
+                            </button>
+                            <button type="button" @click="advanceCraftConfirm"
+                                    class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest">
+                                {{ $t('craft.preview.accept') }}
+                            </button>
+                        </div>
+                    </template>
 
-                    <div class="mt-6 flex justify-end gap-3">
-                        <button
-                            type="button"
-                            class="px-4 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
-                            @click="confirmCraft(false)"
-                        >
-                            {{ $t('common.no') }}
-                        </button>
-                        <button
-                            type="button"
-                            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest transition"
-                            @click="confirmCraft(true)"
-                        >
-                            {{ $t('common.yes') }}
-                        </button>
-                    </div>
+                    <!-- Step 2: Outcome (lucky + which output) -->
+                    <template v-else-if="craftingConfirmStep === 'outcome'">
+                        <div>
+                            <div class="text-lg font-black text-gray-900 dark:text-gray-100">{{ $t('craft.outcome.title') }}</div>
+                        </div>
+
+                        <!-- Lucky picker (success_rate < 100) -->
+                        <div v-if="Number(craftingConfirmEntry?.recipe?.success_rate ?? 0) < 100" class="space-y-2">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.outcome.lucky_label') }}</div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button type="button" @click="craftingConfirmLucky = true"
+                                        :class="craftingConfirmLucky === true ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white/70 border-gray-200 text-gray-700 dark:bg-black/30 dark:border-gray-800 dark:text-gray-300'"
+                                        class="px-4 py-3 rounded-xl border text-xs font-black uppercase tracking-widest">
+                                    ✓ {{ $t('craft.outcome.positive') }}
+                                </button>
+                                <button type="button" @click="craftingConfirmLucky = false"
+                                        :class="craftingConfirmLucky === false ? 'bg-red-600 text-white border-red-600' : 'bg-white/70 border-gray-200 text-gray-700 dark:bg-black/30 dark:border-gray-800 dark:text-gray-300'"
+                                        class="px-4 py-3 rounded-xl border text-xs font-black uppercase tracking-widest">
+                                    ✗ {{ $t('craft.outcome.negative') }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Output picker (only if positive + multi outputs) -->
+                        <div v-if="craftingConfirmLucky === true && (craftingConfirmEntry?.recipe?.outputs?.length ?? 0) > 1" class="space-y-2">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.outcome.which_output') }}</div>
+                            <div class="space-y-2">
+                                <button v-for="out in craftingConfirmEntry.recipe.outputs" :key="out.item_id"
+                                        type="button" @click="craftingConfirmOutputId = out.item_id"
+                                        :class="Number(craftingConfirmOutputId) === Number(out.item_id) ? 'bg-purple-600/20 border-purple-500 text-gray-900 dark:text-white' : 'bg-white/70 border-gray-200 dark:bg-black/30 dark:border-gray-800 dark:text-gray-300'"
+                                        class="w-full flex items-center gap-3 px-3 py-3 rounded-xl border text-left transition">
+                                    <img v-if="out.image_url" :src="out.image_url" class="w-9 h-9 rounded border border-gray-200 dark:border-gray-700">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-bold truncate">{{ out.name }}</div>
+                                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">x{{ out.quantity || 1 }}<span v-if="out.chance"> · {{ (Number(out.chance) * 100).toFixed(1) }}%</span></div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" @click="closeCraftConfirm"
+                                    class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-[10px] font-black uppercase tracking-widest dark:bg-gray-800 dark:hover:bg-gray-700">
+                                {{ $t('common.cancel') }}
+                            </button>
+                            <button type="button" @click="confirmCraftFinal"
+                                    :disabled="craftingConfirmLucky === null || (craftingConfirmLucky === true && (craftingConfirmEntry?.recipe?.outputs?.length ?? 0) > 1 && !craftingConfirmOutputId)"
+                                    class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30">
+                                {{ $t('craft.outcome.confirm') }}
+                            </button>
+                        </div>
+                    </template>
                 </div>
             </Modal>
 
@@ -2142,6 +2321,17 @@ watch(buySearch, throttle(async (val) => {
                                         {{ cp.chronicle }}
                                     </div>
                                     <p class="mt-3 text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-loose">{{ $t('cp.settings.chronicle_locked_tip') }}</p>
+                                </div>
+
+                                <div class="pt-4 border-t border-gray-200 dark:border-gray-800">
+                                    <label class="flex items-start gap-3 cursor-pointer">
+                                        <input type="checkbox" v-model="cpSettingsForm.image_proof_required"
+                                               class="mt-1 w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-600">
+                                        <div>
+                                            <div class="text-xs font-black uppercase tracking-widest text-gray-800 dark:text-gray-200">{{ $t('cp.settings.image_proof_required') }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">{{ $t('cp.settings.image_proof_required_hint') }}</div>
+                                        </div>
+                                    </label>
                                 </div>
 
                                 <div class="pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-end">
@@ -2255,7 +2445,7 @@ watch(buySearch, throttle(async (val) => {
 
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="assignModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
-                <button @click="submitAssign" :disabled="!assignForm.user_id || !assignForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.assign') }}</button>
+                <button @click="submitAssign" :disabled="!assignForm.user_id || (imageProofRequired && !assignForm.image_proof)" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('party.assign') }}</button>
             </div>
         </div>
     </div>
@@ -2437,7 +2627,7 @@ watch(buySearch, throttle(async (val) => {
                 <button @click="sellModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
                 <button
                     @click="submitSell"
-                    :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || !sellForm.image_proof
+                    :disabled="!sellForm.item_id || !sellForm.amount || !sellForm.unit_price || (imageProofRequired && !sellForm.image_proof)
                         || sellSubmitting
                         || (sellMode === 'manual' && !sellForm.source_report_id)
                         || (sellMode === 'auto' && (sellAutoAllocation.shortage > 0 || sellAutoHasBlocked || sellAutoAllocation.allocations.length === 0))"
@@ -2552,7 +2742,7 @@ watch(buySearch, throttle(async (val) => {
 
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="addStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
-                <button @click="submitAddStock" :disabled="stockForm.items.length === 0 || !stockForm.image_proof" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
+                <button @click="submitAddStock" :disabled="stockForm.items.length === 0 || (imageProofRequired && !stockForm.image_proof)" class="flex-[2] py-4 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-purple-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
             </div>
         </div>
     </div>
@@ -2655,6 +2845,101 @@ watch(buySearch, throttle(async (val) => {
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="buyStockModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
                 <button @click="submitBuyStock" :disabled="buyForm.items.length === 0 || !buyForm.adena_spent" class="flex-[2] py-4 bg-gradient-to-tr from-amber-700 to-orange-600 hover:from-amber-600 hover:to-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-amber-950/50 disabled:opacity-30 disabled:grayscale">{{ $t('common.save') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warehouse Recheck Modal -->
+    <div v-if="recheckModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+        <div class="l2-panel w-full max-w-3xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="bg-gradient-to-r from-cyan-900 to-sky-900 p-4 flex justify-between items-center border-b border-cyan-500/20">
+                <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">🔍 {{ $t('warehouse.recheck.title') }}</div>
+                <button @click="recheckModalOpen = false" class="text-white/50 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                <p class="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">{{ $t('warehouse.recheck.hint') }}</p>
+
+                <div class="relative">
+                    <input v-model="recheckSearch" type="text" :placeholder="$t('common.search_item_placeholder')" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-cyan-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+
+                <div v-if="recheckSearchResults.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-xl dark:bg-gray-900 dark:border-gray-800 max-h-48 overflow-y-auto">
+                    <button v-for="item in recheckSearchResults" :key="item.id" @click="addRecheckItem(item)" class="w-full flex items-center p-3 hover:bg-gray-100 border-b border-gray-200 last:border-0 text-left transition dark:hover:bg-gray-800 dark:border-gray-800">
+                        <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 border border-gray-200 dark:border-gray-700">
+                        <span class="font-bold text-sm text-gray-900 dark:text-gray-200">{{ item.name }}</span>
+                        <span class="ml-auto text-[10px] text-cyan-500 font-bold px-2 py-0.5 bg-cyan-950/30 rounded-full">{{ item.grade }}</span>
+                    </button>
+                </div>
+
+                <div v-if="recheckForm.items.length > 0" class="space-y-2">
+                    <div class="grid grid-cols-12 gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500 px-3">
+                        <div class="col-span-5">{{ $t('common.item') }}</div>
+                        <div class="col-span-2 text-right">{{ $t('warehouse.recheck.col_current') }}</div>
+                        <div class="col-span-3 text-right">{{ $t('warehouse.recheck.col_real') }}</div>
+                        <div class="col-span-1 text-right">{{ $t('warehouse.recheck.col_delta') }}</div>
+                        <div class="col-span-1"></div>
+                    </div>
+                    <div v-for="(row, idx) in recheckForm.items" :key="row.item_id"
+                         class="grid grid-cols-12 items-center gap-2 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/30 dark:border-gray-800">
+                        <div class="col-span-5 flex items-center gap-2 min-w-0">
+                            <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700">
+                            <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate">{{ row.name }}</div>
+                        </div>
+                        <div class="col-span-2 text-right text-sm font-cinzel text-gray-700 dark:text-gray-400">{{ row.current }}</div>
+                        <div class="col-span-3">
+                            <input type="number" min="0" v-model.number="row.real_amount" class="w-full h-9 px-3 rounded-lg border border-cyan-400 text-right font-cinzel text-cyan-700 dark:text-cyan-300 bg-white dark:bg-black/50 focus:ring-cyan-500">
+                        </div>
+                        <div class="col-span-1 text-right text-sm font-cinzel"
+                             :class="(Number(row.real_amount || 0) - Number(row.current || 0)) > 0 ? 'text-emerald-600 dark:text-emerald-400' : (Number(row.real_amount || 0) - Number(row.current || 0)) < 0 ? 'text-red-500' : 'text-gray-400'">
+                            {{ (Number(row.real_amount || 0) - Number(row.current || 0)) > 0 ? '+' : '' }}{{ Number(row.real_amount || 0) - Number(row.current || 0) }}
+                        </div>
+                        <div class="col-span-1 text-right">
+                            <button @click="removeRecheckItem(idx)" class="text-red-500 hover:text-red-400 text-lg">×</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="recheckForm.items.length > 0" class="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3 text-xs text-cyan-700 dark:text-cyan-300 font-bold">
+                    {{ $t('warehouse.recheck.summary', { changed: recheckDiff.changedCount, gains: recheckDiff.gains, losses: recheckDiff.losses }) }}
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('warehouse.recheck.note_label') }}</label>
+                    <input v-model="recheckForm.note" type="text" :placeholder="$t('warehouse.recheck.note_placeholder')" maxlength="255" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl h-10 px-3 focus:ring-cyan-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                        {{ $t('party.sale_screenshot_required') }}
+                        <span v-if="!imageProofRequired" class="text-gray-400 ml-2 normal-case">({{ $t('common.optional') }})</span>
+                    </label>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-200 border-dashed rounded-2xl cursor-pointer bg-white/70 hover:bg-white transition group relative overflow-hidden dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800/80">
+                            <div v-if="!recheckForm.image_proof" class="flex flex-col items-center justify-center pt-3 pb-3">
+                                <p class="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider">{{ $t('common.click_to_upload') }}</p>
+                            </div>
+                            <div v-else class="text-cyan-300 flex flex-col items-center">
+                                <span class="text-xs font-black uppercase tracking-widest">{{ $t('common.image_captured') }}</span>
+                                <span class="text-[10px] text-gray-500 mt-1">{{ recheckForm.image_proof.name }}</span>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*" @input="recheckForm.image_proof = $event.target.files[0]" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 pt-0 flex space-x-4">
+                <button @click="recheckModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
+                <button @click="submitRecheck"
+                        :disabled="recheckForm.items.length === 0 || recheckDiff.changedCount === 0 || (imageProofRequired && !recheckForm.image_proof)"
+                        class="flex-[2] py-4 bg-gradient-to-tr from-cyan-700 to-sky-600 hover:from-cyan-600 hover:to-sky-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-cyan-950/50 disabled:opacity-30 disabled:grayscale">
+                    {{ $t('warehouse.recheck.submit') }}
+                </button>
             </div>
         </div>
     </div>

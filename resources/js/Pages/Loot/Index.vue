@@ -24,9 +24,19 @@ const props = defineProps({
     members: Array,
     eventConfigs: Array,
     isLeader: Boolean,
+    canApprovePending: Boolean,
+    canVoid: { type: Boolean, default: false },
 });
 
-const activeTab = ref('history');
+// Honour ?tab= from the URL so the dashboard "Pending" CTA can land
+// directly on the pending tab. Defaults to history when missing/invalid.
+const initialTab = (() => {
+    try {
+        const t = new URLSearchParams(window.location.search).get('tab');
+        return ['history', 'pending', 'wishlist'].includes(t) ? t : 'history';
+    } catch (_) { return 'history'; }
+})();
+const activeTab = ref(initialTab);
 const vaultSearch = ref('');
 const vaultCategory = ref('all');
 const vaultSort = ref('newest');
@@ -124,11 +134,47 @@ const selectedReport = ref(null);
 const resolveForm = useForm({
     status: 'confirmed',
     recipient_ids: [],
+    attendees: [],
     points_per_member: 0,
     event_type: 'FARM',
     items: [],
     adena_distribution: 'cp',
 });
+
+const voidModalOpen = ref(false);
+const voidTargetReport = ref(null);
+const voidForm = useForm({ reason: '' });
+const openVoidModal = (report) => {
+    voidTargetReport.value = report;
+    voidForm.reason = '';
+    voidModalOpen.value = true;
+};
+const submitVoid = () => {
+    if (!voidTargetReport.value) return;
+    voidForm.post(route('loot.report.void', { report: voidTargetReport.value.id }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            voidModalOpen.value = false;
+            voidTargetReport.value = null;
+        },
+    });
+};
+
+const externalAttendeesCount = computed(() => (resolveForm.attendees || []).filter(a => a && a.external_name).length);
+const externalNameInput = ref('');
+const addExternalAttendee = () => {
+    const name = externalNameInput.value.trim();
+    if (!name) return;
+    if ((resolveForm.attendees || []).some(a => a.external_name?.toLowerCase() === name.toLowerCase())) {
+        externalNameInput.value = '';
+        return;
+    }
+    resolveForm.attendees = [...(resolveForm.attendees || []), { external_name: name }];
+    externalNameInput.value = '';
+};
+const removeExternalAttendee = (name) => {
+    resolveForm.attendees = (resolveForm.attendees || []).filter(a => a.external_name !== name);
+};
 
 const eventTypes = computed(() => [
     { value: 'FARM', label: t('loot.event_types.farm') },
@@ -167,6 +213,10 @@ watch([vaultSearch, vaultSort, vaultType, activeTab], () => {
 const openResolveModal = (report) => {
     selectedReport.value = report;
     resolveForm.recipient_ids = Array.isArray(report.recipient_ids) ? [...report.recipient_ids] : [];
+    resolveForm.attendees = (report.attendees || [])
+        .filter(a => a.is_external && a.external_name)
+        .map(a => ({ external_name: a.external_name }));
+    externalNameInput.value = '';
     resolveForm.event_type = report.event_type;
     resolveForm.adena_distribution = report.adena_distribution || 'cp';
     resolveForm.items = (report.entries || []).map((entry) => ({
@@ -486,7 +536,7 @@ onMounted(async () => {
                             class="relative px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
                         >
                             {{ $t('loot.tabs.pending') }}
-                            <span v-if="isLeader && pendingLootCount > 0" class="relative ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black leading-none">
+                            <span v-if="canApprovePending && pendingLootCount > 0" class="relative ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black leading-none">
                                 <span class="absolute inset-0 rounded-full bg-red-600 animate-ping opacity-75"></span>
                                 <span class="relative">{{ pendingLootCount }}</span>
                             </span>
@@ -557,8 +607,11 @@ onMounted(async () => {
                                 <div class="text-[10px] text-gray-500 font-bold truncate">{{ $t('loot.reported_by', { name: report.requested_by.name }) }} • {{ formatDateTime(report.created_at) }}</div>
                             </div>
                         </div>
-                        <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase" :class="getStatusColor(report.status)">
-                            {{ report.status }}
+                        <div class="flex items-center gap-2">
+                            <span v-if="report.voided_at" class="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-red-600 text-white" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }}</span>
+                            <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase" :class="getStatusColor(report.status)">
+                                {{ report.status }}
+                            </div>
                         </div>
                     </div>
 
@@ -711,7 +764,9 @@ onMounted(async () => {
                                 <div v-if="reportHasPoints(report)" class="text-[10px] font-black text-purple-700 dark:text-purple-300 uppercase tracking-widest">{{ report.points_per_member || 0 }} {{ $t('loot.points') }}</div>
                                 <div class="text-[9px] text-gray-500 uppercase font-bold">{{ report.recipients?.length || 0 }} {{ $t('loot.attendees') }}</div>
                             </div>
+                            <span v-if="report.voided_at" class="px-3 py-1 rounded-lg text-[9px] font-black uppercase bg-red-600 text-white" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }}</span>
                             <div class="px-3 py-1 rounded-lg border text-[9px] font-black uppercase" :class="getStatusColor(report.status)">{{ report.status }}</div>
+                            <button v-if="canVoid && !report.voided_at && report.status === 'confirmed'" @click.stop="openVoidModal(report)" class="px-2 py-1 rounded-lg text-[9px] font-black uppercase border border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white transition" :title="$t('loot.void.button_tooltip')">⚠ {{ $t('loot.void.button') }}</button>
                         </div>
                     </div>
 
@@ -905,8 +960,8 @@ onMounted(async () => {
                     <div class="space-y-4">
                         <label class="block text-xs font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.session_attendees') }}</label>
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            <button 
-                                v-for="member in members" 
+                            <button
+                                v-for="member in members"
                                 :key="member.id"
                                 @click="resolveForm.recipient_ids.includes(member.id) ? resolveForm.recipient_ids = resolveForm.recipient_ids.filter(id => id !== member.id) : resolveForm.recipient_ids.push(member.id)"
                                 class="p-3 border rounded-xl text-left transition-all flex items-center group"
@@ -923,6 +978,25 @@ onMounted(async () => {
                                     +{{ formatAdenaShort(resolveAdenaSplitPreview.perMember) }}
                                 </span>
                             </button>
+                        </div>
+
+                        <!-- External attendees: tokens + add input -->
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500">{{ $t('loot.external_attendees') }}</label>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="att in (resolveForm.attendees || []).filter(a => a.external_name)" :key="'ext-'+att.external_name"
+                                      class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold">
+                                    <span class="uppercase tracking-widest text-[9px] opacity-70">EXT</span>
+                                    {{ att.external_name }}
+                                    <button type="button" @click="removeExternalAttendee(att.external_name)" class="ml-1 hover:text-amber-100">×</button>
+                                </span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input v-model="externalNameInput" type="text" :placeholder="$t('loot.external_name_placeholder')"
+                                       @keydown.enter.prevent="addExternalAttendee"
+                                       class="flex-1 bg-gray-900/50 border border-gray-800 text-gray-200 rounded-lg px-3 py-2 text-xs placeholder-gray-500 focus:ring-amber-500 focus:border-amber-500">
+                                <button type="button" @click="addExternalAttendee" class="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">{{ $t('common.add') }}</button>
+                            </div>
                         </div>
                     </div>
 
@@ -959,9 +1033,11 @@ onMounted(async () => {
 
                     <div class="pt-6 flex space-x-4">
                         <button @click="showResolveModal = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
-                        <button 
-                            @click="submitResolve" 
-                            :disabled="resolveForm.processing || resolveForm.recipient_ids.length === 0 || resolveForm.items.length === 0"
+                        <button
+                            @click="submitResolve"
+                            :disabled="resolveForm.processing
+                                || resolveForm.items.length === 0
+                                || (resolveForm.recipient_ids.length === 0 && externalAttendeesCount === 0)"
                             class="flex-[2] py-4 bg-gradient-to-tr from-green-700 to-emerald-500 hover:from-green-600 hover:to-emerald-400 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-xl shadow-green-950/20 disabled:opacity-30 disabled:grayscale"
                         >
                             {{ $t('loot.confirm_resolution') }}
@@ -981,6 +1057,37 @@ onMounted(async () => {
                 </div>
                 <div class="p-4 bg-white/80 dark:bg-black/40">
                     <img :src="imageModalUrl" class="w-full max-h-[80vh] object-contain rounded-2xl">
+                </div>
+            </div>
+        </div>
+
+        <!-- Void confirmation modal -->
+        <div v-if="voidModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <div class="l2-panel w-full max-w-md rounded-2xl border-red-500/40 overflow-hidden shadow-2xl flex flex-col scale-in">
+                <div class="bg-gradient-to-r from-red-900 to-rose-900 p-4 flex justify-between items-center border-b border-red-500/30">
+                    <div class="text-xs font-black uppercase tracking-widest text-white">⚠ {{ $t('loot.void.title') }}</div>
+                    <button @click="voidModalOpen = false" class="text-white/60 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4 bg-white/80 dark:bg-black/40">
+                    <p class="text-sm text-gray-700 dark:text-gray-300">{{ $t('loot.void.body') }}</p>
+                    <div v-if="voidTargetReport" class="bg-gray-100/70 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-[10px] text-gray-700 dark:text-gray-300 font-bold uppercase tracking-widest">
+                        #{{ voidTargetReport.id }} · {{ voidTargetReport.event_type }} · {{ formatDateTime(voidTargetReport.created_at) }}
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.void.reason_label') }}</label>
+                        <textarea v-model="voidForm.reason" rows="3" :placeholder="$t('loot.void.reason_placeholder')"
+                                  class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-red-500 focus:border-red-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"></textarea>
+                        <div v-if="voidForm.errors.reason" class="mt-1 text-[10px] text-red-500 font-bold">{{ voidForm.errors.reason }}</div>
+                    </div>
+                </div>
+                <div class="p-4 bg-white/80 dark:bg-black/40 border-t border-gray-200 dark:border-gray-800 flex gap-3">
+                    <button @click="voidModalOpen = false" class="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">{{ $t('common.cancel') }}</button>
+                    <button @click="submitVoid" :disabled="voidForm.processing || voidForm.reason.trim().length < 3"
+                            class="flex-[2] py-3 bg-gradient-to-tr from-red-700 to-rose-600 hover:from-red-600 hover:to-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition disabled:opacity-30">
+                        {{ $t('loot.void.confirm') }}
+                    </button>
                 </div>
             </div>
         </div>

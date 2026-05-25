@@ -351,4 +351,49 @@ class LootActionController extends Controller
         }
         return $current ?? 0;
     }
+
+    /**
+     * Mark a report as voided. Permission: admin (any CP) or the CP
+     * founder for their own CP. Voided reports stay in the DB (audit
+     * preserved) but are excluded from every stock/adena aggregation.
+     */
+    public function void(Request $request, LootReport $report)
+    {
+        $request->validate([
+            'reason' => 'required|string|min:3|max:255',
+        ]);
+
+        $user = $request->user();
+        $role = $user->role?->name;
+        $isFounder = $report->cp && (int) $report->cp->leader_id === (int) $user->id;
+        $isCpLeader = $role === 'cp_leader' && (int) $user->cp_id === (int) $report->cp_id;
+        if ($role !== 'admin' && ! $isFounder && ! $isCpLeader) {
+            abort(403, 'Solo el admin o los líderes del CP pueden marcar un report como error.');
+        }
+        if ($report->voided_at) {
+            return back()->withErrors(['report' => 'Este report ya fue marcado como error.']);
+        }
+
+        DB::transaction(function () use ($report, $request, $user) {
+            $report->forceFill([
+                'voided_at' => now(),
+                'voided_by_user_id' => $user->id,
+                'voided_reason' => $request->input('reason'),
+            ])->save();
+
+            \App\Contexts\System\Domain\Models\AuditLog::create([
+                'entity_type' => 'LootReport',
+                'entity_id' => $report->id,
+                'user_id' => $user->id,
+                'action' => 'LOOT_VOID',
+                'old_values' => ['status' => $report->status],
+                'new_values' => [
+                    'voided_at' => now()->toIso8601String(),
+                    'reason' => $request->input('reason'),
+                ],
+            ]);
+        });
+
+        return back()->with('success', 'Report marcado como error. Stock recalculado.');
+    }
 }

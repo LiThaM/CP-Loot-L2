@@ -184,11 +184,13 @@ class ConstPartyController extends Controller
             'name' => 'required|string|max:255|unique:const_parties,name,'.$cp->id,
             'server' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:3072', // 3MB
+            'image_proof_required' => 'nullable|boolean',
         ]);
 
         $cp->update([
             'name' => $request->name,
             'server' => $request->server,
+            'image_proof_required' => $request->boolean('image_proof_required', true),
         ]);
 
         if ($request->hasFile('logo')) {

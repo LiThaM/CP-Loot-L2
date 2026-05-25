@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConstParty extends Model
 {
-    protected $fillable = ['leader_id', 'name', 'server', 'chronicle', 'invite_code', 'logo_path', 'is_active'];
+    protected $fillable = ['leader_id', 'name', 'server', 'chronicle', 'invite_code', 'logo_path', 'is_active', 'image_proof_required'];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'image_proof_required' => 'boolean',
     ];
 
     protected $appends = ['logo_url'];

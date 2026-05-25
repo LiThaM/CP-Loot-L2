@@ -85,7 +85,8 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $user->cp_id)
             ->where('loot_reports.status', 'confirmed')
-            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+            ->whereNull('loot_reports.voided_at')
+            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
             ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade', 'items.category', 'items.market_price', 'items.market_price_updated_at', 'items.market_price_updated_by')
             ->get()
@@ -105,7 +106,8 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $user->cp_id)
             ->where('loot_reports.status', 'confirmed')
-            ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+            ->whereNull('loot_reports.voided_at')
+            ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
             ->groupBy('items.id')
             ->pluck('outgoing_amount', 'id');
@@ -298,6 +300,7 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $user->cp_id)
             ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
             ->whereNotIn('loot_reports.event_type', ['ADENA_PAYOUT', 'ADENA_GRANT'])
             ->whereRaw('LOWER(items.name) = ?', ['adena'])
             ->sum('loot_entries.amount');
@@ -459,6 +462,7 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $user->cp_id)
             ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
             ->where('loot_reports.event_type', 'ASSIGN')
             ->where('loot_entries.awarded_to', $user->id)
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
@@ -475,6 +479,7 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $user->cp_id)
             ->whereIn('loot_reports.status', ['pending', 'confirmed'])
+            ->whereNull('loot_reports.voided_at')
             ->where('loot_reports.event_type', 'RETURN')
             ->where('loot_entries.awarded_to', $user->id)
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
@@ -542,6 +547,7 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
             ->where('loot_reports.event_type', 'ASSIGN')
             ->where('loot_entries.awarded_to', $user->id)
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
@@ -558,6 +564,7 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
             ->whereIn('loot_reports.status', ['pending', 'confirmed'])
+            ->whereNull('loot_reports.voided_at')
             ->where('loot_reports.event_type', 'RETURN')
             ->where('loot_entries.awarded_to', $user->id)
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
@@ -593,7 +600,7 @@ class PartyController extends Controller
             'item_id' => 'required|exists:items,id',
             'amount' => 'required|integer|min:1',
             'user_id' => 'required|exists:users,id',
-            'image_proof' => 'required|image|max:4096',
+            'image_proof' => $this->imageProofRule($request->user()),
             'adena_offset' => 'nullable|integer|min:0',
         ]);
 
@@ -644,7 +651,8 @@ class PartyController extends Controller
                     ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
                     ->where('loot_reports.cp_id', $cpId)
                     ->where('loot_reports.status', 'confirmed')
-                    ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+                    ->whereNull('loot_reports.voided_at')
+                    ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
                     ->where('loot_entries.item_id', $request->item_id)
                     ->sum('loot_entries.amount');
 
@@ -652,7 +660,8 @@ class PartyController extends Controller
                     ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
                     ->where('loot_reports.cp_id', $cpId)
                     ->where('loot_reports.status', 'confirmed')
-                    ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+                    ->whereNull('loot_reports.voided_at')
+                    ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
                     ->where('loot_entries.item_id', $request->item_id)
                     ->sum('loot_entries.amount');
 
@@ -760,7 +769,7 @@ class PartyController extends Controller
             'adena_distribution' => 'nullable|in:cp,attendees',
             'recipient_ids' => 'nullable|array',
             'recipient_ids.*' => 'integer|exists:users,id',
-            'image_proof' => 'required|image|max:4096',
+            'image_proof' => $this->imageProofRule($request->user()),
         ]);
 
         $current = $request->user();
@@ -833,7 +842,7 @@ class PartyController extends Controller
             'allocations' => 'required|array|min:1',
             'allocations.*.source_report_id' => 'required|integer|exists:loot_reports,id',
             'allocations.*.amount' => 'required|integer|min:1',
-            'image_proof' => 'required|image|max:4096',
+            'image_proof' => $this->imageProofRule($request->user()),
         ]);
 
         $current = $request->user();
@@ -925,6 +934,14 @@ class PartyController extends Controller
         return back()->with('success', "Venta registrada en {$n} reports.");
     }
 
+    // If the CP toggled image_proof_required off, image_proof becomes
+    // optional in every action that used to demand it (add/buy/sell/recheck).
+    private function imageProofRule(?User $user): string
+    {
+        $required = $user?->cp?->image_proof_required ?? true;
+        return ($required ? 'required' : 'nullable').'|image|max:4096';
+    }
+
     private function canManageWarehouse(?User $user): bool
     {
         if (! $user || ! $user->cp_id) {
@@ -940,7 +957,8 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
-            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+            ->whereNull('loot_reports.voided_at')
+            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
             ->where('loot_entries.item_id', $itemId)
             ->sum('loot_entries.amount');
 
@@ -948,7 +966,8 @@ class PartyController extends Controller
             ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
-            ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME'])
+            ->whereNull('loot_reports.voided_at')
+            ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
             ->where('loot_entries.item_id', $itemId)
             ->sum('loot_entries.amount');
 
@@ -1234,7 +1253,8 @@ class PartyController extends Controller
             )
             ->where('loot_reports.cp_id', $cpId)
             ->where('loot_reports.status', 'confirmed')
-            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'RETURN', 'WAREHOUSE_CRAFT_CONSUME'])
+            ->whereNull('loot_reports.voided_at')
+            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'RETURN', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_GAIN', 'WAREHOUSE_RECHECK_LOSS'])
             ->whereExists(function ($q) use ($itemId) {
                 $q->select(DB::raw(1))
                     ->from('loot_entries')
@@ -1301,7 +1321,7 @@ class PartyController extends Controller
         $request->validate([
             'item_id' => 'required|exists:items,id',
             'amount' => 'required|integer|min:1',
-            'image_proof' => 'required|image|max:4096',
+            'image_proof' => $this->imageProofRule($request->user()),
         ]);
 
         $member = $request->user();
@@ -1406,7 +1426,7 @@ class PartyController extends Controller
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.amount' => 'required|integer|min:1',
-            'image_proof' => 'required|image|max:4096',
+            'image_proof' => $this->imageProofRule($request->user()),
         ]);
 
         $current = $request->user();
@@ -1475,6 +1495,93 @@ class PartyController extends Controller
         });
 
         return back()->with('success', 'Stock añadido al warehouse y registrado.');
+    }
+
+    public function recheck(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.real_amount' => 'required|integer|min:0',
+            'note' => 'nullable|string|max:255',
+            'image_proof' => $this->imageProofRule($request->user()),
+        ]);
+
+        $current = $request->user();
+        if (! $this->canManageWarehouse($current)) {
+            abort(403, 'No tienes permiso para hacer un recheck del warehouse.');
+        }
+        $cpId = $current->cp_id;
+
+        $gains = []; // item_id => positive delta
+        $losses = []; // item_id => positive delta (representing units to subtract)
+        $diff = []; // for audit log: [{item_id, before, after, delta}]
+
+        foreach ($request->items as $row) {
+            $itemId = (int) $row['item_id'];
+            $real = (int) $row['real_amount'];
+            $current_stock = $this->currentStock($cpId, $itemId);
+            $delta = $real - $current_stock;
+            if ($delta === 0) continue;
+            $diff[] = ['item_id' => $itemId, 'before' => $current_stock, 'after' => $real, 'delta' => $delta];
+            if ($delta > 0) {
+                $gains[$itemId] = ($gains[$itemId] ?? 0) + $delta;
+            } else {
+                $losses[$itemId] = ($losses[$itemId] ?? 0) + abs($delta);
+            }
+        }
+
+        if (empty($diff)) {
+            return back()->with('info', 'Sin cambios — los totales coinciden con el stock actual.');
+        }
+
+        $imagePath = $this->storeRecheckImage($request->file('image_proof'), $cpId);
+
+        DB::transaction(function () use ($current, $cpId, $gains, $losses, $imagePath, $diff, $request) {
+            $createReport = function (string $eventType, array $bucket) use ($current, $cpId, $imagePath) {
+                $report = LootReport::create([
+                    'cp_id' => $cpId,
+                    'requested_by_id' => $current->id,
+                    'event_type' => $eventType,
+                    'status' => 'confirmed',
+                    'image_proof' => $imagePath,
+                ]);
+                foreach ($bucket as $itemId => $amount) {
+                    LootEntry::create([
+                        'loot_report_id' => $report->id,
+                        'item_id' => $itemId,
+                        'amount' => $amount,
+                    ]);
+                }
+                return $report;
+            };
+
+            $gainReport = ! empty($gains) ? $createReport('WAREHOUSE_RECHECK_GAIN', $gains) : null;
+            $lossReport = ! empty($losses) ? $createReport('WAREHOUSE_RECHECK_LOSS', $losses) : null;
+
+            AuditLog::create([
+                'entity_type' => 'LootReport',
+                'entity_id' => ($gainReport?->id ?? $lossReport?->id),
+                'user_id' => $current->id,
+                'action' => 'WAREHOUSE_RECHECK',
+                'old_values' => null,
+                'new_values' => [
+                    'note' => $request->input('note'),
+                    'diff' => $diff,
+                    'gain_report_id' => $gainReport?->id,
+                    'loss_report_id' => $lossReport?->id,
+                ],
+            ]);
+        });
+
+        return back()->with('success', 'Recheck registrado. Stock ajustado.');
+    }
+
+    private function storeRecheckImage($file, int $cpId): string
+    {
+        $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+        $name = 'recheck_'.Str::uuid().'.'.$ext;
+        return $file->storeAs("warehouse_recheck/{$cpId}", $name, 'public');
     }
 
     public function buyStock(Request $request)

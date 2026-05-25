@@ -229,6 +229,12 @@ class LootController extends Controller
             'members' => $members,
             'eventConfigs' => $eventConfigs,
             'isLeader' => $user->cp->leader_id === $user->id,
+            'canApprovePending' => $user->role?->name === 'admin'
+                || $user->cp->leader_id === $user->id
+                || in_array($user->role?->name, ['cp_leader', 'accountant'], true),
+            'canVoid' => $user->role?->name === 'admin'
+                || $user->cp->leader_id === $user->id
+                || $user->role?->name === 'cp_leader',
         ]);
     }
 

@@ -19,12 +19,26 @@ class LootReport extends Model
         'recipient_ids',
         'adena_distribution',
         'cp_share_pct',
+        'voided_at',
+        'voided_by_user_id',
+        'voided_reason',
     ];
 
     protected $casts = [
         'recipient_ids' => 'array',
         'cp_share_pct' => 'integer',
+        'voided_at' => 'datetime',
     ];
+
+    public function scopeNotVoided($q)
+    {
+        return $q->whereNull('voided_at');
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by_user_id');
+    }
 
     public function attendees()
     {

@@ -311,12 +311,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/loot/report', [LootActionController::class, 'store'])->name('loot.report.store');
     Route::post('/loot/report/{report}/resolve', [LootActionController::class, 'resolve'])->name('loot.report.resolve');
+    Route::post('/loot/report/{report}/void', [LootActionController::class, 'void'])->name('loot.report.void');
     Route::post('/warehouse/assign', [PartyController::class, 'assign'])->name('warehouse.assign');
     Route::post('/warehouse/return', [PartyController::class, 'requestReturn'])->name('warehouse.return');
     Route::post('/warehouse/add', [PartyController::class, 'addStock'])->name('warehouse.add');
     Route::post('/warehouse/buy', [PartyController::class, 'buyStock'])->name('warehouse.buy');
     Route::post('/warehouse/sell', [PartyController::class, 'sell'])->name('warehouse.sell');
     Route::post('/warehouse/sell-auto', [PartyController::class, 'sellAuto'])->name('warehouse.sell-auto');
+    Route::post('/warehouse/recheck', [PartyController::class, 'recheck'])->name('warehouse.recheck');
     Route::get('/api/warehouse/sell/default-recipients', [PartyController::class, 'defaultSellRecipients'])->name('api.warehouse.sell.defaultRecipients');
     Route::get('/api/warehouse/sell/source-candidates', [PartyController::class, 'sellSourceCandidates'])->name('api.warehouse.sell.sourceCandidates');
     Route::post('/cp/recipes', [CraftingController::class, 'store'])->name('cp.recipes.store');
