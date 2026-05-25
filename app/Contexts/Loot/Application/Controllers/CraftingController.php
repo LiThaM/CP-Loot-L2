@@ -431,8 +431,9 @@ class CraftingController extends Controller
     // array { auto_crafted: [{item_id, amount}], consumed: [{item_id, amount}] }
     // describing the plan. Used by the manual-crafting tab to enable the
     // Craft button when auto-allocation can succeed.
-    public static function simulate(Recipe $recipe, array $warehouseAmountsByItemId, array $craftableMap): ?array
+    public static function simulate(Recipe $recipe, iterable $warehouseAmountsByItemId, iterable $craftableMap): ?array
     {
+        $craftableMap = $craftableMap instanceof \Traversable ? iterator_to_array($craftableMap) : (array) $craftableMap;
         $toConsume = [];
         $autoCrafted = [];
         $available = [];

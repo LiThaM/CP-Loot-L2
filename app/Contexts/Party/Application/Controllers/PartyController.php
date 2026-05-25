@@ -240,10 +240,11 @@ class PartyController extends Controller
                     ]);
                 }
 
+                // pluck() returns a Collection; simulate() expects arrays.
                 $autoPlan = $recipe ? \App\Contexts\Loot\Application\Controllers\CraftingController::simulate(
                     $recipe,
-                    $warehouseAmountsByItemId,
-                    $craftableRecipeIdByItemId,
+                    $warehouseAmountsByItemId instanceof \Illuminate\Support\Collection ? $warehouseAmountsByItemId->all() : (array) $warehouseAmountsByItemId,
+                    is_array($craftableRecipeIdByItemId) ? $craftableRecipeIdByItemId : (array) $craftableRecipeIdByItemId,
                 ) : null;
                 $hydratedAuto = null;
                 if ($autoPlan) {
