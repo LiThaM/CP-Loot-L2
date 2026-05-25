@@ -214,8 +214,17 @@ class PartyController extends Controller
                     return $m;
                 })->values();
 
-                // Inject Recipe scroll as a "material" for UI visibility
-                if ($recipe?->recipe_item_id) {
+                // Determine the primary output category to decide whether
+                // a recipe scroll is consumable (Weapon/Armor/Jewelry) or
+                // not (Material/EtcItem/Recipe — intermediate craftables).
+                $primaryOutputItem = $recipe?->outputItem
+                    ?? ($outputs->first()?->item);
+                $primaryOutputId = (int) ($primaryOutputItem?->id ?? 0);
+                $requiresScroll = $recipe && $primaryOutputId
+                    ? \App\Contexts\Loot\Application\Controllers\CraftingController::requiresRecipeScroll($recipe, $primaryOutputId)
+                    : false;
+
+                if ($recipe?->recipe_item_id && $requiresScroll) {
                     $recipeItem = $recipe->recipeItem;
                     $have = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
                     $materialsList->prepend([
@@ -231,6 +240,29 @@ class PartyController extends Controller
                     ]);
                 }
 
+                $autoPlan = $recipe ? \App\Contexts\Loot\Application\Controllers\CraftingController::simulate(
+                    $recipe,
+                    $warehouseAmountsByItemId,
+                    $craftableRecipeIdByItemId,
+                ) : null;
+                $hydratedAuto = null;
+                if ($autoPlan) {
+                    $itemIds = array_unique(array_merge(array_keys($autoPlan['auto_crafted']), array_keys($autoPlan['consumed'])));
+                    $byId = ! empty($itemIds)
+                        ? Item::whereIn('id', $itemIds)->get(['id', 'name', 'image_url'])->keyBy('id')
+                        : collect();
+                    $hydrate = fn ($map) => collect($map)->map(fn ($qty, $id) => [
+                        'item_id' => (int) $id,
+                        'name' => $byId[$id]?->name,
+                        'image_url' => $byId[$id]?->image_url,
+                        'amount' => (int) $qty,
+                    ])->values();
+                    $hydratedAuto = [
+                        'auto_crafted' => $hydrate($autoPlan['auto_crafted']),
+                        'consumed' => $hydrate($autoPlan['consumed']),
+                    ];
+                }
+
                 return [
                     'id' => $cpRecipe->id,
                     'priority' => $cpRecipe->priority,
@@ -238,6 +270,7 @@ class PartyController extends Controller
                         'id' => $recipe->id,
                         'name' => $recipe->name,
                         'success_rate' => $recipe->success_rate,
+                        'requires_recipe_scroll' => $requiresScroll,
                         'output_item' => $recipe->outputItem ? [
                             'id' => $recipe->outputItem->id,
                             'name' => $recipe->outputItem->name,
@@ -253,6 +286,7 @@ class PartyController extends Controller
                             ];
                         })->values(),
                         'materials' => $materialsList,
+                        'auto_craft_plan' => $hydratedAuto,
                     ] : null,
                 ];
             })

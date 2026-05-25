@@ -3,6 +3,7 @@
 namespace App\Contexts\Loot\Application\Controllers;
 
 use App\Contexts\Loot\Domain\Models\CpRecipe;
+use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Loot\Domain\Models\Recipe;
@@ -96,20 +97,20 @@ class CraftingController extends Controller
             }
         }
 
+        $toConsume = []; // item_id => amount (filled inside the transaction)
+        $autoCrafted = []; // item_id => amount of intermediates auto-crafted
         try {
-            DB::transaction(function () use ($user, $cp, $recipe, $shouldProduce, $outputItemId) {
+            DB::transaction(function () use ($user, $cp, $recipe, $shouldProduce, $outputItemId, &$toConsume, &$autoCrafted) {
                 $warehouseAmountsByItemId = $this->warehouseAmountsByItemId((int) $cp->id);
                 $chronicle = $cp->chronicle ?: 'IL';
                 $craftableMap = $this->craftableRecipeIdByItemId($chronicle);
 
-                // Build the list of what to actually consume, resolving sub-crafts recursively
-                $toConsume = []; // item_id => amount
-                $available = []; // item_id => remaining available (warehouse - already earmarked)
+                $available = [];
                 foreach ($warehouseAmountsByItemId as $id => $amt) {
                     $available[(int) $id] = (int) $amt;
                 }
 
-                $resolveMaterial = function (int $itemId, int $need) use (&$resolveMaterial, &$toConsume, &$available, $craftableMap): void {
+                $resolveMaterial = function (int $itemId, int $need) use (&$resolveMaterial, &$toConsume, &$autoCrafted, &$available, $craftableMap): void {
                     $have = $available[$itemId] ?? 0;
 
                     if ($have >= $need) {
@@ -118,7 +119,6 @@ class CraftingController extends Controller
                         return;
                     }
 
-                    // Use what's available, then auto-craft the rest
                     $shortfall = $need - $have;
                     if ($have > 0) {
                         $toConsume[$itemId] = ($toConsume[$itemId] ?? 0) + $have;
@@ -137,8 +137,8 @@ class CraftingController extends Controller
 
                     $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
                     $craftsNeeded = (int) ceil($shortfall / $outputQty);
+                    $autoCrafted[$itemId] = ($autoCrafted[$itemId] ?? 0) + ($craftsNeeded * $outputQty);
 
-                    // Recursively resolve each sub-material
                     foreach ($subRecipe->materials as $subMat) {
                         $subNeed = (int) ($subMat->quantity ?? 1) * $craftsNeeded;
                         $resolveMaterial((int) $subMat->item_id, $subNeed);
@@ -149,8 +149,11 @@ class CraftingController extends Controller
                     $resolveMaterial((int) $mat->item_id, (int) ($mat->quantity ?? 1));
                 }
 
-                // Check Recipe Item
-                if ($recipe->recipe_item_id) {
+                // Check Recipe Item — only when the FINAL output is a non-Material
+                // (Weapon, Armor, Jewelry, Accessory). For Materials the recipe
+                // scroll is not required (L2 sub-craft semantics).
+                $requiresScroll = $recipe->recipe_item_id && $this->requiresRecipeScroll($recipe, (int) $outputItemId);
+                if ($requiresScroll) {
                     $haveRecipe = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
                     if ($haveRecipe < 1) {
                         throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$recipe->recipe_item_id.':1:'.$haveRecipe);
@@ -178,8 +181,8 @@ class CraftingController extends Controller
                     ]);
                 }
 
-                // Consume recipe scroll
-                if ($recipe->recipe_item_id) {
+                // Consume recipe scroll (only when required — Material outputs skip)
+                if ($requiresScroll) {
                     LootEntry::create([
                         'loot_report_id' => $consumeReport->id,
                         'item_id' => $recipe->recipe_item_id,
@@ -223,9 +226,32 @@ class CraftingController extends Controller
             throw $e;
         }
 
+        $hydrate = function (array $byId) {
+            if (empty($byId)) return [];
+            $items = Item::whereIn('id', array_keys($byId))->get(['id', 'name', 'image_url'])->keyBy('id');
+            $out = [];
+            foreach ($byId as $id => $qty) {
+                $row = $items[$id] ?? null;
+                $out[] = [
+                    'item_id' => (int) $id,
+                    'name' => $row?->name,
+                    'image_url' => $row?->image_url,
+                    'amount' => (int) $qty,
+                ];
+            }
+            return $out;
+        };
+
+        $produced = $shouldProduce && $outputItemId
+            ? $hydrate([$outputItemId => max(1, (int) ($recipe->output_quantity ?? 1))])
+            : [];
+
         return response()->json([
             'ok' => true,
             'produced' => $shouldProduce,
+            'consumed' => $hydrate($toConsume),
+            'auto_crafted' => $hydrate($autoCrafted),
+            'produced_items' => $produced,
         ]);
     }
 
@@ -301,8 +327,8 @@ class CraftingController extends Controller
         ]);
 
         $user = $request->user();
-        if (! $user->cp_id || $user->id !== $user->cp->leader_id) {
-            abort(403, 'Solo el líder puede elegir las recetas.');
+        if (! $this->canManageCpRecipes($user)) {
+            abort(403, 'No tienes permiso para gestionar recetas del CP.');
         }
 
         $recipe = Recipe::findOrFail($request->recipe_id);
@@ -324,11 +350,11 @@ class CraftingController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->cp_id || $user->id !== $user->cp->leader_id) {
-            abort(403, 'Solo el líder puede elegir las recetas.');
+        if (! $this->canManageCpRecipes($user)) {
+            abort(403, 'No tienes permiso para gestionar recetas del CP.');
         }
 
-        if ($cpRecipe->cp_id !== $user->cp_id) {
+        if ($cpRecipe->cp_id !== $user->cp_id && $user->role?->name !== 'admin') {
             abort(403);
         }
 
@@ -344,11 +370,11 @@ class CraftingController extends Controller
         ]);
 
         $user = $request->user();
-        if (! $user->cp_id || $user->id !== $user->cp->leader_id) {
-            abort(403, 'Solo el líder puede priorizar las recetas.');
+        if (! $this->canManageCpRecipes($user)) {
+            abort(403, 'No tienes permiso para gestionar recetas del CP.');
         }
 
-        if ($cpRecipe->cp_id !== $user->cp_id) {
+        if ($cpRecipe->cp_id !== $user->cp_id && $user->role?->name !== 'admin') {
             abort(403);
         }
 
@@ -377,6 +403,74 @@ class CraftingController extends Controller
         });
 
         return back()->with('success', 'Prioridad actualizada.');
+    }
+
+    private function canManageCpRecipes(?\App\Contexts\Identity\Domain\Models\User $user): bool
+    {
+        if (! $user) return false;
+        $role = $user->role?->name;
+        if ($role === 'admin') return true;
+        if (! $user->cp_id) return false;
+        return in_array($role, ['cp_leader', 'accountant'], true);
+    }
+
+    // L2 distinguishes craftables that consume a scroll-recipe (the
+    // top-tier final pieces: Weapons, Armors, Jewelry, Accessories) from
+    // intermediate materials whose recipe is a blueprint that the player
+    // never "owns" as a consumable (Cord, Leather, Steel). The DB doesn't
+    // model this distinction so we infer from the output's category.
+    public static function requiresRecipeScroll(Recipe $recipe, int $outputItemId): bool
+    {
+        if (! $recipe->recipe_item_id) return false;
+        $category = Item::where('id', $outputItemId)->value('category');
+        return ! in_array($category, ['Material', 'EtcItem', 'Recipe'], true);
+    }
+
+    // Dry-run of the same recursive resolver used by craft(). Returns
+    // `null` when the recipe cannot be covered with current stock, or an
+    // array { auto_crafted: [{item_id, amount}], consumed: [{item_id, amount}] }
+    // describing the plan. Used by the manual-crafting tab to enable the
+    // Craft button when auto-allocation can succeed.
+    public static function simulate(Recipe $recipe, array $warehouseAmountsByItemId, array $craftableMap): ?array
+    {
+        $toConsume = [];
+        $autoCrafted = [];
+        $available = [];
+        foreach ($warehouseAmountsByItemId as $id => $amt) {
+            $available[(int) $id] = (int) $amt;
+        }
+
+        $resolve = function (int $itemId, int $need) use (&$resolve, &$toConsume, &$autoCrafted, &$available, $craftableMap): bool {
+            $have = $available[$itemId] ?? 0;
+            if ($have >= $need) {
+                $toConsume[$itemId] = ($toConsume[$itemId] ?? 0) + $need;
+                $available[$itemId] -= $need;
+                return true;
+            }
+            $shortfall = $need - $have;
+            if ($have > 0) {
+                $toConsume[$itemId] = ($toConsume[$itemId] ?? 0) + $have;
+                $available[$itemId] = 0;
+            }
+            $subRecipeId = $craftableMap[$itemId] ?? null;
+            if (! $subRecipeId) return false;
+            $subRecipe = Recipe::whereKey($subRecipeId)->with('materials')->first();
+            if (! $subRecipe || $subRecipe->materials->isEmpty()) return false;
+            $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
+            $craftsNeeded = (int) ceil($shortfall / $outputQty);
+            $autoCrafted[$itemId] = ($autoCrafted[$itemId] ?? 0) + ($craftsNeeded * $outputQty);
+            foreach ($subRecipe->materials as $subMat) {
+                $subNeed = (int) ($subMat->quantity ?? 1) * $craftsNeeded;
+                if (! $resolve((int) $subMat->item_id, $subNeed)) return false;
+            }
+            return true;
+        };
+
+        foreach ($recipe->materials as $mat) {
+            if (! $resolve((int) $mat->item_id, (int) ($mat->quantity ?? 1))) return null;
+        }
+
+        return ['auto_crafted' => $autoCrafted, 'consumed' => $toConsume];
     }
 
     private function warehouseAmountsByItemId(int $cpId): array

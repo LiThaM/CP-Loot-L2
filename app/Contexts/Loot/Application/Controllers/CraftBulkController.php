@@ -33,6 +33,9 @@ class CraftBulkController extends Controller
                 'name' => $cp->name,
                 'chronicle' => $cp->chronicle ?: 'IL',
             ],
+            // Same role gate as cp_recipes management — let the user pin
+            // any planned recipe straight into the CP's priority list.
+            'canManageRecipes' => in_array($role, ['admin', 'cp_leader', 'accountant'], true),
         ]);
     }
 

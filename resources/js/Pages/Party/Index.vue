@@ -173,6 +173,33 @@ const submitUserEdit = () => {
     });
 };
 
+const inlineRoleSaving = ref(new Set());
+const updateMemberRoleInline = (member, newRoleId) => {
+    const id = Number(newRoleId);
+    if (!member || !id || Number(member.role_id) === id) return;
+    const saving = new Set(inlineRoleSaving.value);
+    saving.add(member.id);
+    inlineRoleSaving.value = saving;
+
+    router.patch(route('system.users.update', member.id),
+        { role_id: id, cp_id: member.cp_id },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                member.role_id = id;
+                showToast(t('system.users.updated_success'));
+            },
+            onError: () => showToast(t('common.error'), 'error'),
+            onFinish: () => {
+                const done = new Set(inlineRoleSaving.value);
+                done.delete(member.id);
+                inlineRoleSaving.value = done;
+            },
+        },
+    );
+};
+
 const cpSettingsForm = useForm({
     name: props.cp?.name || '',
     server: props.cp?.server || '',
@@ -432,9 +459,37 @@ const getRecipeProgress = (recipe) => {
     return Math.max(0, Math.min(100, Math.round(pct)));
 };
 
+const willBeAutoCrafted = (mat, recipe) => {
+    if (!mat || mat.is_recipe) return false;
+    if ((mat.missing || 0) <= 0) return false;
+    if (!mat.craftable) return false;
+    return Boolean(recipe?.auto_craft_plan);
+};
+
+const materialStatusClass = (mat, recipe) => {
+    if ((mat?.missing || 0) <= 0) return 'text-emerald-700 dark:text-green-400';
+    if (willBeAutoCrafted(mat, recipe)) return 'text-amber-600 dark:text-amber-400';
+    return 'text-red-500';
+};
+
+const autoCraftTooltip = (mat, recipe) => {
+    const plan = recipe?.auto_craft_plan;
+    if (!plan) return '';
+    const row = (plan.auto_crafted || []).find((r) => Number(r.item_id) === Number(mat.item_id));
+    return row ? `${row.amount}x ${row.name}` : '';
+};
+
 const canCraftRecipe = (recipe) => {
     const mats = Array.isArray(recipe?.materials) ? recipe.materials : [];
     if (mats.length === 0) return false;
+    // Recipe-scroll node is mandatory (when present and the output is
+    // a non-Material). Bail if it's missing.
+    const scroll = mats.find((m) => m?.is_recipe);
+    if (scroll && Number(scroll.missing ?? 0) > 0) return false;
+    // Otherwise we trust the backend's auto_craft_plan: if it returned
+    // a non-null plan, the recursive auto-craft can cover the materials.
+    if (recipe?.auto_craft_plan) return true;
+    // Backward-compat fallback: everything covered directly.
     return mats.every((m) => Number(m?.missing ?? 0) <= 0);
 };
 
@@ -472,12 +527,21 @@ const performCraft = async (entry, lucky) => {
     try {
         const outputItemId = getSelectedOutputItemId(recipe);
 
-        await axios.post(route('api.recipes.craft', { recipe: recipe.id }), {
+        const { data } = await axios.post(route('api.recipes.craft', { recipe: recipe.id }), {
             lucky,
             output_item_id: outputItemId,
         });
 
-        showToast(lucky ? t('craft.toast.craft_recorded') : t('craft.toast.materials_consumed_no_success'));
+        const summarize = (rows) => (rows || []).map((r) => `${r.amount}x ${r.name}`).join(', ');
+        const parts = [];
+        if (data?.auto_crafted?.length) {
+            parts.push(t('craft.toast.auto_crafted', { items: summarize(data.auto_crafted) }, `Auto-crafteado: ${summarize(data.auto_crafted)}`));
+        }
+        if (data?.produced_items?.length) {
+            parts.push(t('craft.toast.produced', { items: summarize(data.produced_items) }, `Producido: ${summarize(data.produced_items)}`));
+        }
+        const fallback = lucky ? t('craft.toast.craft_recorded') : t('craft.toast.materials_consumed_no_success');
+        showToast(parts.length ? parts.join(' · ') : fallback);
         router.reload({ preserveScroll: true, preserveState: true });
     } catch (e) {
         showToast(t('craft.toast.craft_failed'), 'error');
@@ -1331,6 +1395,18 @@ watch(buySearch, throttle(async (val) => {
                                     <div class="text-sm font-cinzel text-emerald-700 dark:text-green-400 mt-0.5" v-tooltip="formatAdenaFull(member.adena_paid || 0)">{{ formatAdenaShort(member.adena_paid || 0) }}</div>
                                 </div>
 
+                                <!-- Inline role selector -->
+                                <select
+                                    v-if="(isAdmin || isLeader) && member.id !== cp.leader_id && member.id !== $page.props.auth.user.id"
+                                    :value="member.role_id"
+                                    :disabled="inlineRoleSaving.has(member.id)"
+                                    @click.stop
+                                    @change="updateMemberRoleInline(member, $event.target.value)"
+                                    class="bg-white/70 border border-gray-200 text-gray-900 rounded-lg h-9 px-2 text-xs font-bold dark:bg-black/40 dark:border-gray-700 dark:text-gray-200 min-w-[110px] disabled:opacity-50"
+                                    :title="$t('system.users.actions.edit_role_cp')">
+                                    <option v-for="r in assignableRoles" :key="r.id" :value="r.id">{{ r.display_name || r.name }}</option>
+                                </select>
+
                                 <!-- Consolidation: Management Actions -->
                                 <div class="flex items-center gap-1.5 ml-2 border-l border-gray-200 dark:border-gray-800 pl-3" v-if="isAdmin || isLeader">
                                     <button
@@ -1634,7 +1710,7 @@ watch(buySearch, throttle(async (val) => {
                             <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('craft.subtitle') }}</p>
                         </div>
 
-                        <div v-if="isLeader" class="flex flex-col sm:flex-row gap-3 sm:items-center">
+                        <div v-if="canManageWarehouse" class="flex flex-col sm:flex-row gap-3 sm:items-center">
                             <div class="relative w-full sm:w-[360px]">
                                 <input
                                     v-model="craftingSearchQuery"
@@ -1765,7 +1841,6 @@ watch(buySearch, throttle(async (val) => {
                                     >
                                         {{ $t('craft.actions.craft') }}
                                     </button>
-                                    <template v-if="isLeader">
                                     <button
                                         class="px-3 py-2 rounded-xl bg-white/70 border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-800 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-black/30 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-900/60"
                                         :disabled="idx === 0 || moveCpRecipeForm.processing"
@@ -1787,7 +1862,6 @@ watch(buySearch, throttle(async (val) => {
                                     >
                                         {{ $t('common.remove') }}
                                     </button>
-                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -1810,11 +1884,14 @@ watch(buySearch, throttle(async (val) => {
                                     <div class="min-w-0 flex-1">
                                         <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ mat.name || $t('craft.material_fallback') }}</div>
                                         <div class="flex items-center gap-2">
-                                            <div class="text-[10px] font-black uppercase tracking-widest" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                            <div class="text-[10px] font-black uppercase tracking-widest" :class="materialStatusClass(mat, entry.recipe)">
                                                 {{ formatNumber(mat.have || 0) }} / {{ formatNumber(mat.need || 0) }}
                                             </div>
                                             <div v-if="mat.is_recipe" class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-black uppercase tracking-widest dark:bg-indigo-900/30 dark:text-indigo-200">
                                                 {{ $t('craft.recipe_fallback') }}
+                                            </div>
+                                            <div v-else-if="willBeAutoCrafted(mat, entry.recipe)" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200" :title="autoCraftTooltip(mat, entry.recipe)">
+                                                {{ $t('craft.will_be_auto_crafted') }}
                                             </div>
                                             <div v-else-if="mat.craftable && (mat.children || []).length > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black uppercase tracking-widest dark:bg-amber-900/30 dark:text-amber-200">
                                                 {{ $t('craft.craftable') }}
@@ -1823,10 +1900,10 @@ watch(buySearch, throttle(async (val) => {
                                     </div>
                                     <div class="text-right shrink-0">
                                         <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('common.missing') }}</div>
-                                        <div class="text-sm font-cinzel" :class="(mat.missing || 0) > 0 ? 'text-red-500' : 'text-emerald-700 dark:text-green-400'">
+                                        <div class="text-sm font-cinzel" :class="materialStatusClass(mat, entry.recipe)">
                                             {{ formatNumber(mat.missing || 0) }}
                                         </div>
-                                        <div v-if="(mat.craft_potential || 0) > 0" class="mt-1" :title="mat.craft_potential_limited_by ? $t('craft.limited_by', { material: mat.craft_potential_limited_by }) : ''">
+                                        <div v-if="(mat.craft_potential || 0) > 0 && !willBeAutoCrafted(mat, entry.recipe)" class="mt-1" :title="mat.craft_potential_limited_by ? $t('craft.limited_by', { material: mat.craft_potential_limited_by }) : ''">
                                             <div class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-black uppercase tracking-widest dark:bg-cyan-900/30 dark:text-cyan-200">
                                                 {{ $t('craft.can_craft', { count: formatNumber(mat.craft_potential) }) }}
                                             </div>

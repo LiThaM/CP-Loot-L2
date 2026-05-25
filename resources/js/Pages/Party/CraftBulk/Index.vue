@@ -1,13 +1,28 @@
 <script setup>
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import axios from 'axios';
 import { computed, ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
+import { showToast } from '@/utils/swal';
 
 const props = defineProps({
     cp: { type: Object, required: true },
+    canManageRecipes: { type: Boolean, default: false },
 });
+
+const pinningRecipeId = ref(null);
+const pinRecipe = (recipeId) => {
+    if (!recipeId || pinningRecipeId.value) return;
+    pinningRecipeId.value = recipeId;
+    router.post(route('cp.recipes.store'), { recipe_id: recipeId }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => showToast($t('party.craft_bulk.left.pinned_ok')),
+        onError: () => showToast($t('party.craft_bulk.left.pinned_failed'), 'error'),
+        onFinish: () => { pinningRecipeId.value = null; },
+    });
+};
 
 const page = usePage();
 const appLocale = computed(() => page.props.app?.locale || 'es');
@@ -195,6 +210,10 @@ const usageHint = (usages) => {
                                        class="w-14 h-7 text-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-bold">
                                 <button type="button" @click="updateQty(idx, o.qty + 1)" class="w-7 h-7 rounded bg-gray-200 dark:bg-gray-700 text-sm font-bold">+</button>
                             </div>
+                            <button v-if="canManageRecipes" type="button" @click="pinRecipe(o.recipe.id)"
+                                    :disabled="pinningRecipeId === o.recipe.id"
+                                    :title="$t('party.craft_bulk.left.pin_to_cp')"
+                                    class="w-7 h-7 rounded text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 disabled:opacity-40">📌</button>
                             <button type="button" @click="removeOrder(idx)" class="w-7 h-7 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">×</button>
                         </div>
                     </div>
