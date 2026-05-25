@@ -82,6 +82,7 @@ const showingNavigationDropdown = ref(false);
 const darkMode = ref(false);
 const alertsOpen = ref(false);
 const userMenuOpen = ref(false);
+const craftMenuOpen = ref(false);
 const toast = ref({ open: false, tone: 'success', title: '', message: '', kind: 'action' });
 let toastTimer = null;
 
@@ -582,7 +583,25 @@ watch(() => alerts.value.items, (items) => {
                             <Link :href="route('party.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.index')}">{{ $t('nav.party') }}</Link>
                             <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">{{ $t('nav.cp_vault') }}</Link>
                             <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">{{ $t('nav.warehouse') }}</Link>
-                            <Link v-if="['cp_leader','accountant'].includes(user.role?.name) && user.cp_id" :href="route('party.craft_bulk.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.craft_bulk.*')}">{{ $t('party.craft_bulk.nav') }}</Link>
+                            <div v-if="['admin','cp_leader','accountant'].includes(user.role?.name) && user.cp_id" class="relative" @mouseenter="craftMenuOpen = true" @mouseleave="craftMenuOpen = false">
+                                <button type="button"
+                                        class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition inline-flex items-center gap-1"
+                                        :class="{'text-purple-700 dark:text-purple-300': route().current('party.crafting') || route().current('party.craft_bulk.*')}"
+                                        @click="craftMenuOpen = !craftMenuOpen">
+                                    {{ $t('nav.craft') }}
+                                    <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div v-if="craftMenuOpen" class="absolute left-0 top-full mt-1 w-56 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl py-2 z-50">
+                                    <Link :href="route('party.crafting')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" :class="{'text-purple-700 dark:text-purple-300 font-bold': route().current('party.crafting')}" @click="craftMenuOpen = false">
+                                        <div class="font-bold">{{ $t('nav.craft.individual') }}</div>
+                                        <div class="text-[10px] text-gray-500 dark:text-gray-500 tracking-widest uppercase mt-0.5">{{ $t('nav.craft.individual_hint') }}</div>
+                                    </Link>
+                                    <Link :href="route('party.craft_bulk.index')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" :class="{'text-purple-700 dark:text-purple-300 font-bold': route().current('party.craft_bulk.*')}" @click="craftMenuOpen = false">
+                                        <div class="font-bold">{{ $t('nav.craft.bulk') }}</div>
+                                        <div class="text-[10px] text-gray-500 dark:text-gray-500 tracking-widest uppercase mt-0.5">{{ $t('nav.craft.bulk_hint') }}</div>
+                                    </Link>
+                                </div>
+                            </div>
                             <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">{{ $t('nav.items_db') }}</Link>
                             <Link :href="route('system.external_payouts.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.external_payouts.*')}">{{ $t('system.external_payouts.nav') }}</Link>
                             <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>

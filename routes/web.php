@@ -160,6 +160,10 @@ Route::middleware('auth')->group(function () {
     // Phase 3 & 4 Routes
     Route::get('/party', [PartyController::class, 'index'])->name('party.index');
     Route::get('/warehouse-cp', [PartyController::class, 'index'])->name('party.warehouse_cp')->defaults('tab', 'warehouse_cp');
+    // Shortcut for the manual crafting tab so the top nav can land on it
+    // without query strings. Same controller, same render — only the
+    // initial tab differs.
+    Route::get('/craft', [PartyController::class, 'index'])->name('party.crafting')->defaults('tab', 'crafting');
     // Bulk crafting planner — read-only calculator that aggregates N recipes
     // and crosses them against the CP warehouse stock.
     Route::get('/party/craft-bulk', [\App\Contexts\Loot\Application\Controllers\CraftBulkController::class, 'index'])
