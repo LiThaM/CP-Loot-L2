@@ -2,6 +2,7 @@
 
 use App\Contexts\ClientApi\Domain\Models\Release;
 use App\Contexts\Loot\Application\Controllers\PublicCraftingController;
+use App\Contexts\System\Domain\Models\ChangelogEntry;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,15 @@ Route::get('/', function () {
         ->channel('stable')
         ->orderByDesc('released_at')
         ->first();
+
+    $webChangelog = ChangelogEntry::query()
+        ->whereIn('audience', ['web', 'both'])
+        ->whereNotNull('published_at')
+        ->where('published_at', '<=', now())
+        ->orderByDesc('published_at')
+        ->orderByDesc('id')
+        ->limit(20)
+        ->get(['id', 'type', 'title_es', 'title_en', 'body_es', 'body_en', 'published_at']);
 
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -27,6 +37,15 @@ Route::get('/', function () {
                 ? url('/api/v1/releases/'.$latest->version.'/download')
                 : null,
         ] : null,
+        'webChangelog' => $webChangelog->map(fn (ChangelogEntry $e) => [
+            'id' => $e->id,
+            'type' => $e->type,
+            'title_es' => $e->title_es,
+            'title_en' => $e->title_en,
+            'body_es' => $e->body_es,
+            'body_en' => $e->body_en,
+            'published_at' => $e->published_at?->toIso8601String(),
+        ]),
     ]);
 });
 

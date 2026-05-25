@@ -8,6 +8,7 @@ defineProps({
     canLogin: { type: Boolean },
     canRegister: { type: Boolean },
     botRelease: { type: Object, default: null },
+    webChangelog: { type: Array, default: () => [] },
 });
 
 const formatBytes = (bytes) => {
@@ -26,6 +27,19 @@ const t = (key, params = {}) => {
 
 const appName = computed(() => page.props.app?.name || t('app.name'));
 const appLocale = computed(() => page.props.app?.locale || 'en');
+const localeTag = computed(() => (appLocale.value === 'es' ? 'es-ES' : 'en-US'));
+const formatChangelogDate = (val) => {
+    if (!val) return '';
+    try { return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(val)); }
+    catch (_) { return String(val).slice(0, 10); }
+};
+const localizedChangelogTitle = (entry) => (appLocale.value === 'en' ? entry.title_en : entry.title_es) || entry.title_en || entry.title_es || '';
+const localizedChangelogBody = (entry) => (appLocale.value === 'en' ? entry.body_en : entry.body_es) || entry.body_en || entry.body_es || '';
+const changelogTypeClass = (type) => ({
+    feature: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    fix:     'bg-blue-500/15 text-blue-300 border-blue-500/30',
+    chore:   'bg-slate-500/15 text-slate-300 border-slate-500/30',
+}[type] || 'bg-slate-500/15 text-slate-300 border-slate-500/30');
 const supportEmail = computed(() => page.props.app?.supportEmail || 'support@adenaledger.com');
 const donationWallet = computed(() => page.props.app?.donationWallet || '');
 
@@ -108,6 +122,7 @@ onMounted(() => {
                 <div class="hidden md:flex items-center gap-1">
                     <a href="/download" class="nav-link font-semibold" :class="darkMode ? 'text-purple-300 hover:text-white' : 'text-purple-700 hover:text-purple-900'">{{ $t('welcome.nav.download') }}</a>
                     <a href="/recipes" class="nav-link" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">Recipes</a>
+                    <a v-if="webChangelog.length" href="#web-changelog" class="nav-link" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">{{ $t('landing.nav.web_changelog') }}</a>
                     <button @click="showSupportModal = true" class="nav-link" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">{{ $t('welcome.modal.support.title') }}</button>
                     <div class="w-px h-4 mx-2" :class="darkMode ? 'bg-white/10' : 'bg-gray-200'"></div>
                     <button @click="toggleTheme" class="nav-link" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">
@@ -134,6 +149,7 @@ onMounted(() => {
             <div v-if="mobileMenuOpen" class="md:hidden border-t px-4 pb-4 pt-2 space-y-2" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
                 <a href="/download" class="mobile-link font-semibold" :class="darkMode ? 'text-purple-300' : 'text-purple-700'">{{ $t('welcome.download.cta') }}</a>
                 <a href="/recipes" class="mobile-link" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">Recipes</a>
+                <a v-if="webChangelog.length" href="#web-changelog" class="mobile-link" :class="darkMode ? 'text-gray-300' : 'text-gray-700'" @click="mobileMenuOpen = false">{{ $t('landing.nav.web_changelog') }}</a>
                 <button @click="showSupportModal = true; mobileMenuOpen = false" class="mobile-link w-full text-left" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">{{ $t('welcome.modal.support.title') }}</button>
                 <button @click="showCpRequestModal = true; mobileMenuOpen = false" class="mobile-link w-full text-left text-amber-500">{{ $t('welcome.section.cp_cta.btn') }}</button>
                 <div class="flex gap-2 pt-1">
@@ -316,6 +332,25 @@ onMounted(() => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Web app changelog (separate from the desktop release notes) -->
+            <section v-if="webChangelog.length" id="web-changelog" class="py-16 sm:py-20 border-t scroll-mt-16" :class="darkMode ? 'border-white/5 bg-white/[0.01]' : 'border-gray-100 bg-gray-50/50'">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6">
+                    <p class="text-xs font-bold uppercase tracking-widest mb-2" :class="darkMode ? 'text-purple-400' : 'text-purple-600'">{{ $t('landing.nav.web_changelog') }}</p>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('landing.web_changelog.title') }}</h2>
+                    <p class="text-sm mb-8" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('landing.web_changelog.subtitle') }}</p>
+                    <div class="space-y-6">
+                        <article v-for="entry in webChangelog" :key="'web-'+entry.id" class="border-l-2 pl-5 py-2" :class="darkMode ? 'border-purple-500/40' : 'border-purple-500'">
+                            <div class="flex items-baseline gap-3 mb-1 flex-wrap">
+                                <span :class="['text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border', changelogTypeClass(entry.type)]">{{ entry.type }}</span>
+                                <span class="text-xs" :class="darkMode ? 'text-gray-500' : 'text-gray-500'">{{ formatChangelogDate(entry.published_at) }}</span>
+                            </div>
+                            <h3 class="text-base font-semibold mt-1" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ localizedChangelogTitle(entry) }}</h3>
+                            <p v-if="localizedChangelogBody(entry)" class="text-sm mt-2 whitespace-pre-wrap leading-relaxed" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">{{ localizedChangelogBody(entry) }}</p>
+                        </article>
                     </div>
                 </div>
             </section>
