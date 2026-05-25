@@ -173,6 +173,28 @@ const submitUserEdit = () => {
     });
 };
 
+const ROLE_BADGE_CLASSES = {
+    admin:       'bg-rose-600 text-white',
+    cp_leader:   'bg-purple-600 text-white',
+    accountant:  'bg-blue-600 text-white',
+    cp_member:   'bg-gray-500 text-white dark:bg-gray-700',
+};
+const roleById = computed(() => {
+    const map = {};
+    for (const r of (props.roles || [])) {
+        map[r.id] = r;
+    }
+    return map;
+});
+const memberRoleBadge = (member) => {
+    const r = roleById.value[member?.role_id];
+    if (!r) return null;
+    return {
+        label: r.display_name || r.name,
+        cls: ROLE_BADGE_CLASSES[r.name] || 'bg-gray-500 text-white',
+    };
+};
+
 const inlineRoleSaving = ref(new Set());
 const updateMemberRoleInline = (member, newRoleId) => {
     const id = Number(newRoleId);
@@ -1352,9 +1374,10 @@ watch(buySearch, throttle(async (val) => {
                                     </div>
                                 </div>
                                 <div class="ml-4 min-w-0 flex-1">
-                                    <div class="flex items-center gap-2 min-w-0">
+                                    <div class="flex items-center gap-2 min-w-0 flex-wrap">
                                         <span class="font-black uppercase tracking-tight text-gray-900 dark:text-white truncate" :class="{ 'line-through text-gray-400 dark:text-gray-600': member.membership_status === 'banned' }">{{ member.name }}</span>
-                                        <span v-if="member.id === cp.leader_id" class="text-[8px] bg-purple-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">{{ $t('party.member.badge_leader') }}</span>
+                                        <span v-if="memberRoleBadge(member)" :class="['text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter', memberRoleBadge(member).cls]">{{ memberRoleBadge(member).label }}</span>
+                                        <span v-if="member.id === cp.leader_id" class="text-[8px] bg-amber-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-gray-900" :title="$t('party.member.badge_founder_tooltip')">★ {{ $t('party.member.badge_founder') }}</span>
                                         <span v-if="member.membership_status === 'pending'" class="text-[8px] bg-yellow-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-gray-900">{{ $t('common.pending') }}</span>
                                         <span v-if="member.membership_status === 'banned'" class="text-[8px] bg-red-600 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter text-white">{{ $t('common.excluded') }}</span>
                                     </div>
