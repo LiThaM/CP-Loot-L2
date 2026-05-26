@@ -1,10 +1,14 @@
 <script setup>
 import MainLayout from '@/Layouts/MainLayout.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
+import ViewModeToggle from '@/Components/ViewModeToggle.vue';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
 import { confirmAction } from '@/utils/swal';
+import { useViewMode } from '@/Composables/useViewMode.js';
+
+const { mode: viewMode } = useViewMode();
 
 const page = usePage();
 const locale = computed(() => page.props.app?.locale || 'en');
@@ -543,6 +547,7 @@ onMounted(async () => {
                         </button>
                         <button @click="activeTab = 'wishlist'" :class="activeTab === 'wishlist' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">{{ $t('loot.tabs.wishlist') }}</button>
                     </div>
+                    <ViewModeToggle />
                     <button v-if="has_cp" @click="openLootModal" class="h-10 px-4 rounded-xl bg-white/70 hover:bg-white text-gray-900 text-[10px] leading-none font-black uppercase tracking-widest border border-gray-200 dark:bg-gray-900/40 dark:hover:bg-gray-900/60 dark:text-gray-200 dark:border-gray-800 transition">
                         {{ $t('loot.report_session') }}
                     </button>
@@ -866,7 +871,7 @@ onMounted(async () => {
             </div>
 
             <!-- Wishlist Tab -->
-            <div v-if="activeTab === 'wishlist'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-if="activeTab === 'wishlist' && viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                  <div v-for="item in wishlist" :key="item.id" class="l2-panel p-6 rounded-2xl relative border-gray-800">
                     <div class="absolute top-4 right-4 text-xs font-black uppercase tracking-tighter" :class="item.priority === 'high' ? 'text-red-500' : 'text-orange-500'">
                         {{ item.priority }}
@@ -883,6 +888,36 @@ onMounted(async () => {
                     </div>
                     <div class="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-4">{{ $t('loot.note') }}: <span class="text-gray-800 dark:text-gray-300 normal-case">{{ item.notes || $t('loot.no_notes') }}</span></div>
                 </div>
+            </div>
+
+            <!-- WISHLIST LIST MODE -->
+            <div v-if="activeTab === 'wishlist' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+                    <thead class="bg-white/60 dark:bg-gray-900/40">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.item') }}</th>
+                            <th class="px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.grade', 'Grade') }}</th>
+                            <th class="px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.priority', 'Priority') }}</th>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.note') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/40 dark:bg-black/20">
+                        <tr v-for="item in wishlist" :key="item.id" class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition">
+                            <td class="px-4 py-2">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <img v-if="item.item?.image_url" :src="item.item.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                                    <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 truncate">{{ item.item.name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-2 text-center text-xs font-bold text-blue-700 dark:text-blue-400">{{ item.item.grade || '—' }}</td>
+                            <td class="px-4 py-2 text-center">
+                                <span class="text-[10px] font-black uppercase tracking-widest" :class="item.priority === 'high' ? 'text-red-500' : 'text-orange-500'">{{ item.priority }}</span>
+                            </td>
+                            <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 truncate max-w-md">{{ item.notes || '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 

@@ -1,8 +1,12 @@
 <script setup>
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
+import ViewModeToggle from '@/Components/ViewModeToggle.vue';
 import { computed, ref } from 'vue';
 import emitter from '@/event-bus';
+import { useViewMode } from '@/Composables/useViewMode.js';
+
+const { mode: viewMode } = useViewMode();
 
 const page = usePage();
 const locale = computed(() => page.props.app?.locale || 'en');
@@ -136,9 +140,12 @@ const submitReturn = () => {
                     </div>
                 </div>
 
-                <div class="relative mt-5">
-                    <input v-model="myWarehouseFilter" type="text" :placeholder="$t('warehouse.filter_item_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
-                    <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <div class="relative mt-5 flex items-center gap-3">
+                    <div class="relative flex-1">
+                        <input v-model="myWarehouseFilter" type="text" :placeholder="$t('warehouse.filter_item_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
+                        <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <ViewModeToggle />
                 </div>
             </div>
 
@@ -146,7 +153,7 @@ const submitReturn = () => {
                 {{ myWarehouseFilter.trim() ? $t('common.no_results') : $t('warehouse.no_items_assigned') }}
             </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-else-if="viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div v-for="item in filteredMyItems" :key="item.id" class="l2-panel p-4 rounded-2xl border-gray-800 flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 dark:border-gray-700 dark:bg-black/40">
                         <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover">
@@ -166,6 +173,36 @@ const submitReturn = () => {
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <!-- LIST MODE -->
+            <div v-else class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+                    <thead class="bg-white/60 dark:bg-gray-900/40">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.item') }}</th>
+                            <th class="px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.grade', 'Grade') }}</th>
+                            <th class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.amount') }}</th>
+                            <th class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/40 dark:bg-black/20">
+                        <tr v-for="item in filteredMyItems" :key="item.id" class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition">
+                            <td class="px-4 py-2">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <img v-if="item.image_url" :src="item.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                                    <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 truncate">{{ item.name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-2 text-center text-xs font-bold text-gray-500">{{ item.grade || '—' }}</td>
+                            <td class="px-4 py-2 text-right font-cinzel text-orange-500">x{{ item.total_amount }}</td>
+                            <td class="px-4 py-2 text-right whitespace-nowrap">
+                                <button @click="openReturn(item)" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-purple-600 text-white rounded-md">{{ $t('warehouse.return') }}</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </MainLayout>
