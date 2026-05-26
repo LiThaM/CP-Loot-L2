@@ -81,7 +81,12 @@ class CraftBulkPlannerService
         // Sub-craft loop: walk the demand, consume stock, queue sub-crafts
         // for the missing+craftable, stop on leaves.
         $consumed = [];       // itemId => qty taken from stock
-        $subCrafts = [];      // ordered list of crafts the planner decided
+        // Keyed by `covers_item_id` so multiple iterations that need the
+        // same intermediate (Steel pulled from two different parent
+        // branches, etc.) collapse into one row instead of being pushed
+        // separately. `array_values()` at the end preserves insertion
+        // order, so the first time the item showed up it stays on top.
+        $subCraftsByItem = [];
         $leaves = [];         // itemId => total still-missing (incl. partial sub-craft consumption)
         $iterations = 0;
         $ancestors = [];      // per-item recipe ids to avoid infinite recursion
@@ -131,13 +136,19 @@ class CraftBulkPlannerService
                 $outputQty = max(1, (int) ($subRecipe->output_quantity ?? 1));
                 $crafts = (int) ceil($missing / $outputQty);
                 $produces = $crafts * $outputQty;
-                $subCrafts[] = [
-                    'recipe' => $this->recipePayload($subRecipe),
-                    'crafts' => $crafts,
-                    'produces' => $produces,
-                    'covers_item_id' => $itemId,
-                    'covers_missing' => $missing,
-                ];
+                if (isset($subCraftsByItem[$itemId])) {
+                    $subCraftsByItem[$itemId]['crafts']         += $crafts;
+                    $subCraftsByItem[$itemId]['produces']       += $produces;
+                    $subCraftsByItem[$itemId]['covers_missing'] += $missing;
+                } else {
+                    $subCraftsByItem[$itemId] = [
+                        'recipe' => $this->recipePayload($subRecipe),
+                        'crafts' => $crafts,
+                        'produces' => $produces,
+                        'covers_item_id' => $itemId,
+                        'covers_missing' => $missing,
+                    ];
+                }
                 // The over-produced excess (produces - missing) stays in
                 // `consumed` so future demand of the same item sees it as
                 // already covered.
@@ -205,7 +216,7 @@ class CraftBulkPlannerService
             'sub_crafts' => array_map(function ($sc) use ($itemMeta) {
                 $sc['covers_item_name'] = $itemMeta->get($sc['covers_item_id'])?->name;
                 return $sc;
-            }, $subCrafts),
+            }, array_values($subCraftsByItem)),
             'warnings' => array_values(array_unique($warnings)),
         ];
     }
