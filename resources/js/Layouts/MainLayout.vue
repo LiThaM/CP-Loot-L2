@@ -5,6 +5,7 @@ import { throttle } from 'lodash';
 import axios from 'axios';
 import emitter from '../event-bus';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
+import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -770,7 +771,7 @@ watch(() => alerts.value.items, (items) => {
                             <span class="text-[10px] text-gray-500">{{ new Date(entry.published_at).toLocaleDateString(localeTag) }}</span>
                         </div>
                         <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ localizedChangelogTitle(entry) }}</h3>
-                        <p v-if="localizedChangelogBody(entry)" class="text-sm mt-1 leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ localizedChangelogBody(entry) }}</p>
+                        <div v-if="localizedChangelogBody(entry)" class="text-sm mt-1 leading-relaxed text-gray-700 dark:text-gray-300 changelog-body" v-html="renderInlineMarkdown(localizedChangelogBody(entry))"></div>
                     </article>
                 </div>
                 <div class="p-4 border-t border-gray-200 dark:border-gray-800 flex gap-3 bg-white/40 dark:bg-black/30">

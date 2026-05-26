@@ -1,0 +1,250 @@
+<script setup>
+import { computed } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const props = defineProps({
+    report: { type: Object, required: true },
+    showVoided: { type: Boolean, default: true },
+});
+
+const emit = defineEmits(['image-click']);
+
+const page = usePage();
+const localeTag = computed(() => (page.props.app?.locale === 'es' ? 'es-ES' : 'en-US'));
+
+const isAdenaEntry = (entry) => String(entry?.item?.name || '').toLowerCase() === 'adena';
+
+const formatQty = (val) => {
+    const n = Number.parseInt(String(val ?? 0), 10);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? n : 0);
+};
+
+const formatAdenaShort = (val) => {
+    const n = Number(val ?? 0);
+    if (!Number.isFinite(n)) return '0';
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000) {
+        const m = abs / 1_000_000;
+        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1)));
+        return `${sign}${str}kk`;
+    }
+    if (abs >= 1_000) {
+        const k = abs / 1_000;
+        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1)));
+        return `${sign}${str}k`;
+    }
+    return `${sign}${Math.trunc(abs)}`;
+};
+
+const formatAdenaFull = (val) => {
+    const n = Number(val ?? 0);
+    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
+};
+
+const formatDateTime = (val) => {
+    if (!val) return '';
+    try {
+        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
+    } catch {
+        return String(val);
+    }
+};
+
+const entryAmountText = (entry) => {
+    if (!isAdenaEntry(entry)) return `x${formatQty(entry?.amount)}`;
+    return `x${formatAdenaShort(Math.abs(entry?.amount || 0))}`;
+};
+
+const entryAmountTitle = (entry) => {
+    if (!isAdenaEntry(entry)) return null;
+    return `x${formatAdenaFull(Math.abs(entry?.amount ?? 0))}`;
+};
+
+const pointsEventTypes = new Set(['FARM', 'BOSS', 'EPIC', 'SIEGE']);
+const reportHasPoints = computed(() => {
+    const type = String(props.report?.event_type || '').toUpperCase();
+    if (!pointsEventTypes.has(type)) return false;
+    return Number(props.report?.points_per_member || 0) > 0;
+});
+
+const entryAmountClass = (entry) => {
+    if (!isAdenaEntry(entry)) return 'text-gray-700 dark:text-gray-200';
+    const type = String(props.report?.event_type || '').toUpperCase();
+    const amount = Number(entry?.amount || 0);
+    const gains = ['FARM', 'BOSS', 'EPIC', 'SIEGE', 'ADENA_GRANT', 'SELL', 'VENTA', 'RETURN', 'ADMIN_ADJUST_IN', 'ADENA_GAIN'];
+    const losses = ['ADENA_PAYOUT', 'WAREHOUSE_CRAFT_CONSUME', 'ADMIN_ADJUST_OUT', 'CRAFT', 'ADENA_OFFSET', 'BUY', 'COMPRA'];
+    if (losses.includes(type) || amount < 0) return 'text-red-500';
+    if (gains.includes(type) || amount > 0) return 'text-emerald-600 dark:text-emerald-400';
+    return 'text-emerald-600 dark:text-emerald-400';
+};
+
+const getItemToneClass = (item) => {
+    const grade = String(item?.grade || '').toUpperCase();
+    if (grade === 'S') return 'border-purple-500/40 ring-1 ring-purple-500/30 shadow-[0_0_18px_rgba(168,85,247,0.18)]';
+    if (grade === 'A') return 'border-blue-500/40 ring-1 ring-blue-500/30 shadow-[0_0_18px_rgba(59,130,246,0.18)]';
+    if (grade === 'B') return 'border-emerald-500/40 ring-1 ring-emerald-500/30 shadow-[0_0_18px_rgba(16,185,129,0.16)]';
+    return 'border-gray-200/70 ring-1 ring-black/5 dark:border-gray-700/70 dark:ring-white/5';
+};
+
+const entries = computed(() => (Array.isArray(props.report?.entries) ? props.report.entries : []));
+
+const adenaTotal = computed(() => entries.value.reduce((sum, e) => {
+    if (!isAdenaEntry(e)) return sum;
+    const n = Number(e?.amount ?? 0);
+    return sum + (Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0);
+}, 0));
+
+const adenaSplit = computed(() => {
+    const total = adenaTotal.value;
+    const recipients = Array.isArray(props.report?.recipients) ? props.report.recipients : [];
+    const count = recipients.length;
+    const mode = String(props.report?.adena_distribution || 'cp');
+    if (total <= 0) return null;
+    if (mode === 'attendees' && count > 0) {
+        const perMember = Math.floor(total / count);
+        const remainderToCp = Math.max(0, total - (perMember * count));
+        return { mode, total, perMember, remainderToCp };
+    }
+    return { mode: 'cp', total, perMember: 0, remainderToCp: total };
+});
+
+const adenaPerMember = computed(() => (adenaSplit.value && adenaSplit.value.mode === 'attendees' ? adenaSplit.value.perMember : 0));
+
+const proofUrl = computed(() => (props.report?.image_proof ? `/storage/${props.report.image_proof}` : null));
+
+const t = (key, fallback) => {
+    const dict = page.props.translations || {};
+    const v = dict[key];
+    return (typeof v === 'string' && v.length) ? v : (fallback ?? key);
+};
+</script>
+
+<template>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Image proof + void note -->
+        <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('loot.evidence', 'Evidence') }}</div>
+            <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 flex items-center justify-center dark:border-gray-700 dark:bg-gray-900/50">
+                <img
+                    v-if="proofUrl"
+                    :src="proofUrl"
+                    class="w-full h-full object-cover cursor-pointer"
+                    @click.stop="emit('image-click', proofUrl)"
+                >
+                <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ t('loot.no_screenshot', 'No screenshot') }}</div>
+            </div>
+            <div v-if="showVoided && report.voided_at" class="mt-3 text-[10px] text-red-500 font-bold uppercase tracking-widest" :title="report.voided_reason || ''">
+                ⚠ {{ t('loot.void.badge', 'Voided') }}<span v-if="report.voided_reason"> — {{ report.voided_reason }}</span>
+            </div>
+        </div>
+
+        <!-- Origin (if any) + items list -->
+        <div>
+            <div v-if="report.origin" class="mb-4 bg-white/70 border border-gray-200 rounded-xl p-3 dark:bg-gray-900/40 dark:border-gray-800">
+                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ t('loot.item_origin', 'Origin') }}</div>
+                <div class="flex items-center justify-between gap-3 mt-1 min-w-0">
+                    <Link
+                        class="text-sm font-black text-purple-700 dark:text-purple-300 hover:underline truncate min-w-0 flex-1"
+                        :href="route('loot.index', { report: report.origin.id }) + `#report-${report.origin.id}`"
+                        @click.stop
+                    >
+                        #{{ report.origin.id }} {{ report.origin.event_type }}
+                    </Link>
+                    <div class="text-[10px] text-gray-500 font-bold uppercase shrink-0 ml-3">
+                        {{ formatDateTime(report.origin.created_at) }}
+                    </div>
+                </div>
+                <div v-if="report.origin.requested_by" class="text-[10px] text-gray-500 font-bold uppercase truncate mt-1">
+                    {{ t('loot.registered_by', 'Registered by') }}: {{ report.origin.requested_by }}
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ t('loot.items', 'Items') }}</div>
+                <span
+                    v-if="report.event_type === 'WAREHOUSE_CRAFT_CONSUME'"
+                    class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border"
+                    :class="report.craft_success ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400' : 'text-red-500 bg-red-500/10 border-red-500/30'"
+                >
+                    {{ report.craft_success ? t('loot.craft_success', 'Success') : t('loot.craft_failed', 'Failed') }}
+                </span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+                <div
+                    v-for="entry in entries"
+                    :key="entry.id"
+                    class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800"
+                    :class="getItemToneClass(entry.item)"
+                >
+                    <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ entry.item?.name }}</div>
+                    </div>
+                    <div class="text-sm font-cinzel" :class="entryAmountClass(entry)" :title="entryAmountTitle(entry) || undefined">
+                        {{ entryAmountText(entry) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendees + points + adena split -->
+        <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                {{ reportHasPoints ? t('loot.distribution', 'Distribution') : t('loot.attendees', 'Attendees') }}
+            </div>
+            <div class="space-y-2">
+                <div v-if="!report.recipients || report.recipients.length === 0" class="text-xs text-gray-600 italic">
+                    {{ t('loot.no_attendees', 'No attendees') }}
+                </div>
+                <div
+                    v-else
+                    v-for="u in report.recipients"
+                    :key="u.id"
+                    class="flex items-center justify-between bg-white/70 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-800 rounded-xl p-2"
+                >
+                    <span class="text-xs font-bold text-gray-900 dark:text-gray-200 truncate">{{ u.name }}</span>
+                    <div class="flex items-center gap-2">
+                        <span v-if="reportHasPoints" class="text-xs font-black text-emerald-700 dark:text-green-500">
+                            {{ report.points_per_member || 0 }} {{ t('loot.pts', 'pts') }}
+                        </span>
+                        <span v-if="adenaPerMember > 0" class="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                            +{{ formatAdenaShort(adenaPerMember) }}
+                        </span>
+                    </div>
+                </div>
+
+                <div v-if="adenaSplit && adenaSplit.mode === 'attendees'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
+                        {{ t('loot.adena_split_title', 'Adena split') }}
+                    </div>
+                    <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                        {{ t('loot.adena_total', 'Total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(adenaSplit.total) }}</span>
+                        • {{ t('loot.adena_each', 'Each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(adenaSplit.perMember) }}</span>
+                    </div>
+                    <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                        {{ t('loot.adena_remainder_to_cp', 'Remainder to CP') }}: {{ formatAdenaShort(adenaSplit.remainderToCp) }}
+                    </div>
+                </div>
+                <div v-else-if="adenaSplit && adenaSplit.mode === 'cp'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
+                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
+                        {{ t('loot.adena_to_cp_title', 'Adena to CP') }}
+                    </div>
+                    <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
+                        {{ formatAdenaShort(adenaSplit.total) }}
+                    </div>
+                </div>
+
+                <div v-if="reportHasPoints" class="pt-2 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <span class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ t('loot.total', 'Total') }}</span>
+                    <span class="text-sm text-gray-900 dark:text-white font-cinzel">
+                        {{ (report.points_per_member || 0) * (report.recipients?.length || 0) }} {{ t('loot.pts', 'pts') }}
+                    </span>
+                </div>
+
+                <slot name="extra" />
+            </div>
+        </div>
+    </div>
+</template>

@@ -3,6 +3,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { useSwal } from '../utils/swal';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
 
 defineProps({
     canLogin: { type: Boolean },
@@ -349,7 +350,7 @@ onMounted(() => {
                                 <span class="text-xs" :class="darkMode ? 'text-gray-500' : 'text-gray-500'">{{ formatChangelogDate(entry.published_at) }}</span>
                             </div>
                             <h3 class="text-base font-semibold mt-1" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ localizedChangelogTitle(entry) }}</h3>
-                            <p v-if="localizedChangelogBody(entry)" class="text-sm mt-2 whitespace-pre-wrap leading-relaxed" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">{{ localizedChangelogBody(entry) }}</p>
+                            <div v-if="localizedChangelogBody(entry)" class="text-sm mt-2 leading-relaxed changelog-body" :class="darkMode ? 'text-gray-300' : 'text-gray-700'" v-html="renderInlineMarkdown(localizedChangelogBody(entry))"></div>
                         </article>
                     </div>
                 </div>

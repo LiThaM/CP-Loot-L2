@@ -2,6 +2,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
 
 defineProps({
     entries: {
@@ -84,9 +85,7 @@ const typeMeta = (type) => {
                             {{ localizedTitle(entry) }}
                         </h2>
 
-                        <p v-if="localizedBody(entry)" class="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
-                            {{ localizedBody(entry) }}
-                        </p>
+                        <div v-if="localizedBody(entry)" class="mt-2 text-sm text-gray-700 dark:text-gray-300 changelog-body" v-html="renderInlineMarkdown(localizedBody(entry))"></div>
                     </div>
                 </li>
             </ol>

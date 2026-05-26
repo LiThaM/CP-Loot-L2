@@ -2,6 +2,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import ViewModeToggle from '@/Components/ViewModeToggle.vue';
+import LootReportExpandedDetails from '@/Components/Loot/LootReportExpandedDetails.vue';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
@@ -680,30 +681,9 @@ onMounted(async () => {
                     </div>
 
                     <div v-if="expandedPending.has(report.id)" class="border-t border-gray-200 dark:border-gray-800 p-5 bg-gray-100/50 dark:bg-black/20">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div class="md:col-span-1">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.evidence') }}</div>
-                                <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 flex items-center justify-center dark:border-gray-700 dark:bg-gray-900/50">
-                                    <img v-if="report.image_proof" :src="`/storage/${report.image_proof}`" class="w-full h-full object-cover cursor-pointer" @click.stop="openImageModal(`/storage/${report.image_proof}`)">
-                                    <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ $t('loot.no_screenshot') }}</div>
-                                </div>
-                            </div>
-                            <div class="md:col-span-1">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.items') }}</div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <div v-for="entry in getReportFilteredEntries(report)" :key="entry.id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
-                                        <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700">
-                                        <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                                        <div class="flex-1 min-w-0">
-                                            <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ entry.item?.name }}</div>
-                                        </div>
-                                        <div class="text-sm font-cinzel" :class="entryAmountClass(report, entry)" v-tooltip="entryAmountTitle(report, entry)">{{ entryAmountText(report, entry) }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="md:col-span-1">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.action') }}</div>
-                                <div class="space-y-2">
+                        <LootReportExpandedDetails :report="report" @image-click="openImageModal">
+                            <template #extra>
+                                <div class="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-2">
                                     <template v-if="report.event_type === 'RETURN'">
                                         <button @click="resolveQuick(report, 'confirmed')" class="w-full py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition">{{ $t('loot.accept_return') }}</button>
                                         <button @click="resolveQuick(report, 'rejected')" class="w-full py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30">{{ $t('loot.reject_return') }}</button>
@@ -713,8 +693,8 @@ onMounted(async () => {
                                         <button @click="rejectReport(report)" class="w-full py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30">{{ $t('loot.reject') }}</button>
                                     </template>
                                 </div>
-                            </div>
-                        </div>
+                            </template>
+                        </LootReportExpandedDetails>
                     </div>
 
                     <div v-if="isLeader" class="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-100/50 dark:bg-black/20 flex gap-3">
@@ -773,26 +753,7 @@ onMounted(async () => {
                             </tr>
                             <tr v-if="expandedPending.has(report.id)" class="bg-gray-100/50 dark:bg-black/30">
                                 <td colspan="6" class="p-5">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div class="md:col-span-1">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.evidence') }}</div>
-                                            <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 flex items-center justify-center dark:border-gray-700 dark:bg-gray-900/50">
-                                                <img v-if="report.image_proof" :src="`/storage/${report.image_proof}`" class="w-full h-full object-cover cursor-pointer" @click.stop="openImageModal(`/storage/${report.image_proof}`)">
-                                                <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ $t('loot.no_screenshot') }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.items') }}</div>
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                                                <div v-for="entry in (report.entries || [])" :key="entry.id" class="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-lg px-2 py-1.5 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
-                                                    <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-7 h-7 rounded border border-gray-200 dark:border-gray-700">
-                                                    <div v-else class="w-7 h-7 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                                                    <div class="text-xs text-gray-900 dark:text-white font-bold truncate flex-1">{{ entry.item?.name }}</div>
-                                                    <div class="text-xs font-cinzel" :class="entryAmountClass(report, entry)">{{ entryAmountText(report, entry) }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <LootReportExpandedDetails :report="report" @image-click="openImageModal" />
                                 </td>
                             </tr>
                         </template>
@@ -868,87 +829,8 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <div v-if="expandedReports.has(report.id)" class="border-t border-gray-200 dark:border-gray-800 p-5 bg-gray-100/50 dark:bg-black/20 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.evidence') }}</div>
-                            <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 dark:border-gray-700 dark:bg-gray-900/50 flex items-center justify-center">
-                                <img v-if="report.image_proof" :src="`/storage/${report.image_proof}`" class="w-full h-full object-cover cursor-pointer" @click.stop="openImageModal(`/storage/${report.image_proof}`)">
-                                <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ $t('loot.no_capture') }}</div>
-                            </div>
-                        </div>
-                        <div class="md:col-span-1">
-                            <div v-if="report.origin" class="mb-4 bg-white/70 border border-gray-200 rounded-xl p-3 dark:bg-gray-900/40 dark:border-gray-800">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.item_origin') }}</div>
-                                <div class="flex items-center justify-between gap-3 mt-1 min-w-0">
-                                    <div class="min-w-0 flex-1">
-                                        <Link
-                                            class="text-sm font-black text-purple-700 dark:text-purple-300 hover:underline truncate"
-                                            :href="route('loot.index', { report: report.origin.id }) + `#report-${report.origin.id}`"
-                                            @click.stop
-                                        >
-                                            #{{ report.origin.id }} {{ report.origin.event_type }}
-                                        </Link>
-                                    </div>
-                                    <div class="text-[10px] text-gray-500 font-bold uppercase shrink-0 ml-3">
-                                        {{ formatDateTime(report.origin.created_at) }}
-                                    </div>
-                                </div>
-                                <div v-if="report.origin.requested_by" class="text-[10px] text-gray-500 font-bold uppercase truncate mt-1">
-                                    {{ $t('loot.registered_by') }}: {{ report.origin.requested_by }}
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 mb-2 flex-wrap">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }}</div>
-                                <span v-if="report.event_type === 'WAREHOUSE_CRAFT_CONSUME'" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border" :class="report.craft_success ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400' : 'text-red-500 bg-red-500/10 border-red-500/30'">{{ report.craft_success ? $t('loot.craft_success') : $t('loot.craft_failed') }}</span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div v-for="entry in getReportFilteredEntries(report)" :key="entry.id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
-                                    <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ entry.item?.name }}</div>
-                                    </div>
-                                    <div class="text-sm font-cinzel" :class="entryAmountClass(report, entry)" v-tooltip="entryAmountTitle(report, entry)">{{ entryAmountText(report, entry) }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="md:col-span-1">
-                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ reportHasPoints(report) ? $t('loot.distribution') : $t('loot.attendees') }}</div>
-                            <div class="space-y-2">
-                                <div v-if="!report.recipients || report.recipients.length === 0" class="text-xs text-gray-600 italic">{{ $t('loot.no_attendees') }}</div>
-                                <div v-else v-for="u in report.recipients" :key="u.id" class="flex items-center justify-between bg-white/70 border border-gray-200 dark:bg-gray-900/40 dark:border-gray-800 rounded-xl p-2">
-                                    <span class="text-xs font-bold text-gray-900 dark:text-gray-200 truncate">{{ u.name }}</span>
-                                    <div class="flex items-center gap-2">
-                                        <span v-if="reportHasPoints(report)" class="text-xs font-black text-emerald-700 dark:text-green-500">{{ report.points_per_member || 0 }} {{ $t('loot.pts') }}</span>
-                                        <span v-if="getReportAdenaPerMember(report) > 0" class="text-xs font-black text-emerald-700 dark:text-emerald-300">+{{ formatAdenaShort(getReportAdenaPerMember(report)) }}</span>
-                                    </div>
-                                </div>
-                                <div v-if="getReportAdenaSplit(report) && getReportAdenaSplit(report).mode === 'attendees'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
-                                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
-                                        {{ $t('loot.adena_split_title') }}
-                                    </div>
-                                    <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-                                        {{ $t('loot.adena_total') }}: <span class="font-cinzel text-gray-900 dark:text-white">{{ formatAdenaShort(getReportAdenaSplit(report).total) }}</span>
-                                        • {{ $t('loot.adena_each') }}: <span class="font-cinzel text-emerald-700 dark:text-emerald-300">{{ formatAdenaShort(getReportAdenaSplit(report).perMember) }}</span>
-                                    </div>
-                                    <div class="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                                        {{ $t('loot.adena_remainder_to_cp', { amount: formatAdenaShort(getReportAdenaRemainderToCp(report)) }) }}
-                                    </div>
-                                </div>
-                                <div v-else-if="getReportAdenaSplit(report) && getReportAdenaSplit(report).mode === 'cp'" class="pt-3 border-t border-gray-200 dark:border-gray-800">
-                                    <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">
-                                        {{ $t('loot.adena_to_cp_title') }}
-                                    </div>
-                                    <div class="mt-2 text-[10px] text-gray-600 dark:text-gray-400 font-bold uppercase tracking-widest">
-                                        {{ $t('loot.adena_to_cp_desc', { amount: formatAdenaShort(getReportAdenaSplit(report).total) }) }}
-                                    </div>
-                                </div>
-                                <div v-if="reportHasPoints(report)" class="pt-2 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                                    <span class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ $t('loot.total') }}</span>
-                                    <span class="text-sm text-gray-900 dark:text-white font-cinzel">{{ (report.points_per_member || 0) * (report.recipients?.length || 0) }} {{ $t('loot.pts') }}</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div v-if="expandedReports.has(report.id)" class="border-t border-gray-200 dark:border-gray-800 p-5 bg-gray-100/50 dark:bg-black/20">
+                        <LootReportExpandedDetails :report="report" @image-click="openImageModal" />
                     </div>
                 </div>
 
@@ -1000,27 +882,7 @@ onMounted(async () => {
                             </tr>
                             <tr v-if="expandedReports.has(report.id)" class="bg-gray-100/50 dark:bg-black/30">
                                 <td :colspan="canVoid ? 7 : 6" class="p-5">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div class="md:col-span-1">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.evidence') }}</div>
-                                            <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 flex items-center justify-center dark:border-gray-700 dark:bg-gray-900/50">
-                                                <img v-if="report.image_proof" :src="`/storage/${report.image_proof}`" class="w-full h-full object-cover cursor-pointer" @click.stop="openImageModal(`/storage/${report.image_proof}`)">
-                                                <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ $t('loot.no_screenshot') }}</div>
-                                            </div>
-                                            <div v-if="report.voided_at" class="mt-3 text-[10px] text-red-500 font-bold uppercase tracking-widest" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }} — {{ report.voided_reason || '' }}</div>
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.items') }}</div>
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                                                <div v-for="entry in (report.entries || [])" :key="entry.id" class="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-lg px-2 py-1.5 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
-                                                    <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-7 h-7 rounded border border-gray-200 dark:border-gray-700">
-                                                    <div v-else class="w-7 h-7 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                                                    <div class="text-xs text-gray-900 dark:text-white font-bold truncate flex-1">{{ entry.item?.name }}</div>
-                                                    <div class="text-xs font-cinzel" :class="entryAmountClass(report, entry)">{{ entryAmountText(report, entry) }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <LootReportExpandedDetails :report="report" @image-click="openImageModal" />
                                 </td>
                             </tr>
                         </template>

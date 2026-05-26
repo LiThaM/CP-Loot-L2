@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
 
 const props = defineProps({
     latest: Object,
@@ -163,7 +164,7 @@ const formatDate = (val) => {
                         <span class="text-xs text-slate-500">{{ formatDate(entry.published_at) }}</span>
                     </div>
                     <h3 class="text-lg font-semibold text-white mt-1">{{ localizedTitle(entry) }}</h3>
-                    <p v-if="localizedBody(entry)" class="text-sm text-slate-300 mt-2 whitespace-pre-wrap leading-relaxed">{{ localizedBody(entry) }}</p>
+                    <div v-if="localizedBody(entry)" class="text-sm text-slate-300 mt-2 leading-relaxed changelog-body" v-html="renderInlineMarkdown(localizedBody(entry))"></div>
                 </article>
             </div>
         </section>
