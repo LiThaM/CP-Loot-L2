@@ -281,7 +281,13 @@ class TicketController extends Controller
                 Mail::to($supportTo)->send(new NewTicketAdminNotification($ticket));
             }
         } catch (\Throwable $e) {
-            Log::warning('Ticket admin notification failed: '.$e->getMessage(), ['ticket_id' => $ticket->id]);
+            // Log exception class so production triage immediately sees
+            // whether it's a transport/auth issue (Mailgun creds missing
+            // → MissingArgumentException, etc.) vs a template error.
+            Log::warning('Ticket admin notification failed: '.get_class($e).' — '.$e->getMessage(), [
+                'ticket_id' => $ticket->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         $authorEmail = $ticket->email ?: $ticket->user?->email;
@@ -289,7 +295,10 @@ class TicketController extends Controller
             try {
                 Mail::to($authorEmail)->send(new TicketAuthorConfirmation($ticket));
             } catch (\Throwable $e) {
-                Log::warning('Ticket author confirmation failed: '.$e->getMessage(), ['ticket_id' => $ticket->id]);
+                Log::warning('Ticket author confirmation failed: '.get_class($e).' — '.$e->getMessage(), [
+                    'ticket_id' => $ticket->id,
+                    'trace' => $e->getTraceAsString(),
+                ]);
             }
         }
     }
@@ -304,9 +313,10 @@ class TicketController extends Controller
         try {
             Mail::to($supportTo)->send(new NewTicketReplyAdminNotification($ticket, $reply));
         } catch (\Throwable $e) {
-            Log::warning('Ticket reply notification failed: '.$e->getMessage(), [
+            Log::warning('Ticket reply notification failed: '.get_class($e).' — '.$e->getMessage(), [
                 'ticket_id' => $ticket->id,
                 'reply_id' => $reply->id,
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
