@@ -3,7 +3,7 @@ import MainLayout from '@/Layouts/MainLayout.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import ViewModeToggle from '@/Components/ViewModeToggle.vue';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
 import { confirmAction } from '@/utils/swal';
 import { useViewMode } from '@/Composables/useViewMode.js';
@@ -480,6 +480,29 @@ const filteredHistory = computed(() => {
     return sorted.filter((report) => getReportFilteredEntries(report).length > 0);
 });
 
+// Infinite-scroll sentinel for the history tab. Lives outside both
+// card/list render blocks so the same observer feeds both views.
+const historyScrollSentinel = ref(null);
+let historyIO = null;
+const ensureHistoryIO = () => {
+    if (historyIO || typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+    historyIO = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            if (!historyPagination.value?.has_more || isLoadingMoreHistory.value) continue;
+            loadMoreHistory();
+        }
+    }, { rootMargin: '300px 0px 300px 0px' });
+};
+watch(historyScrollSentinel, (el, prev) => {
+    ensureHistoryIO();
+    if (prev && historyIO) historyIO.unobserve(prev);
+    if (el && historyIO) historyIO.observe(el);
+});
+onUnmounted(() => {
+    if (historyIO) { historyIO.disconnect(); historyIO = null; }
+});
+
 const expandedReports = ref(new Set());
 const toggleExpanded = (id) => {
     const s = new Set(expandedReports.value);
@@ -929,15 +952,6 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <LoadMoreSection
-                    v-if="historyPagination?.has_more"
-                    :show-remaining="false"
-                    :remaining-count="0"
-                    :remaining-label="$t('common.more')"
-                    :can-load-more="historyPagination?.has_more && !isLoadingMoreHistory"
-                    :load-more-label="loadMoreHistoryLabel"
-                    @load-more="loadMoreHistory"
-                />
             </div>
 
             <!-- History LIST mode -->
@@ -1012,6 +1026,14 @@ onMounted(async () => {
                         </template>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- History infinite-scroll sentinel (shared by cards + list modes) -->
+            <div v-if="activeTab === 'history' && historyPagination?.has_more"
+                 ref="historyScrollSentinel"
+                 class="py-6 text-center text-[10px] uppercase tracking-widest font-black text-gray-500">
+                <span v-if="isLoadingMoreHistory">{{ $t('common.loading') }}</span>
+                <span v-else>{{ $t('common.more') }}…</span>
             </div>
 
             <!-- Wishlist Tab -->
