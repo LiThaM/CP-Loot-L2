@@ -724,23 +724,55 @@ onMounted(async () => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/40 dark:bg-black/20">
-                        <tr v-for="report in filteredPendingLoot" :key="report.id" class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition">
-                            <td class="px-4 py-2 text-center text-xl">{{ getEventIcon(report.event_type) }}</td>
-                            <td class="px-4 py-2 font-bold text-xs uppercase tracking-widest text-gray-900 dark:text-gray-100">{{ report.event_type }}</td>
-                            <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{{ report.requested_by?.name || '—' }}</td>
-                            <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.created_at) }}</td>
-                            <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
-                            <td class="px-4 py-2 text-right whitespace-nowrap">
-                                <template v-if="report.event_type === 'RETURN'">
-                                    <button @click="resolveQuick(report, 'rejected')" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
-                                    <button @click="resolveQuick(report, 'confirmed')" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.accept') }}</button>
-                                </template>
-                                <template v-else>
-                                    <button @click="rejectReport(report)" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
-                                    <button @click="openResolveModal(report)" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.approve_and_distribute') }}</button>
-                                </template>
-                            </td>
-                        </tr>
+                        <template v-for="report in filteredPendingLoot" :key="report.id">
+                            <tr class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition cursor-pointer"
+                                @click="toggleExpandedPending(report.id)">
+                                <td class="px-4 py-2 text-center text-xl">{{ getEventIcon(report.event_type) }}</td>
+                                <td class="px-4 py-2 font-bold text-xs uppercase tracking-widest text-gray-900 dark:text-gray-100">
+                                    <span class="inline-flex items-center gap-1">
+                                        <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': expandedPending.has(report.id) }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                        {{ report.event_type }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{{ report.requested_by?.name || '—' }}</td>
+                                <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.created_at) }}</td>
+                                <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
+                                <td class="px-4 py-2 text-right whitespace-nowrap" @click.stop>
+                                    <template v-if="report.event_type === 'RETURN'">
+                                        <button @click="resolveQuick(report, 'rejected')" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
+                                        <button @click="resolveQuick(report, 'confirmed')" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.accept') }}</button>
+                                    </template>
+                                    <template v-else>
+                                        <button @click="rejectReport(report)" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
+                                        <button @click="openResolveModal(report)" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.approve_and_distribute') }}</button>
+                                    </template>
+                                </td>
+                            </tr>
+                            <tr v-if="expandedPending.has(report.id)" class="bg-gray-100/50 dark:bg-black/30">
+                                <td colspan="6" class="p-5">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="md:col-span-1">
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.evidence') }}</div>
+                                            <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 flex items-center justify-center dark:border-gray-700 dark:bg-gray-900/50">
+                                                <img v-if="report.image_proof" :src="`/storage/${report.image_proof}`" class="w-full h-full object-cover cursor-pointer" @click.stop="openImageModal(`/storage/${report.image_proof}`)">
+                                                <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ $t('loot.no_screenshot') }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.items') }}</div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                                                <div v-for="entry in (report.entries || [])" :key="entry.id" class="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-lg px-2 py-1.5 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
+                                                    <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-7 h-7 rounded border border-gray-200 dark:border-gray-700">
+                                                    <div v-else class="w-7 h-7 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                                    <div class="text-xs text-gray-900 dark:text-white font-bold truncate flex-1">{{ entry.item?.name }}</div>
+                                                    <div class="text-xs font-cinzel" :class="entryAmountClass(report, entry)">{{ entryAmountText(report, entry) }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
                     </tbody>
                 </table>
             </div>
@@ -926,28 +958,58 @@ onMounted(async () => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/40 dark:bg-black/20">
-                        <tr v-for="report in filteredHistory" :key="report.id" :id="`report-${report.id}`"
-                            @click="toggleExpanded(report.id)"
-                            class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition cursor-pointer"
-                            :class="{ 'opacity-60': report.voided_at }">
-                            <td class="px-4 py-2 text-center text-xl">{{ getEventIcon(report.event_type) }}</td>
-                            <td class="px-4 py-2 font-bold text-xs uppercase tracking-widest text-gray-900 dark:text-gray-100">
-                                {{ $t('loot.event_types.' + report.event_type.toLowerCase()) }}
-                            </td>
-                            <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.updated_at) }}</td>
-                            <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
-                            <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ report.recipients?.length || 0 }}</td>
-                            <td class="px-4 py-2 text-center">
-                                <span v-if="report.voided_at" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }}</span>
-                                <span v-else class="px-2 py-0.5 rounded-full border text-[9px] font-black uppercase" :class="getStatusColor(report.status)">{{ report.status }}</span>
-                            </td>
-                            <td v-if="canVoid" class="px-4 py-2 text-right whitespace-nowrap">
-                                <button v-if="canVoid && !report.voided_at && report.status === 'confirmed'"
-                                        @click.stop="openVoidModal(report)"
-                                        class="px-2 py-1 text-[9px] font-black uppercase tracking-widest border border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white rounded-md"
-                                        :title="$t('loot.void.button_tooltip')">⚠ {{ $t('loot.void.button') }}</button>
-                            </td>
-                        </tr>
+                        <template v-for="report in filteredHistory" :key="report.id">
+                            <tr :id="`report-${report.id}`"
+                                @click="toggleExpanded(report.id)"
+                                class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition cursor-pointer"
+                                :class="{ 'opacity-60': report.voided_at }">
+                                <td class="px-4 py-2 text-center text-xl">{{ getEventIcon(report.event_type) }}</td>
+                                <td class="px-4 py-2 font-bold text-xs uppercase tracking-widest text-gray-900 dark:text-gray-100">
+                                    <span class="inline-flex items-center gap-1">
+                                        <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': expandedReports.has(report.id) }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                        {{ $t('loot.event_types.' + report.event_type.toLowerCase()) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.updated_at) }}</td>
+                                <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
+                                <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ report.recipients?.length || 0 }}</td>
+                                <td class="px-4 py-2 text-center">
+                                    <span v-if="report.voided_at" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }}</span>
+                                    <span v-else class="px-2 py-0.5 rounded-full border text-[9px] font-black uppercase" :class="getStatusColor(report.status)">{{ report.status }}</span>
+                                </td>
+                                <td v-if="canVoid" class="px-4 py-2 text-right whitespace-nowrap" @click.stop>
+                                    <button v-if="canVoid && !report.voided_at && report.status === 'confirmed'"
+                                            @click="openVoidModal(report)"
+                                            class="px-2 py-1 text-[9px] font-black uppercase tracking-widest border border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white rounded-md"
+                                            :title="$t('loot.void.button_tooltip')">⚠ {{ $t('loot.void.button') }}</button>
+                                </td>
+                            </tr>
+                            <tr v-if="expandedReports.has(report.id)" class="bg-gray-100/50 dark:bg-black/30">
+                                <td :colspan="canVoid ? 7 : 6" class="p-5">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="md:col-span-1">
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.evidence') }}</div>
+                                            <div class="w-full aspect-video rounded-xl overflow-hidden border border-gray-200 bg-white/70 flex items-center justify-center dark:border-gray-700 dark:bg-gray-900/50">
+                                                <img v-if="report.image_proof" :src="`/storage/${report.image_proof}`" class="w-full h-full object-cover cursor-pointer" @click.stop="openImageModal(`/storage/${report.image_proof}`)">
+                                                <div v-else class="text-xs text-gray-600 font-bold uppercase">{{ $t('loot.no_screenshot') }}</div>
+                                            </div>
+                                            <div v-if="report.voided_at" class="mt-3 text-[10px] text-red-500 font-bold uppercase tracking-widest" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }} — {{ report.voided_reason || '' }}</div>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('loot.items') }}</div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                                                <div v-for="entry in (report.entries || [])" :key="entry.id" class="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-lg px-2 py-1.5 dark:bg-gray-900/40 dark:border-gray-800" :class="getItemToneClass(entry.item)">
+                                                    <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-7 h-7 rounded border border-gray-200 dark:border-gray-700">
+                                                    <div v-else class="w-7 h-7 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                                                    <div class="text-xs text-gray-900 dark:text-white font-bold truncate flex-1">{{ entry.item?.name }}</div>
+                                                    <div class="text-xs font-cinzel" :class="entryAmountClass(report, entry)">{{ entryAmountText(report, entry) }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
                     </tbody>
                 </table>
             </div>
