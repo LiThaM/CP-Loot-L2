@@ -1,12 +1,10 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
 
 const props = defineProps({
     latest: Object,
     releases: { type: Array, default: () => [] },
-    webChangelog: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -25,13 +23,6 @@ const humanSize = computed(() => {
 });
 
 const localizedNotes = (rel) => (appLocale.value === 'en' ? rel.notes_en : rel.notes_es) || rel.notes_en || rel.notes_es || '';
-const localizedTitle = (entry) => (appLocale.value === 'en' ? entry.title_en : entry.title_es) || entry.title_en || entry.title_es || '';
-const localizedBody = (entry) => (appLocale.value === 'en' ? entry.body_en : entry.body_es) || entry.body_en || entry.body_es || '';
-const entryTypeClass = (type) => ({
-    feature: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    fix:     'bg-blue-500/15 text-blue-300 border-blue-500/30',
-    chore:   'bg-slate-500/15 text-slate-300 border-slate-500/30',
-}[type] || 'bg-slate-500/15 text-slate-300 border-slate-500/30');
 const formatDate = (val) => {
     if (!val) return '';
     try { return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(val)); }
@@ -52,7 +43,6 @@ const formatDate = (val) => {
                 </Link>
                 <nav class="text-sm flex items-center gap-6 text-slate-300">
                     <a href="#features" class="hover:text-white">{{ $t('landing.nav.features') }}</a>
-                    <a href="#web-changelog" class="hover:text-white">{{ $t('landing.nav.web_changelog') }}</a>
                     <a href="#changelog" class="hover:text-white">{{ $t('landing.nav.changelog') }}</a>
                     <button @click="setLocale(appLocale === 'es' ? 'en' : 'es')" class="text-xs font-bold tracking-widest hover:text-white">{{ appLocale === 'es' ? 'EN' : 'ES' }}</button>
                 </nav>
@@ -148,24 +138,6 @@ const formatDate = (val) => {
                     <h3 class="font-bold text-amber-400 mb-2">{{ $t('landing.features.privacy.title') }}</h3>
                     <p class="text-sm text-slate-300">{{ $t('landing.features.privacy.text') }}</p>
                 </div>
-            </div>
-        </section>
-
-        <!-- Web app changelog: features and fixes shipped to the SaaS,
-             tracked in `changelog_entries`. Lives side-by-side with the
-             desktop releases section so visitors see both worlds. -->
-        <section id="web-changelog" v-if="webChangelog.length" class="max-w-4xl mx-auto px-6 py-16">
-            <h2 class="text-3xl font-bold mb-2">{{ $t('landing.web_changelog.title') }}</h2>
-            <p class="text-sm text-slate-500 mb-8">{{ $t('landing.web_changelog.subtitle') }}</p>
-            <div class="space-y-6">
-                <article v-for="entry in webChangelog" :key="'web-'+entry.id" class="border-l-2 border-purple-600 pl-5 py-2">
-                    <div class="flex items-baseline gap-3 mb-1 flex-wrap">
-                        <span :class="['text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border', entryTypeClass(entry.type)]">{{ entry.type }}</span>
-                        <span class="text-xs text-slate-500">{{ formatDate(entry.published_at) }}</span>
-                    </div>
-                    <h3 class="text-lg font-semibold text-white mt-1">{{ localizedTitle(entry) }}</h3>
-                    <div v-if="localizedBody(entry)" class="text-sm text-slate-300 mt-2 leading-relaxed changelog-body" v-html="renderInlineMarkdown(localizedBody(entry))"></div>
-                </article>
             </div>
         </section>
 
