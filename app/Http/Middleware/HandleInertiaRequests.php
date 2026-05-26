@@ -105,21 +105,41 @@ class HandleInertiaRequests extends Middleware
     private function changelogSummary(?User $user, bool $isBanned): array
     {
         if (!$user || $isBanned) {
-            return ['unreadCount' => 0];
+            return ['unreadCount' => 0, 'items' => []];
         }
 
         try {
             $since = $user->changelog_last_seen_at;
-            $count = ChangelogEntry::query()
+            $base = ChangelogEntry::query()
                 ->whereIn('audience', ['web', 'both'])
                 ->whereNotNull('published_at')
                 ->where('published_at', '<=', now())
-                ->when($since, fn ($q) => $q->where('published_at', '>', $since))
-                ->count();
+                ->when($since, fn ($q) => $q->where('published_at', '>', $since));
+
+            $count = (clone $base)->count();
+            // Hydrate up to 10 entries for the first-time-open modal so
+            // the layout can render them inline without a follow-up
+            // round trip.
+            $items = (clone $base)
+                ->orderByDesc('published_at')
+                ->orderByDesc('id')
+                ->limit(10)
+                ->get(['id', 'type', 'title_es', 'title_en', 'body_es', 'body_en', 'published_at'])
+                ->map(fn ($e) => [
+                    'id' => $e->id,
+                    'type' => $e->type,
+                    'title_es' => $e->title_es,
+                    'title_en' => $e->title_en,
+                    'body_es' => $e->body_es,
+                    'body_en' => $e->body_en,
+                    'published_at' => $e->published_at?->toIso8601String(),
+                ])
+                ->all();
         } catch (\Throwable $e) {
             $count = 0;
+            $items = [];
         }
 
-        return ['unreadCount' => (int) $count];
+        return ['unreadCount' => (int) $count, 'items' => $items];
     }
 }

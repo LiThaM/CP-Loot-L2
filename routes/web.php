@@ -192,6 +192,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
     Route::post('/party/points/reset', [PartyController::class, 'resetPoints'])->name('party.points.reset');
     Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog.index');
+    Route::post('/changelog/ack', [ChangelogController::class, 'acknowledge'])->name('changelog.ack');
     Route::patch('/system/users/{user}/ban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'banMember'])->name('system.users.ban');
     Route::patch('/system/users/{user}/unban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'unbanMember'])->name('system.users.unban');
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');

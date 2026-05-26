@@ -598,7 +598,7 @@ onMounted(async () => {
             </div>
             
             <!-- Pending Tab -->
-            <div v-if="activeTab === 'pending'" class="space-y-4">
+            <div v-if="activeTab === 'pending' && viewMode === 'cards'" class="space-y-4">
                 <div v-if="filteredPendingLoot.length === 0" class="py-12 text-center text-gray-600 font-cinzel text-xl italic opacity-50">
                     {{ $t('loot.no_pending') }}
                 </div>
@@ -707,8 +707,46 @@ onMounted(async () => {
                 </div>
             </div>
 
+            <!-- Pending LIST mode -->
+            <div v-if="activeTab === 'pending' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+                <div v-if="filteredPendingLoot.length === 0" class="py-12 text-center text-gray-600 font-cinzel text-xl italic opacity-50">
+                    {{ $t('loot.no_pending_loot') }}
+                </div>
+                <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+                    <thead class="bg-white/60 dark:bg-gray-900/40">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500 w-12"></th>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.event_type', 'Type') }}</th>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.reported_by_label', 'Reported by') }}</th>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.date', 'Date') }}</th>
+                            <th class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items', 'Items') }}</th>
+                            <th class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/40 dark:bg-black/20">
+                        <tr v-for="report in filteredPendingLoot" :key="report.id" class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition">
+                            <td class="px-4 py-2 text-center text-xl">{{ getEventIcon(report.event_type) }}</td>
+                            <td class="px-4 py-2 font-bold text-xs uppercase tracking-widest text-gray-900 dark:text-gray-100">{{ report.event_type }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{{ report.requested_by?.name || '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.created_at) }}</td>
+                            <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
+                            <td class="px-4 py-2 text-right whitespace-nowrap">
+                                <template v-if="report.event_type === 'RETURN'">
+                                    <button @click="resolveQuick(report, 'rejected')" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
+                                    <button @click="resolveQuick(report, 'confirmed')" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.accept') }}</button>
+                                </template>
+                                <template v-else>
+                                    <button @click="rejectReport(report)" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
+                                    <button @click="openResolveModal(report)" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.approve_and_distribute') }}</button>
+                                </template>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- History Tab -->
-            <div v-if="activeTab === 'history'" class="space-y-4">
+            <div v-if="activeTab === 'history' && viewMode === 'cards'" class="space-y-4">
                 <div v-if="filteredHistory.length === 0" class="py-12 text-center text-gray-600 font-cinzel text-xl italic opacity-50">
                     {{ $t('loot.no_results') }}
                 </div>
@@ -868,6 +906,50 @@ onMounted(async () => {
                     :load-more-label="loadMoreHistoryLabel"
                     @load-more="loadMoreHistory"
                 />
+            </div>
+
+            <!-- History LIST mode -->
+            <div v-if="activeTab === 'history' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+                <div v-if="filteredHistory.length === 0" class="py-12 text-center text-gray-600 font-cinzel text-xl italic opacity-50">
+                    {{ $t('loot.no_results') }}
+                </div>
+                <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+                    <thead class="bg-white/60 dark:bg-gray-900/40">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500 w-12"></th>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.event_type', 'Type') }}</th>
+                            <th class="px-4 py-2 text-left text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.date', 'Date') }}</th>
+                            <th class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items', 'Items') }}</th>
+                            <th class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.attendees', 'Attendees') }}</th>
+                            <th class="px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.status', 'Status') }}</th>
+                            <th v-if="canVoid" class="px-4 py-2 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('common.actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800 bg-white/40 dark:bg-black/20">
+                        <tr v-for="report in filteredHistory" :key="report.id" :id="`report-${report.id}`"
+                            @click="toggleExpanded(report.id)"
+                            class="hover:bg-white/60 dark:hover:bg-gray-900/30 transition cursor-pointer"
+                            :class="{ 'opacity-60': report.voided_at }">
+                            <td class="px-4 py-2 text-center text-xl">{{ getEventIcon(report.event_type) }}</td>
+                            <td class="px-4 py-2 font-bold text-xs uppercase tracking-widest text-gray-900 dark:text-gray-100">
+                                {{ $t('loot.event_types.' + report.event_type.toLowerCase()) }}
+                            </td>
+                            <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.updated_at) }}</td>
+                            <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
+                            <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ report.recipients?.length || 0 }}</td>
+                            <td class="px-4 py-2 text-center">
+                                <span v-if="report.voided_at" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white" :title="report.voided_reason || ''">⚠ {{ $t('loot.void.badge') }}</span>
+                                <span v-else class="px-2 py-0.5 rounded-full border text-[9px] font-black uppercase" :class="getStatusColor(report.status)">{{ report.status }}</span>
+                            </td>
+                            <td v-if="canVoid" class="px-4 py-2 text-right whitespace-nowrap">
+                                <button v-if="canVoid && !report.voided_at && report.status === 'confirmed'"
+                                        @click.stop="openVoidModal(report)"
+                                        class="px-2 py-1 text-[9px] font-black uppercase tracking-widest border border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white rounded-md"
+                                        :title="$t('loot.void.button_tooltip')">⚠ {{ $t('loot.void.button') }}</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Wishlist Tab -->

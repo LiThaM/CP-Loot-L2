@@ -40,4 +40,19 @@ class ChangelogController extends Controller
             'entries' => $entries,
         ]);
     }
+
+    /**
+     * Acknowledge unseen changelog entries without rendering the full
+     * page — used by the first-open modal so the user can dismiss in
+     * place. Same side effect as visiting /changelog: stamps
+     * `changelog_last_seen_at = now()`.
+     */
+    public function acknowledge(Request $request)
+    {
+        $user = $request->user();
+        if ($user) {
+            $user->forceFill(['changelog_last_seen_at' => now()])->save();
+        }
+        return back();
+    }
 }

@@ -14,6 +14,33 @@ const canAuditCp = computed(() => ['cp_leader', 'accountant'].includes(user.valu
 const cpMembers = computed(() => page.props.cpMembers || []);
 const alerts = computed(() => page.props.alerts || { unreadCount: 0, items: [] });
 const changelogUnread = computed(() => Number(page.props.changelog?.unreadCount ?? 0));
+const changelogItems = computed(() => Array.isArray(page.props.changelog?.items) ? page.props.changelog.items : []);
+const changelogModalOpen = ref(false);
+const changelogModalSubmitting = ref(false);
+const acknowledgeChangelog = () => {
+    if (changelogModalSubmitting.value) return;
+    changelogModalSubmitting.value = true;
+    router.post(route('changelog.ack'), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['changelog'],
+        onFinish: () => {
+            changelogModalSubmitting.value = false;
+            changelogModalOpen.value = false;
+        },
+    });
+};
+const goToChangelog = () => {
+    changelogModalOpen.value = false;
+    router.visit(route('changelog.index'));
+};
+const localizedChangelogTitle = (entry) => (page.props.app?.locale === 'en' ? entry.title_en : entry.title_es) || entry.title_en || entry.title_es || '';
+const localizedChangelogBody = (entry) => (page.props.app?.locale === 'en' ? entry.body_en : entry.body_es) || entry.body_en || entry.body_es || '';
+const changelogTypeClass = (type) => ({
+    feature: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300',
+    fix:     'bg-blue-500/15 text-blue-700 border-blue-500/30 dark:text-blue-300',
+    chore:   'bg-slate-500/15 text-slate-700 border-slate-500/30 dark:text-slate-300',
+}[type] || 'bg-slate-500/15 text-slate-700 border-slate-500/30 dark:text-slate-300');
 const flashSuccess = computed(() => page.props.flash?.success);
 const flashError = computed(() => page.props.flash?.error);
 
@@ -475,6 +502,14 @@ onMounted(() => {
     const currentMaxId = Math.max(0, ...(alerts.value.items || []).map(a => Number(a.id || 0)));
     const stored = Number(sessionStorage.getItem('lastAlertToastId') || 0);
     if (!stored && currentMaxId) sessionStorage.setItem('lastAlertToastId', String(currentMaxId));
+
+    // First-open changelog modal: shows once per "unread state". Once
+    // the user acknowledges, `changelog_last_seen_at` is bumped server
+    // side so unreadCount drops to 0 and the modal won't show again
+    // until a new entry is published.
+    if (changelogUnread.value > 0 && changelogItems.value.length > 0) {
+        changelogModalOpen.value = true;
+    }
 });
 
 watch(flashSuccess, (val) => {
@@ -716,6 +751,40 @@ watch(() => alerts.value.items, (items) => {
 
             </div>
         </footer>
+
+        <!-- First-open changelog modal — shows whenever the user has any
+             unread web changelog entry, until they acknowledge. -->
+        <div v-if="changelogModalOpen" class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+            <div class="l2-panel w-full max-w-2xl max-h-[88vh] rounded-2xl border-purple-500/30 overflow-hidden shadow-2xl flex flex-col">
+                <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/30">
+                    <div>
+                        <div class="text-[10px] text-purple-200 font-black uppercase tracking-widest">{{ $t('changelog.modal.kicker', 'Novedades') }}</div>
+                        <div class="text-lg font-cinzel text-white tracking-widest mt-0.5">{{ $t('changelog.modal.title', 'Cambios desde tu última visita') }}</div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest">{{ changelogUnread }}</span>
+                </div>
+                <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                    <article v-for="entry in changelogItems" :key="'cl-'+entry.id" class="border-l-2 border-purple-500/40 pl-4 py-1">
+                        <div class="flex items-baseline gap-3 mb-1 flex-wrap">
+                            <span :class="['text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border', changelogTypeClass(entry.type)]">{{ entry.type }}</span>
+                            <span class="text-[10px] text-gray-500">{{ new Date(entry.published_at).toLocaleDateString(localeTag) }}</span>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ localizedChangelogTitle(entry) }}</h3>
+                        <p v-if="localizedChangelogBody(entry)" class="text-sm mt-1 leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ localizedChangelogBody(entry) }}</p>
+                    </article>
+                </div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-800 flex gap-3 bg-white/40 dark:bg-black/30">
+                    <button @click="goToChangelog" type="button"
+                            class="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        {{ $t('changelog.modal.see_all', 'Ver historial completo') }}
+                    </button>
+                    <button @click="acknowledgeChangelog" type="button" :disabled="changelogModalSubmitting"
+                            class="flex-[2] py-3 bg-gradient-to-tr from-purple-700 to-blue-600 hover:from-purple-600 hover:to-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30">
+                        {{ $t('changelog.modal.acknowledge', 'Visto, no me lo muestres más') }}
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
             <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
