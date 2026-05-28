@@ -18,7 +18,7 @@ class SystemCpsIndexTest extends TestCase
     {
         parent::setUp();
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
-        $this->admin = User::create([
+        $this->admin = User::forceCreate([
             'name' => 'Super', 'email' => 'super@t.l', 'password' => bcrypt('x'),
             'role_id' => $adminRole->id, 'membership_status' => 'approved',
         ]);
@@ -27,11 +27,11 @@ class SystemCpsIndexTest extends TestCase
     private function makeCp(string $name, array $overrides = []): ConstParty
     {
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
-        $leader = User::create([
+        $leader = User::forceCreate([
             'name' => $name.'-leader', 'email' => strtolower($name).'-leader@t.l', 'password' => bcrypt('x'),
             'role_id' => $leaderRole->id, 'membership_status' => 'approved',
         ]);
-        $cp = ConstParty::create(array_merge([
+        $cp = ConstParty::forceCreate(array_merge([
             'leader_id' => $leader->id, 'name' => $name, 'chronicle' => 'IL', 'is_active' => true,
         ], $overrides));
         $leader->update(['cp_id' => $cp->id]);

@@ -33,11 +33,11 @@ class WarehouseSellAutoTest extends TestCase
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
         Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
 
-        $this->leader = User::create([
+        $this->leader = User::forceCreate([
             'name' => 'Leader', 'email' => 'leader@auto.local', 'password' => bcrypt('x'),
             'role_id' => $leaderRole->id, 'membership_status' => 'approved',
         ]);
-        $this->cp = ConstParty::create([
+        $this->cp = ConstParty::forceCreate([
             'leader_id' => $this->leader->id, 'name' => 'AutoCP', 'chronicle' => 'IL', 'is_active' => true,
         ]);
         $this->leader->update(['cp_id' => $this->cp->id]);
@@ -49,7 +49,7 @@ class WarehouseSellAutoTest extends TestCase
     private function member(string $name): User
     {
         $role = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        return User::create([
+        return User::forceCreate([
             'name' => $name, 'email' => strtolower($name).'@a.l', 'password' => bcrypt('x'),
             'role_id' => $role->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
         ]);

@@ -133,9 +133,9 @@ class UserManagementController extends Controller
             }
         }
 
-        $user->update([
-            'role_id' => $request->role_id,
-        ]);
+        // role_id no es fillable (anti mass-assignment); usamos forceFill
+        // ahora que ya hemos comprobado las autorizaciones.
+        $user->forceFill(['role_id' => $request->role_id])->save();
 
         // Si es Admin, también puede cambiar la CP
         if ($isAdmin && $request->has('cp_id')) {

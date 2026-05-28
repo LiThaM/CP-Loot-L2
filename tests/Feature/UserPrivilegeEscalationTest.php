@@ -26,7 +26,7 @@ class UserPrivilegeEscalationTest extends TestCase
 
     private function makeUser(string $name, Role $role, ?ConstParty $cp = null): User
     {
-        return User::create([
+        return User::forceCreate([
             'name' => $name,
             'email' => strtolower($name).'@t.l',
             'password' => bcrypt('x'),
@@ -38,7 +38,7 @@ class UserPrivilegeEscalationTest extends TestCase
 
     private function makeCpWithFounder(string $name): array
     {
-        $cp = ConstParty::create(['leader_id' => null, 'name' => $name, 'chronicle' => 'IL', 'is_active' => true]);
+        $cp = ConstParty::forceCreate(['leader_id' => null, 'name' => $name, 'chronicle' => 'IL', 'is_active' => true]);
         $founder = $this->makeUser($name.'-leader', $this->leaderRole, $cp);
         $cp->update(['leader_id' => $founder->id]);
         return [$cp, $founder];

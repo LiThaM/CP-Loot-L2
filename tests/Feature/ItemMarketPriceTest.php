@@ -18,7 +18,7 @@ class ItemMarketPriceTest extends TestCase
     {
         parent::setUp();
         $role = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        $this->user = User::create([
+        $this->user = User::forceCreate([
             'name' => 'Tester',
             'email' => 'tester@t.l',
             'password' => bcrypt('x'),

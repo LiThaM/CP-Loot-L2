@@ -24,11 +24,11 @@ class ExternalPayoutsTest extends TestCase
         parent::setUp();
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
 
-        $this->leader = User::create([
+        $this->leader = User::forceCreate([
             'name' => 'Leader', 'email' => 'leader@t.l', 'password' => bcrypt('x'),
             'role_id' => $leaderRole->id, 'membership_status' => 'approved',
         ]);
-        $this->cp = ConstParty::create([
+        $this->cp = ConstParty::forceCreate([
             'leader_id' => $this->leader->id, 'name' => 'CP', 'chronicle' => 'IL', 'is_active' => true,
         ]);
         $this->leader->update(['cp_id' => $this->cp->id]);
@@ -78,7 +78,7 @@ class ExternalPayoutsTest extends TestCase
     public function test_member_can_view_external_payouts_in_read_only_mode(): void
     {
         $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        $member = User::create([
+        $member = User::forceCreate([
             'name' => 'Member', 'email' => 'm@t.l', 'password' => bcrypt('x'),
             'role_id' => $memberRole->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
         ]);
@@ -96,7 +96,7 @@ class ExternalPayoutsTest extends TestCase
     public function test_member_cannot_mark_paid(): void
     {
         $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        $member = User::create([
+        $member = User::forceCreate([
             'name' => 'Member2', 'email' => 'm2@t.l', 'password' => bcrypt('x'),
             'role_id' => $memberRole->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
         ]);
@@ -109,7 +109,7 @@ class ExternalPayoutsTest extends TestCase
     public function test_admin_cannot_access_external_payouts_page(): void
     {
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
-        $admin = User::create([
+        $admin = User::forceCreate([
             'name' => 'Super', 'email' => 'super@t.l', 'password' => bcrypt('x'),
             'role_id' => $adminRole->id, 'membership_status' => 'approved',
         ]);
@@ -122,11 +122,11 @@ class ExternalPayoutsTest extends TestCase
     public function test_leader_of_other_cp_cannot_mark_paid(): void
     {
         $otherLeaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
-        $otherLeader = User::create([
+        $otherLeader = User::forceCreate([
             'name' => 'OtherLeader', 'email' => 'other@t.l', 'password' => bcrypt('x'),
             'role_id' => $otherLeaderRole->id, 'membership_status' => 'approved',
         ]);
-        $otherCp = ConstParty::create([
+        $otherCp = ConstParty::forceCreate([
             'leader_id' => $otherLeader->id, 'name' => 'Other', 'chronicle' => 'IL', 'is_active' => true,
         ]);
         $otherLeader->update(['cp_id' => $otherCp->id]);

@@ -23,7 +23,7 @@ class AdminReleasesPublishTest extends TestCase
         Storage::fake('client_blobs');
 
         $role = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
-        $this->admin = User::create([
+        $this->admin = User::forceCreate([
             'name' => 'Admin',
             'email' => 'admin@test.local',
             'password' => bcrypt('test1234'),

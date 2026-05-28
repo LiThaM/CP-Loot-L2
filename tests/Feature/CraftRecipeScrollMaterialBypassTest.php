@@ -24,8 +24,8 @@ class CraftRecipeScrollMaterialBypassTest extends TestCase
     {
         parent::setUp();
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
-        $this->leader = User::create(['name' => 'L', 'email' => 'l@t.l', 'password' => bcrypt('x'), 'role_id' => $leaderRole->id, 'membership_status' => 'approved']);
-        $this->cp = ConstParty::create(['leader_id' => $this->leader->id, 'name' => 'CP', 'chronicle' => 'IL', 'is_active' => true]);
+        $this->leader = User::forceCreate(['name' => 'L', 'email' => 'l@t.l', 'password' => bcrypt('x'), 'role_id' => $leaderRole->id, 'membership_status' => 'approved']);
+        $this->cp = ConstParty::forceCreate(['leader_id' => $this->leader->id, 'name' => 'CP', 'chronicle' => 'IL', 'is_active' => true]);
         $this->leader->update(['cp_id' => $this->cp->id]);
         Item::create(['name' => 'Adena', 'category' => 'EtcItem', 'chronicle' => 'IL']);
     }

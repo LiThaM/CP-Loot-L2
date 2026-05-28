@@ -26,7 +26,7 @@ class RegistrationTest extends TestCase
             'description' => 'Leader of a Const Party',
         ]);
 
-        $cp = ConstParty::create([
+        $cp = ConstParty::forceCreate([
             'leader_id' => null,
             'name' => 'Test CP',
             'invite_code' => 'INVITE-TEST',

@@ -33,11 +33,11 @@ class FarmReportWithCharacterTest extends TestCase
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'Leader']);
         $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
 
-        $this->leader = User::create(['name' => 'Leader', 'email' => 'l@t.l', 'password' => bcrypt('x'), 'role_id' => $leaderRole->id, 'membership_status' => 'approved']);
-        $this->cp = ConstParty::create(['leader_id' => $this->leader->id, 'name' => 'CP', 'chronicle' => 'IL', 'is_active' => true]);
+        $this->leader = User::forceCreate(['name' => 'Leader', 'email' => 'l@t.l', 'password' => bcrypt('x'), 'role_id' => $leaderRole->id, 'membership_status' => 'approved']);
+        $this->cp = ConstParty::forceCreate(['leader_id' => $this->leader->id, 'name' => 'CP', 'chronicle' => 'IL', 'is_active' => true]);
         $this->leader->update(['cp_id' => $this->cp->id]);
 
-        $this->member = User::create(['name' => 'Member', 'email' => 'm@t.l', 'password' => bcrypt('x'), 'role_id' => $memberRole->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved']);
+        $this->member = User::forceCreate(['name' => 'Member', 'email' => 'm@t.l', 'password' => bcrypt('x'), 'role_id' => $memberRole->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved']);
 
         $this->item = Item::create(['name' => 'TestLoot', 'chronicle' => 'IL', 'external_id' => self::$next++]);
         $this->seed(\Database\Seeders\L2ClassSeeder::class);
@@ -64,7 +64,7 @@ class FarmReportWithCharacterTest extends TestCase
 
     public function test_loot_store_drops_character_id_when_it_belongs_to_another_user(): void
     {
-        $foreign = User::create(['name' => 'Foreign', 'email' => 'f@t.l', 'password' => bcrypt('x'), 'role_id' => Role::firstOrCreate(['name' => 'cp_member'])->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved']);
+        $foreign = User::forceCreate(['name' => 'Foreign', 'email' => 'f@t.l', 'password' => bcrypt('x'), 'role_id' => Role::firstOrCreate(['name' => 'cp_member'])->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved']);
         $foreignChar = Character::create(['user_id' => $foreign->id, 'name' => 'NotYours', 'l2_class_id' => $this->bishop->id]);
 
         $this->actingAs($this->leader)

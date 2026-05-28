@@ -32,11 +32,11 @@ class WarehouseSellSplitTest extends TestCase
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
         $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
 
-        $this->leader = User::create([
+        $this->leader = User::forceCreate([
             'name' => 'Leader', 'email' => 'leader@test.local', 'password' => bcrypt('x'),
             'role_id' => $leaderRole->id, 'membership_status' => 'approved',
         ]);
-        $this->cp = ConstParty::create([
+        $this->cp = ConstParty::forceCreate([
             'leader_id' => $this->leader->id, 'name' => 'TestCP', 'chronicle' => 'IL', 'is_active' => true,
         ]);
         $this->leader->update(['cp_id' => $this->cp->id]);
@@ -48,7 +48,7 @@ class WarehouseSellSplitTest extends TestCase
     private function makeMember(string $name): User
     {
         $role = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        return User::create([
+        return User::forceCreate([
             'name' => $name, 'email' => strtolower($name).'@t.l', 'password' => bcrypt('x'),
             'role_id' => $role->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
         ]);

@@ -23,7 +23,7 @@ class CharactersCrudTest extends TestCase
     {
         parent::setUp();
         $role = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        $this->user = User::create([
+        $this->user = User::forceCreate([
             'name' => 'TestUser', 'email' => 'u@t.l', 'password' => bcrypt('x'),
             'role_id' => $role->id, 'membership_status' => 'approved',
         ]);
@@ -80,7 +80,7 @@ class CharactersCrudTest extends TestCase
     public function test_cannot_edit_another_users_character(): void
     {
         $role = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        $other = User::create(['name' => 'Other', 'email' => 'o@t.l', 'password' => bcrypt('x'), 'role_id' => $role->id, 'membership_status' => 'approved']);
+        $other = User::forceCreate(['name' => 'Other', 'email' => 'o@t.l', 'password' => bcrypt('x'), 'role_id' => $role->id, 'membership_status' => 'approved']);
         $char = Character::create(['user_id' => $other->id, 'name' => 'Mine', 'l2_class_id' => $this->bishop->id]);
 
         $this->actingAs($this->user)

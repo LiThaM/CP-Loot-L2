@@ -63,18 +63,21 @@ class RegisteredUserController extends Controller
             ]);
         }
 
+        // `role_id` and `leader_id` are intentionally not fillable. Build
+        // the user via the fillable fields and then forceFill the
+        // privileged columns once we've decided what role/leader applies.
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'cp_id' => $cp->id,
-            'role_id' => $role->id,
             'membership_status' => $isLeaderRegistration ? 'approved' : 'pending',
         ]);
+        $user->forceFill(['role_id' => $role->id])->save();
 
         // If this was the leader registration, assign the leader
         if ($isLeaderRegistration) {
-            $cp->update(['leader_id' => $user->id]);
+            $cp->forceFill(['leader_id' => $user->id])->save();
         }
 
         event(new Registered($user));

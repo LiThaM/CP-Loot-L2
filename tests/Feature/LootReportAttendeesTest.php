@@ -28,11 +28,11 @@ class LootReportAttendeesTest extends TestCase
         $leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
         Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
 
-        $this->leader = User::create([
+        $this->leader = User::forceCreate([
             'name' => 'Leader', 'email' => 'leader@t.l', 'password' => bcrypt('x'),
             'role_id' => $leaderRole->id, 'membership_status' => 'approved',
         ]);
-        $this->cp = ConstParty::create([
+        $this->cp = ConstParty::forceCreate([
             'leader_id' => $this->leader->id, 'name' => 'CP', 'chronicle' => 'IL', 'is_active' => true,
         ]);
         $this->leader->update(['cp_id' => $this->cp->id]);
@@ -42,7 +42,7 @@ class LootReportAttendeesTest extends TestCase
     private function member(string $name): User
     {
         $role = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        return User::create([
+        return User::forceCreate([
             'name' => $name, 'email' => strtolower($name).'@t.l', 'password' => bcrypt('x'),
             'role_id' => $role->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
         ]);
@@ -78,10 +78,10 @@ class LootReportAttendeesTest extends TestCase
     public function test_user_id_from_other_cp_is_demoted_to_external(): void
     {
         // Another CP with one of its members
-        $other = ConstParty::create([
+        $other = ConstParty::forceCreate([
             'leader_id' => $this->leader->id, 'name' => 'OtherCP', 'chronicle' => 'IL', 'is_active' => true,
         ]);
-        $foreigner = User::create([
+        $foreigner = User::forceCreate([
             'name' => 'Foreigner', 'email' => 'foreigner@t.l', 'password' => bcrypt('x'),
             'role_id' => Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member'])->id,
             'cp_id' => $other->id, 'membership_status' => 'approved',

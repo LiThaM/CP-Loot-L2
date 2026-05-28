@@ -42,11 +42,11 @@ class CraftBulkPlannerTest extends TestCase
         Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
         Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
 
-        $this->leader = User::create([
+        $this->leader = User::forceCreate([
             'name' => 'Leader', 'email' => 'leader@t.l', 'password' => bcrypt('x'),
             'role_id' => $leaderRole->id, 'membership_status' => 'approved',
         ]);
-        $this->cp = ConstParty::create([
+        $this->cp = ConstParty::forceCreate([
             'leader_id' => $this->leader->id, 'name' => 'TestCP', 'chronicle' => 'IL', 'is_active' => true,
         ]);
         $this->leader->update(['cp_id' => $this->cp->id]);
@@ -209,7 +209,7 @@ class CraftBulkPlannerTest extends TestCase
     public function test_endpoint_requires_leader_role_not_plain_member(): void
     {
         $memberRole = Role::firstOrCreate(['name' => 'cp_member'], ['display_name' => 'Member']);
-        $member = User::create([
+        $member = User::forceCreate([
             'name' => 'Member', 'email' => 'm@t.l', 'password' => bcrypt('x'),
             'role_id' => $memberRole->id, 'cp_id' => $this->cp->id, 'membership_status' => 'approved',
         ]);
@@ -224,7 +224,7 @@ class CraftBulkPlannerTest extends TestCase
     public function test_endpoint_requires_a_cp(): void
     {
         $adminRole = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin']);
-        $orphan = User::create([
+        $orphan = User::forceCreate([
             'name' => 'NoCP', 'email' => 'orphan@t.l', 'password' => bcrypt('x'),
             'role_id' => $adminRole->id, 'membership_status' => 'approved',
         ]);

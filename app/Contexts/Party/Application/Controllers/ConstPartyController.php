@@ -208,7 +208,9 @@ class ConstPartyController extends Controller
             abort(403);
         }
 
-        $cp->update(['is_active' => ! $cp->is_active]);
+        // `is_active` is intentionally not fillable; bypass via forceFill
+        // after we've checked the actor is admin (handled above).
+        $cp->forceFill(['is_active' => ! $cp->is_active])->save();
 
         $status = $cp->is_active ? 'activada' : 'desactivada';
 

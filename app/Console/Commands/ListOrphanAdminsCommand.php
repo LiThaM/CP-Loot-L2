@@ -64,7 +64,7 @@ class ListOrphanAdminsCommand extends Command
                 $u->cp && $u->cp->leader_id === $u->id ? 'yes' : 'no'
             ));
             if ($this->confirm('Demote THIS user to cp_leader?', false)) {
-                $u->update(['role_id' => $leaderRoleId]);
+                $u->forceFill(['role_id' => $leaderRoleId])->save();
                 $this->line(sprintf('  ✓ user_id=%d → cp_leader', $u->id));
                 $demoted++;
             } else {

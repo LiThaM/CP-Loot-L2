@@ -9,7 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConstParty extends Model
 {
-    protected $fillable = ['leader_id', 'name', 'server', 'chronicle', 'invite_code', 'logo_path', 'is_active', 'image_proof_required'];
+    // `leader_id` and `is_active` are NOT fillable: the first lets the CP
+    // founder swap themselves out (privilege transfer), the second
+    // suspends or deletes the CP. Both have legitimate code paths
+    // (`RegisteredUserController` on first-member registration,
+    // `ConstPartyController::toggleActive` for the admin) that use
+    // forceFill() to bypass the guard after their own authorization.
+    protected $fillable = ['name', 'server', 'chronicle', 'invite_code', 'logo_path', 'image_proof_required'];
 
     protected $casts = [
         'is_active' => 'boolean',
