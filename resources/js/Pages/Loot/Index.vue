@@ -19,6 +19,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
 import { confirmAction } from '@/utils/swal';
 import { useViewMode } from '@/Composables/useViewMode.js';
+import { useModalEsc } from '@/Composables/useModalEsc.js';
 
 const { mode: viewMode } = useViewMode();
 
@@ -464,6 +465,12 @@ const toggleExpandedPending = (id) => {
 
 const showImageModal = ref(false);
 const imageModalUrl = ref('');
+
+// ESC closes for the three inline modals on this page. The visible ✕
+// buttons stay; this is just the keyboard affordance.
+useModalEsc(showResolveModal, () => { showResolveModal.value = false; });
+useModalEsc(showImageModal, () => { showImageModal.value = false; });
+useModalEsc(voidModalOpen, () => { voidModalOpen.value = false; });
 
 const openImageModal = (url) => {
     imageModalUrl.value = url;

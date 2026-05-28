@@ -13,6 +13,7 @@ import emitter from '@/event-bus';
 import { confirmAction, showToast, showAlert } from '@/utils/swal';
 import RulesView from '@/Components/CpRules/RulesView.vue';
 import { formatAdenaShort as adenaFormatShort, formatAdenaFull as adenaFormatFull } from '@/utils/adena';
+import { useModalEsc } from '@/Composables/useModalEsc.js';
 
 const props = defineProps({
     has_cp: Boolean,
@@ -1323,6 +1324,17 @@ watch(stockSearch, throttle(async (val) => {
 }, 300));
 
 const buyStockModalOpen = ref(false);
+
+// ESC closes all the page-level inline modals. Each preserves its own
+// ✕ button; this just adds the keyboard affordance.
+useModalEsc(showUserAdenaModal, () => { showUserAdenaModal.value = false; });
+useModalEsc(showUserEditModal, () => { showUserEditModal.value = false; });
+useModalEsc(assignModalOpen, () => { assignModalOpen.value = false; });
+useModalEsc(sellModalOpen, () => { sellModalOpen.value = false; });
+useModalEsc(addStockModalOpen, () => { addStockModalOpen.value = false; });
+useModalEsc(recheckModalOpen, () => { recheckModalOpen.value = false; });
+useModalEsc(buyStockModalOpen, () => { buyStockModalOpen.value = false; });
+
 const buySearch = ref('');
 const buySearchResults = ref([]);
 const buyIsSearching = ref(false);
