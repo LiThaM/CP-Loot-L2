@@ -4,6 +4,14 @@ import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { Line } from 'vue-chartjs';
 import { confirmAction, showToast as swalToast } from '../utils/swal';
 import StatCard from './Admin/StatCard.vue';
+import AdminPageHeader from './Admin/AdminPageHeader.vue';
+import EmptyState from './Admin/EmptyState.vue';
+import {
+    ChartBarIcon,
+    InboxStackIcon,
+    LifebuoyIcon,
+    ShieldCheckIcon,
+} from '@heroicons/vue/24/outline';
 import {
   Chart as ChartJS,
   Title,
@@ -163,6 +171,17 @@ const deleteCp = async (cp) => {
     });
 };
 
+// Compute a signed % delta between two values for the StatCard trend
+// chip. Returns null when the baseline is zero (no meaningful delta) so
+// the chip renders nothing instead of "∞%" or "+0%".
+const pctChange = (current, previous, label = '') => {
+    const curr = Number(current);
+    const prev = Number(previous);
+    if (!Number.isFinite(curr) || !Number.isFinite(prev) || prev === 0) return null;
+    const value = ((curr - prev) / prev) * 100;
+    return { value, label };
+};
+
 const formatAdena = (n) => {
     if (!n) return '0';
     if (n >= 1000000000) return (n / 1000000000).toFixed(1) + 'B';
@@ -200,54 +219,82 @@ const rejectRequest = async (req) => {
 
 <template>
     <div class="space-y-8 animate-in fade-in duration-700">
-        <!-- Global Engagement & Analytics -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard label="Tráfico (24h)" :value="stats.total_visits_24h" emoji="📈" accent="purple" subtitle="Visitas Totales" />
-            <StatCard label="DAU (24h)" :value="stats.active_users_24h" emoji="🟢" accent="emerald" subtitle="Usuarios Únicos" />
-            <StatCard label="En Tiempo Real (1h)" :value="stats.active_users_1h" emoji="⚡" accent="indigo" subtitle="Sesiones Activas" prominent />
-            <StatCard label="CPs Activas" :value="stats.total_cps" emoji="🛡️" accent="blue" :subtitle="`de ${stats.total_cps_all} totales`" />
-        </div>
+        <AdminPageHeader title="Panel de administración" subtitle="Vista global del sistema · datos en vivo">
+            <template #actions>
+                <button @click="showCreateModal = true" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-purple-950/20 transition-all">
+                    {{ $t('admin.actions.create_cp') }}
+                </button>
+            </template>
+        </AdminPageHeader>
 
-        <!-- System Totals -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-lg">👥</div>
-                <div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Miembros en CPs</div>
-                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ stats.total_members }}</div>
-                </div>
+        <!-- Visión en tiempo real -->
+        <section>
+            <div class="flex items-baseline justify-between mb-3">
+                <h3 class="font-cinzel text-sm tracking-widest uppercase text-gray-700 dark:text-gray-300">Tiempo real</h3>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">últimas 24h · 1h</span>
             </div>
-            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800/50 flex items-center justify-center text-lg">🧑</div>
-                <div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Usuarios Totales</div>
-                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ stats.total_users }}</div>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard
+                    label="Tráfico (24h)"
+                    :value="stats.total_visits_24h"
+                    emoji="📈"
+                    accent="purple"
+                    subtitle="Visitas totales"
+                    :trend="pctChange(stats.total_visits_24h, stats.total_visits_24h_prev, 'vs ayer')"
+                    :sparkline="stats.visits_sparkline"
+                />
+                <StatCard
+                    label="DAU (24h)"
+                    :value="stats.active_users_24h"
+                    emoji="🟢"
+                    accent="emerald"
+                    subtitle="Usuarios únicos"
+                    :trend="pctChange(stats.active_users_24h, stats.active_users_24h_prev, 'vs ayer')"
+                    :sparkline="stats.dau_sparkline"
+                />
+                <StatCard label="En vivo (1h)" :value="stats.active_users_1h" emoji="⚡" accent="indigo" subtitle="Sesiones activas" prominent />
+                <StatCard
+                    label="CPs activas"
+                    :value="stats.total_cps"
+                    emoji="🛡️"
+                    accent="blue"
+                    :subtitle="`de ${stats.total_cps_all} totales`"
+                    :trend="pctChange(stats.total_cps, stats.total_cps_prev_week, 'vs semana anterior')"
+                    :sparkline="stats.cps_sparkline"
+                />
             </div>
-            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-lg">⚔️</div>
-                <div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Reports Confirmados</div>
-                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ stats.total_reports }}</div>
-                </div>
-            </div>
-            <div class="l2-panel p-5 rounded-2xl border-gray-200 dark:border-gray-800 shadow-lg flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-lg">💰</div>
-                <div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-500">Adena Distribuida</div>
-                    <div class="text-lg font-cinzel text-gray-900 dark:text-white">{{ formatAdena(stats.total_adena_distributed) }}</div>
-                </div>
-            </div>
-        </div>
+        </section>
 
-        <!-- CP List (Audit View) -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Totales del sistema -->
+        <section>
+            <div class="flex items-baseline justify-between mb-3">
+                <h3 class="font-cinzel text-sm tracking-widest uppercase text-gray-700 dark:text-gray-300">Totales del sistema</h3>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">acumulados desde el lanzamiento</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Miembros en CPs" :value="stats.total_members" emoji="👥" accent="amber" size="md" />
+                <StatCard label="Usuarios totales" :value="stats.total_users" emoji="🧑" accent="neutral" size="md" />
+                <StatCard label="Reports confirmados" :value="stats.total_reports" emoji="⚔️" accent="purple" size="md" />
+                <StatCard label="Adena distribuida" :value="formatAdena(stats.total_adena_distributed)" emoji="💰" accent="amber" size="md" prominent />
+            </div>
+        </section>
+
+        <!-- Actividad y operación -->
+        <section>
+            <div class="flex items-baseline justify-between mb-3">
+                <h3 class="font-cinzel text-sm tracking-widest uppercase text-gray-700 dark:text-gray-300">Actividad y operación</h3>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">últimos 14 días</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Activity Chart -->
             <div class="lg:col-span-2 l2-panel p-8 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col transition-all">
                 <div class="flex items-center justify-between mb-8">
-                    <div>
-                        <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest">{{ $t('admin.activity.title') }}</h3>
-                        <p class="text-xs text-gray-500 uppercase font-bold tracking-tighter">{{ $t('admin.activity.subtitle') }}</p>
+                    <div class="flex items-center gap-3">
+                        <ChartBarIcon class="w-5 h-5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                        <div>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest">{{ $t('admin.activity.title') }}</h3>
+                            <p class="text-xs text-gray-500 uppercase font-bold tracking-tighter">{{ $t('admin.activity.subtitle') }}</p>
+                        </div>
                     </div>
                 </div>
                 <div class="flex-1 min-h-[300px]">
@@ -261,21 +308,26 @@ const rejectRequest = async (req) => {
                     <input @click="$event.target.select()" :value="$page.props.flash.success.link" readonly class="w-full bg-white border-gray-200 text-[10px] text-gray-900 rounded-lg p-2 text-center dark:bg-black/50 dark:border-gray-700 dark:text-gray-300" />
                 </div>
 
-                <!-- Create CP Trigger -->
-                <button @click="showCreateModal = true" class="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs text-white shadow-lg shadow-purple-950/20 hover:scale-[1.02] active:scale-95 transition-all">
-                    {{ $t('admin.actions.create_cp') }}
-                </button>
+                <!-- Create CP button moved to the page header (top right).
+                     Keeps the right column focused on widgets only. -->
 
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col transition-all">
                     <div class="mb-4 flex items-end justify-between gap-4">
-                        <div>
-                            <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cp_requests.title') }}</h3>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{{ $t('admin.cp_requests.subtitle') }}</p>
+                        <div class="flex items-center gap-3">
+                            <InboxStackIcon class="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                            <div>
+                                <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cp_requests.title') }}</h3>
+                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{{ $t('admin.cp_requests.subtitle') }}</p>
+                            </div>
                         </div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ (cpRequests || []).length }}</div>
+                        <div class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-black uppercase tracking-widest">{{ (cpRequests || []).length }}</div>
                     </div>
                     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                        <div v-if="!(cpRequests || []).length" class="text-xs text-gray-500">{{ $t('admin.cp_requests.none') }}</div>
+                        <EmptyState
+                            v-if="!(cpRequests || []).length"
+                            :icon="InboxStackIcon"
+                            :title="$t('admin.cp_requests.none')"
+                        />
                         <div v-for="req in (cpRequests || [])" :key="req.id" class="p-4 bg-white/70 border border-gray-200 rounded-2xl dark:bg-gray-900/50 dark:border-gray-800">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
@@ -308,14 +360,21 @@ const rejectRequest = async (req) => {
                 <!-- Support Tickets -->
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col transition-all">
                     <div class="mb-4 flex items-end justify-between gap-4">
-                        <div>
-                            <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">Soporte</h3>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Tickets Abiertos</p>
+                        <div class="flex items-center gap-3">
+                            <LifebuoyIcon class="w-5 h-5 text-red-500 dark:text-red-400" aria-hidden="true" />
+                            <div>
+                                <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">Soporte</h3>
+                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Tickets abiertos</p>
+                            </div>
                         </div>
-                        <div class="text-[10px] text-gray-500 font-black uppercase tracking-widest">{{ (supportTickets || []).length }}</div>
+                        <div class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 font-black uppercase tracking-widest">{{ (supportTickets || []).length }}</div>
                     </div>
                     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                        <div v-if="!(supportTickets || []).length" class="text-xs text-gray-500">Ningún ticket nuevo.</div>
+                        <EmptyState
+                            v-if="!(supportTickets || []).length"
+                            :icon="LifebuoyIcon"
+                            title="Ningún ticket nuevo"
+                        />
                         <div v-for="tck in (supportTickets || [])" :key="tck.id" class="p-4 bg-white/70 border border-red-200 rounded-2xl dark:bg-gray-900/50 dark:border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)] transition-all">
                             <div class="min-w-0">
                                 <div class="text-[11px] font-black uppercase text-gray-900 dark:text-white truncate">{{ tck.subject }}</div>
@@ -333,8 +392,12 @@ const rejectRequest = async (req) => {
 
                 <!-- CP List -->
                 <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-2xl flex-1 overflow-hidden flex flex-col transition-all">
-                    <div class="mb-4">
-                        <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cps.title') }}</h3>
+                    <div class="mb-4 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <ShieldCheckIcon class="w-5 h-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                            <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest">{{ $t('admin.cps.title') }}</h3>
+                        </div>
+                        <div class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-black uppercase tracking-widest">{{ (cps || []).length }}</div>
                     </div>
                     <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
                         <div
@@ -380,7 +443,8 @@ const rejectRequest = async (req) => {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </section>
 
         <!-- Create CP Modal -->
         <div v-if="showCreateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">

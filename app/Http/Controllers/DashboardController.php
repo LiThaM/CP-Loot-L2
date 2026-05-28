@@ -55,11 +55,27 @@ class DashboardController extends Controller
 
             $stats['total_visits_24h'] = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subDay())->count();
 
+            // Delta vs the previous 24h window for ▲/▼ trend chips. Done as
+            // straight whereBetween rather than a fancier rollup so the
+            // delta query plan is identical to the "current" one (same
+            // index scan, just a different time bucket).
+            $stats['total_visits_24h_prev'] = \App\Contexts\System\Domain\Models\UserActivity::query()
+                ->whereBetween('created_at', [now()->subDays(2), now()->subDay()])
+                ->count();
+            $stats['active_users_24h_prev'] = \App\Contexts\System\Domain\Models\UserActivity::query()
+                ->whereBetween('created_at', [now()->subDays(2), now()->subDay()])
+                ->distinct('user_id')
+                ->count('user_id');
+            $stats['total_cps_prev_week'] = ConstParty::query()
+                ->where('is_active', true)
+                ->where('created_at', '<=', now()->subWeek())
+                ->count();
+
             $cps = ConstParty::with('leader')->withCount('members')->orderBy('name')->get();
 
             // Refined chart data: Visits vs Reports (last 14 days)
             $days = collect(range(13, 0))->map(fn ($day) => now()->subDays($day)->format('Y-m-d'));
-            
+
             $visitActivity = \App\Contexts\System\Domain\Models\UserActivity::where('created_at', '>=', now()->subDays(14))
                 ->selectRaw('DATE(created_at) as date, count(*) as count')
                 ->groupBy('date')
@@ -69,6 +85,26 @@ class DashboardController extends Controller
                 ->selectRaw('DATE(created_at) as date, count(*) as count')
                 ->groupBy('date')
                 ->pluck('count', 'date');
+
+            // Sparklines: tiny 14-point arrays that ride along inside the
+            // big KPI cards. Visits / DAU recycle the same aggregates the
+            // chart above already computes; for CPs we run a one-shot
+            // GROUP BY on created_at to track the active-CP curve.
+            $dauActivity = \App\Contexts\System\Domain\Models\UserActivity::query()
+                ->where('created_at', '>=', now()->subDays(14))
+                ->selectRaw('DATE(created_at) as date, COUNT(DISTINCT user_id) as count')
+                ->groupBy('date')
+                ->pluck('count', 'date');
+            $cpsActivity = ConstParty::query()
+                ->where('is_active', true)
+                ->where('created_at', '>=', now()->subDays(14))
+                ->selectRaw('DATE(created_at) as date, count(*) as count')
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            $stats['visits_sparkline'] = $days->map(fn ($d) => (int) $visitActivity->get($d, 0))->values()->all();
+            $stats['dau_sparkline'] = $days->map(fn ($d) => (int) $dauActivity->get($d, 0))->values()->all();
+            $stats['cps_sparkline'] = $days->map(fn ($d) => (int) $cpsActivity->get($d, 0))->values()->all();
 
             $chartData = [
                 'labels' => $days->map(fn ($d) => date('d M', strtotime($d))),
