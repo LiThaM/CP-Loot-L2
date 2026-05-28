@@ -134,29 +134,23 @@ class CpRulesTest extends TestCase
     public function test_impersonation_does_not_mutate_real_user_accepted_version(): void
     {
         // Admin impersonates a member. While impersonating, the request
-        // user is the impersonated member, so a naive accept call would
-        // bump that member's accepted_version. The modal trigger sits in
-        // the frontend's onMounted and is gated on
-        // !page.props.auth.isImpersonating — but the backend route is
-        // still reachable. This test pins the current behaviour: hitting
-        // /cp/rules/accept while impersonating DOES advance the
-        // impersonated member's version (because the controller writes
-        // to the authenticated request user). If we ever want to lock
-        // this down at the controller level, the assertion should flip.
+        // user is the impersonated member — but the controller checks
+        // the session for `impersonated_by` and silently no-ops on
+        // accept, so the real user still has the modal pending when
+        // they log in themselves.
         [$cp, $founder] = $this->makeCpWithFounder('Foxtrot');
         $admin = $this->makeUser('foxtrot-admin', $this->adminRole);
         $member = $this->makeUser('foxtrot-member', $this->memberRole, $cp);
         $this->actingAs($founder)->post(route('cp.rules.update'), ['body' => 'r']);
 
-        // Simulate impersonation: log in as the admin, then session-flag
-        // 'impersonated_by', then log in as the member (mimicking
-        // ImpersonateController::take).
+        // Simulate impersonation: session-flag `impersonated_by` (set by
+        // ImpersonateController::take) while auth user is the member.
         $this->actingAs($admin);
         $this->withSession(['impersonated_by' => $admin->id])
             ->actingAs($member)
             ->post(route('cp.rules.accept'));
 
         $member->refresh();
-        $this->assertSame(1, (int) $member->cp_rules_accepted_version);
+        $this->assertNull($member->cp_rules_accepted_version);
     }
 }

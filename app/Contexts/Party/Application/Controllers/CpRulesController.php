@@ -45,6 +45,14 @@ class CpRulesController extends Controller
 
     public function accept(Request $request): RedirectResponse
     {
+        // Impersonation never bumps the impersonated user's accepted
+        // version — the real leader/member must still see the modal
+        // next time they log in themselves. Silent no-op rather than
+        // 403 so the admin doesn't get slapped while testing flows.
+        if ($request->session()->has('impersonated_by')) {
+            return back();
+        }
+
         $user = $request->user();
         $cp = $user?->cp;
         abort_unless($cp, 404);
