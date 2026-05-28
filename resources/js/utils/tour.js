@@ -2,154 +2,126 @@ import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { router } from '@inertiajs/vue3';
 
-// Tour catalogue. Each entry: { name, role[], path, steps }.
+// Tour catalogue. Each entry: { role[], path, steps }.
 // - `role` filters who sees the tour from /tutoriales — empty array = all roles.
 // - `path` is the route the tour expects; if the user is not there, we
 //   navigate first via Inertia and start the tour after the page mounts.
-// - `steps` are driver.js steps, each `{ element: 'css selector', popover: { title, description } }`.
+// - `steps[i]` carries `{ element, titleKey, descKey }`. The actual
+//   popover copy is resolved through the page's `$t` at launch time —
+//   each consumer passes their own `t(key)` so the catalogue stays
+//   language-agnostic. Keys are seeded by the tutorials migration.
 //
-// Steps reference real DOM nodes. If a node is missing (e.g. the user is
-// not a leader and the "edit rules" button isn't in the DOM), driver.js
-// skips the step gracefully — no crash.
+// If a DOM node referenced in `element` is missing (e.g. role-gated
+// markup), driver.js skips that step gracefully without crashing.
 
 const TOURS = {
     'dashboard-overview': {
-        title: 'El Dashboard',
         role: [],
         path: '/dashboard',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Bienvenido a tu dashboard',
-                    description: 'Aquí ves la actividad de tu CP de un vistazo: miembros, reports, adena en circulación y los gráficos de los últimos días.',
-                },
+                titleKey: 'tour.dashboard-overview.step.0.title',
+                descKey: 'tour.dashboard-overview.step.0.desc',
             },
         ],
     },
 
     'profile-characters': {
-        title: 'Personajes en el perfil',
         role: ['member', 'cp_leader', 'accountant'],
         path: '/profile',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Tu perfil L2',
-                    description: 'En esta pantalla guardas tu personaje principal y los secundarios. Cuando reportes loot, podrás indicar con qué personaje farmeaste.',
-                },
+                titleKey: 'tour.profile-characters.step.0.title',
+                descKey: 'tour.profile-characters.step.0.desc',
             },
             {
                 element: '[data-tour="characters-section"]',
-                popover: {
-                    title: 'Personajes secundarios',
-                    description: 'Añade aquí tus alts. Cada uno con su nick, raza, clase y nivel. Al reportar, el líder los puede elegir.',
-                },
+                titleKey: 'tour.profile-characters.step.1.title',
+                descKey: 'tour.profile-characters.step.1.desc',
             },
         ],
     },
 
     'loot-pending': {
-        title: 'Aprobar loot pendiente',
         role: ['cp_leader', 'accountant'],
         path: '/loot',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Loot pendiente',
-                    description: 'Cuando un miembro reporta un farm/boss, queda como pendiente hasta que tú lo apruebas. Decides el porcentaje al fondo de la CP y los puntos.',
-                },
+                titleKey: 'tour.loot-pending.step.0.title',
+                descKey: 'tour.loot-pending.step.0.desc',
             },
             {
                 element: '[data-tour="loot-tabs"]',
-                popover: {
-                    title: 'Pendientes vs historial',
-                    description: 'Pestaña Pendientes: cosas por revisar. Historial: lo ya confirmado o rechazado. Puedes filtrar y buscar.',
-                },
+                titleKey: 'tour.loot-pending.step.1.title',
+                descKey: 'tour.loot-pending.step.1.desc',
             },
         ],
     },
 
     'party-vault': {
-        title: 'CP Vault',
         role: ['cp_leader', 'accountant', 'member'],
         path: '/party',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'El almacén de la CP',
-                    description: 'Aquí vive todo lo que la CP ha conseguido: items, adena, recetas pinneadas, miembros y deudas externas.',
-                },
+                titleKey: 'tour.party-vault.step.0.title',
+                descKey: 'tour.party-vault.step.0.desc',
             },
             {
                 element: '[data-tour="party-tabs"]',
-                popover: {
-                    title: 'Pestañas de la CP',
-                    description: 'Cada pestaña agrupa una zona: miembros, vault de items, crafting, normas internas y ajustes.',
-                },
+                titleKey: 'tour.party-vault.step.1.title',
+                descKey: 'tour.party-vault.step.1.desc',
             },
         ],
     },
 
     'party-rules': {
-        title: 'Normas de la CP',
         role: ['cp_leader', 'accountant', 'member'],
         path: '/party',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Reglas internas',
-                    description: 'En la pestaña Normas el líder puede publicar el reglamento del CP. Cuando hay una versión nueva, todos los miembros tienen que aceptarla antes de seguir.',
-                },
+                titleKey: 'tour.party-rules.step.0.title',
+                descKey: 'tour.party-rules.step.0.desc',
             },
         ],
     },
 
     'craft-bulk': {
-        title: 'Craft en bloque',
         role: ['cp_leader', 'accountant'],
         path: '/party/craft-bulk',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Planifica varios crafts a la vez',
-                    description: 'Añades cuántas unidades de cada receta quieres. El sistema te calcula qué materiales necesitas, cuáles tienes en el vault y cuáles son sub-crafts automáticos.',
-                },
+                titleKey: 'tour.craft-bulk.step.0.title',
+                descKey: 'tour.craft-bulk.step.0.desc',
             },
         ],
     },
 
     'admin-cps': {
-        title: 'Gestión global de CPs',
         role: ['admin'],
         path: '/system/cps',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Todas las CPs',
-                    description: 'Aquí ves todos los CPs registrados. Puedes editarlos, impersonar al líder para probar cosas como si fueras él, activarlos/desactivarlos, o borrarlos si quedan vacíos.',
-                },
+                titleKey: 'tour.admin-cps.step.0.title',
+                descKey: 'tour.admin-cps.step.0.desc',
             },
         ],
     },
 
     'admin-users': {
-        title: 'Gestión global de usuarios',
         role: ['admin'],
         path: '/system/users',
         steps: [
             {
                 element: 'body',
-                popover: {
-                    title: 'Todos los usuarios',
-                    description: 'Lista global de cuentas. Desde aquí cambias roles, reasignas CPs, ajustas adena manualmente, y baneas/desbaneas. El audit log queda por usuario.',
-                },
+                titleKey: 'tour.admin-users.step.0.title',
+                descKey: 'tour.admin-users.step.0.desc',
             },
         ],
     },
@@ -164,48 +136,63 @@ const createDriver = () => driver({
     popoverClass: 'l2-tour-popover',
 });
 
-const startTourFor = (tourKey) => {
+const resolveSteps = (tour, t) => tour.steps.map((step) => ({
+    element: step.element,
+    popover: {
+        title: t(step.titleKey),
+        description: t(step.descKey),
+    },
+}));
+
+const startTourFor = (tourKey, t) => {
     const tour = TOURS[tourKey];
     if (!tour) {
         console.warn('[tour] Unknown tour:', tourKey);
         return;
     }
-    // Wait one frame so any Inertia navigation has settled and the
-    // target DOM nodes exist.
     requestAnimationFrame(() => {
         const d = createDriver();
-        d.setSteps(tour.steps);
+        d.setSteps(resolveSteps(tour, t));
         d.drive();
     });
 };
 
 /**
- * Public entry point. Use from anywhere:
- *   import { startTour } from '@/utils/tour';
- *   startTour('loot-pending');
+ * Public entry point. Caller passes their `$t` (translation resolver)
+ * so step copy reads the active language.
  *
- * Navigates to the tour's path first if we're elsewhere, then fires.
+ *   import { startTour } from '@/utils/tour';
+ *   startTour('loot-pending', $t);
  */
-export const startTour = (tourKey) => {
+export const startTour = (tourKey, t) => {
     const tour = TOURS[tourKey];
     if (!tour) {
         console.warn('[tour] Unknown tour:', tourKey);
         return;
     }
+    if (typeof t !== 'function') {
+        console.warn('[tour] startTour requires a t() resolver as second arg');
+        return;
+    }
     if (window.location.pathname === tour.path) {
-        startTourFor(tourKey);
+        startTourFor(tourKey, t);
         return;
     }
     router.visit(tour.path, {
         onSuccess: () => {
             // Defer slightly to let the new page render its DOM.
-            setTimeout(() => startTourFor(tourKey), 200);
+            setTimeout(() => startTourFor(tourKey, t), 200);
         },
     });
 };
 
+/**
+ * List tours, optionally filtered by role. The returned objects only
+ * carry meta (key, role, path) — titles come from translation keys
+ * (`tour.{key}.title`) and the caller resolves them via $t.
+ */
 export const listTours = (forRole = null) => {
     return Object.entries(TOURS)
         .filter(([, t]) => !forRole || t.role.length === 0 || t.role.includes(forRole))
-        .map(([key, t]) => ({ key, title: t.title, role: t.role, path: t.path }));
+        .map(([key, t]) => ({ key, role: t.role, path: t.path }));
 };
