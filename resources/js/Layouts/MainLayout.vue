@@ -6,6 +6,8 @@ import axios from 'axios';
 import emitter from '../event-bus';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
+import { formatAdenaShort as adenaFormatShort } from '@/utils/adena';
+import CpRulesModal from '@/Components/Layout/CpRulesModal.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -483,26 +485,7 @@ const formatNumber = (val) => {
     return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
-const formatAdenaShort = (val) => {
-    const n = Number(val ?? 0);
-    if (!Number.isFinite(n)) return '0';
-    const sign = n < 0 ? '-' : '';
-    const abs = Math.abs(n);
-
-    if (abs >= 1_000_000) {
-        const m = abs / 1_000_000;
-        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1)));
-        return `${sign}${str}kk`;
-    }
-
-    if (abs >= 1_000) {
-        const k = abs / 1_000;
-        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1)));
-        return `${sign}${str}k`;
-    }
-
-    return `${sign}${Math.trunc(abs)}`;
-};
+const formatAdenaShort = (val) => adenaFormatShort(val, localeTag.value);
 
 const toggleDark = () => {
     darkMode.value = !darkMode.value;
@@ -794,36 +777,13 @@ watch(() => alerts.value.items, (items) => {
             </div>
         </footer>
 
-        <!-- Blocking CP-rules modal. No close affordance: the only way out
-             is to press "I accept". Sits above every other overlay
-             (z-[130] vs changelog's z-[120]). -->
-        <div v-if="cpRulesModalOpen" class="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-            <div class="l2-panel w-full max-w-2xl max-h-[88vh] rounded-2xl border-amber-500/40 overflow-hidden shadow-2xl flex flex-col">
-                <div class="bg-gradient-to-r from-amber-900 to-red-900 p-4 flex items-center justify-between border-b border-amber-500/30">
-                    <div>
-                        <div class="text-[10px] text-amber-200 font-black uppercase tracking-widest">{{ $t('cp.rules.modal.kicker') }}</div>
-                        <div class="text-lg font-cinzel text-white tracking-widest mt-0.5">{{ $t('cp.rules.modal.title') }}</div>
-                    </div>
-                    <span v-if="cpRules?.current?.version" class="px-2.5 py-1 rounded-full bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest">v{{ cpRules.current.version }}</span>
-                </div>
-                <div class="px-6 pt-4 text-[11px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-widest">
-                    {{ $t('cp.rules.modal.subtitle') }}
-                </div>
-                <div class="px-6 pt-2 pb-1 text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">
-                    {{ $t('cp.rules.version_meta', { version: cpRules?.current?.version, date: localizedCpRulesUpdatedAt, author: cpRules?.current?.updated_by || '—' }) }}
-                </div>
-                <div class="p-6 overflow-y-auto custom-scrollbar text-sm leading-relaxed text-gray-800 dark:text-gray-200 changelog-body" v-html="renderInlineMarkdown(cpRules?.current?.body || '')"></div>
-                <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-black/30">
-                    <p class="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mb-3">
-                        {{ $t('cp.rules.modal.no_dismiss_hint') }}
-                    </p>
-                    <button @click="acceptCpRules" type="button" :disabled="cpRulesSubmitting"
-                            class="w-full py-3 bg-gradient-to-tr from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest disabled:opacity-30">
-                        {{ $t('cp.rules.modal.accept') }}
-                    </button>
-                </div>
-            </div>
-        </div>
+        <CpRulesModal
+            :open="cpRulesModalOpen"
+            :rules="cpRules"
+            :submitting="cpRulesSubmitting"
+            :updated-at-formatted="localizedCpRulesUpdatedAt"
+            @accept="acceptCpRules"
+        />
 
         <!-- First-open changelog modal — shows whenever the user has any
              unread web changelog entry, until they acknowledge. -->

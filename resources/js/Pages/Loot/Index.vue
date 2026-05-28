@@ -3,6 +3,17 @@ import MainLayout from '@/Layouts/MainLayout.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import ViewModeToggle from '@/Components/ViewModeToggle.vue';
 import LootReportExpandedDetails from '@/Components/Loot/LootReportExpandedDetails.vue';
+import { formatAdenaShort as adenaFormatShort, formatAdenaFull as adenaFormatFull, formatDateTime as adenaFormatDateTime } from '@/utils/adena';
+import {
+    getEventIcon,
+    getStatusColor,
+    getItemToneClass,
+    reportHasPoints,
+    entryAmountClass,
+    entryAmountText as entryAmountTextUtil,
+    entryAmountTitle as entryAmountTitleUtil,
+    POINTS_EVENT_TYPES,
+} from '@/utils/loot';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import emitter from '@/event-bus';
@@ -291,108 +302,22 @@ const resolveQuick = (report, status) => {
     router.post(route('loot.report.resolve', { report: report.id }), { status }, { preserveScroll: true });
 };
 
-const getEventIcon = (type) => {
-    const icons = { 'FARM': '🧺', 'BOSS': '⚔️', 'EPIC': '👑', 'SIEGE': '🏰' };
-    return icons[type] || '✨';
-};
-
-const getStatusColor = (status) => {
-    const colors = { 
-        'pending': 'text-orange-500 bg-orange-500/10 border-orange-500/30',
-        'confirmed': 'text-green-500 bg-green-500/10 border-green-500/30',
-        'rejected': 'text-red-500 bg-red-500/10 border-red-500/30'
-    };
-    return colors[status] || 'text-gray-500';
-};
-
 const isAdenaEntry = (entry) => String(entry?.item?.name || '').toLowerCase() === 'adena';
 
-const formatDateTime = (val) => {
-    if (!val) return '';
-    try {
-        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
-    } catch {
-        return String(val);
-    }
-};
-
-const pointsEventTypes = new Set(['FARM', 'BOSS', 'EPIC', 'SIEGE']);
-const reportHasPoints = (report) => {
-    const type = String(report?.event_type || '').toUpperCase();
-    if (!pointsEventTypes.has(type)) return false;
-    return Number(report?.points_per_member || 0) > 0;
-};
-
-const formatQty = (val) => {
-    const n = Number.parseInt(String(val ?? 0), 10);
-    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? n : 0);
-};
-
-const formatAdenaShort = (val) => {
-    const n = Number(val ?? 0);
-    if (!Number.isFinite(n)) return '0';
-    const sign = n < 0 ? '-' : '';
-    const abs = Math.abs(n);
-
-    if (abs >= 1_000_000) {
-        const m = abs / 1_000_000;
-        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1)));
-        return `${sign}${str}kk`;
-    }
-
-    if (abs >= 1_000) {
-        const k = abs / 1_000;
-        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1)));
-        return `${sign}${str}k`;
-    }
-
-    return `${sign}${Math.trunc(abs)}`;
-};
-
-const formatAdenaFull = (val) => {
-    const n = Number(val ?? 0);
-    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
-};
-
-const entryAmountText = (report, entry) => {
-    if (!isAdenaEntry(entry)) return `x${formatQty(entry?.amount)}`;
-    const amount = formatAdenaShort(Math.abs(entry?.amount || 0));
-    return `x${amount}`;
-};
-
-const entryAmountTitle = (report, entry) => {
-    if (!isAdenaEntry(entry)) return null;
-    const amount = formatAdenaFull(Math.abs(entry?.amount ?? 0));
-    return `x${amount}`;
-};
+// Thin wrappers around `@/utils/{adena,loot}` that inject the page locale
+// so the template can keep calling `formatDateTime(val)` without
+// threading the locale through every call site.
+const formatDateTime = (val) => adenaFormatDateTime(val, localeTag.value);
+const formatAdenaShort = (val) => adenaFormatShort(val, localeTag.value);
+const formatAdenaFull = (val) => adenaFormatFull(val, localeTag.value);
+const entryAmountText = (report, entry) => entryAmountTextUtil(report, entry, localeTag.value);
+const entryAmountTitle = (report, entry) => entryAmountTitleUtil(report, entry, localeTag.value);
 
 const showPointsResolve = computed(() => {
     const type = String(resolveForm.event_type || '').toUpperCase();
-    if (!pointsEventTypes.has(type)) return false;
+    if (!POINTS_EVENT_TYPES.has(type)) return false;
     return Number(resolveForm.points_per_member || 0) > 0;
 });
-
-const entryAmountClass = (report, entry) => {
-    if (!isAdenaEntry(entry)) return 'text-gray-700 dark:text-gray-200';
-    const type = String(report?.event_type || '').toUpperCase();
-    const amount = Number(entry?.amount || 0);
-    
-    const gains = ['FARM', 'BOSS', 'EPIC', 'SIEGE', 'ADENA_GRANT', 'SELL', 'VENTA', 'RETURN', 'ADMIN_ADJUST_IN', 'ADENA_GAIN'];
-    const losses = ['ADENA_PAYOUT', 'WAREHOUSE_CRAFT_CONSUME', 'ADMIN_ADJUST_OUT', 'CRAFT', 'ADENA_OFFSET', 'BUY', 'COMPRA'];
-    
-    if (losses.includes(type) || amount < 0) return 'text-red-500';
-    if (gains.includes(type) || amount > 0) return 'text-emerald-600 dark:text-emerald-400';
-    
-    return 'text-emerald-600 dark:text-emerald-400';
-};
-
-const getItemToneClass = (item) => {
-    const grade = String(item?.grade || '').toUpperCase();
-    if (grade === 'S') return 'border-purple-500/40 ring-1 ring-purple-500/30 shadow-[0_0_18px_rgba(168,85,247,0.18)]';
-    if (grade === 'A') return 'border-blue-500/40 ring-1 ring-blue-500/30 shadow-[0_0_18px_rgba(59,130,246,0.18)]';
-    if (grade === 'B') return 'border-emerald-500/40 ring-1 ring-emerald-500/30 shadow-[0_0_18px_rgba(16,185,129,0.16)]';
-    return 'border-gray-200/70 ring-1 ring-black/5 dark:border-gray-700/70 dark:ring-white/5';
-};
 
 const getEntryMatches = (entry, searchLower) => {
     const name = String(entry?.item?.name || '').toLowerCase();

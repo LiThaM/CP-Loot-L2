@@ -12,6 +12,7 @@ import axios from 'axios';
 import emitter from '@/event-bus';
 import { confirmAction, showToast, showAlert } from '@/utils/swal';
 import RulesView from '@/Components/CpRules/RulesView.vue';
+import { formatAdenaShort as adenaFormatShort, formatAdenaFull as adenaFormatFull } from '@/utils/adena';
 
 const props = defineProps({
     has_cp: Boolean,
@@ -424,31 +425,10 @@ const filteredWarehouseItems = computed(() => {
     });
 });
 
-const formatAdenaShort = (val) => {
-    const n = Number(val ?? 0);
-    if (!Number.isFinite(n)) return '0';
-    const sign = n < 0 ? '-' : '';
-    const abs = Math.abs(n);
-
-    if (abs >= 1_000_000) {
-        const m = abs / 1_000_000;
-        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1))).replace(/\.0$/, '');
-        return `${sign}${str}kk`;
-    }
-
-    if (abs >= 1_000) {
-        const k = abs / 1_000;
-        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1))).replace(/\.0$/, '');
-        return `${sign}${str}k`;
-    }
-
-    return `${sign}${Math.trunc(abs)}`;
-};
-
-const formatAdenaFull = (val) => {
-    const n = Number(val ?? 0);
-    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
-};
+// Adena formatters are centralised in `@/utils/adena`. We just bind the
+// page locale here so the template can keep calling `formatAdenaShort(n)`.
+const formatAdenaShort = (val) => adenaFormatShort(val, localeTag.value);
+const formatAdenaFull = (val) => adenaFormatFull(val, localeTag.value);
 
 const formatNumber = (val) => {
     const n = Number(val ?? 0);

@@ -1,6 +1,14 @@
 <script setup>
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import { formatAdenaShort, formatAdenaFull, formatDateTime } from '@/utils/adena';
+import {
+    entryAmountText as entryAmountTextRaw,
+    entryAmountTitle as entryAmountTitleRaw,
+    entryAmountClass as entryAmountClassRaw,
+    getItemToneClass,
+    reportHasPoints as reportHasPointsRaw,
+} from '@/utils/loot';
 
 const props = defineProps({
     report: { type: Object, required: true },
@@ -12,80 +20,14 @@ const emit = defineEmits(['image-click']);
 const page = usePage();
 const localeTag = computed(() => (page.props.app?.locale === 'es' ? 'es-ES' : 'en-US'));
 
+// Local thin wrappers bind the report + locale so the template stays
+// terse. All real logic lives in `@/utils/loot.js`.
+const entryAmountText = (entry) => entryAmountTextRaw(props.report, entry, localeTag.value);
+const entryAmountTitle = (entry) => entryAmountTitleRaw(props.report, entry, localeTag.value);
+const entryAmountClass = (entry) => entryAmountClassRaw(props.report, entry);
+const reportHasPoints = computed(() => reportHasPointsRaw(props.report));
+
 const isAdenaEntry = (entry) => String(entry?.item?.name || '').toLowerCase() === 'adena';
-
-const formatQty = (val) => {
-    const n = Number.parseInt(String(val ?? 0), 10);
-    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? n : 0);
-};
-
-const formatAdenaShort = (val) => {
-    const n = Number(val ?? 0);
-    if (!Number.isFinite(n)) return '0';
-    const sign = n < 0 ? '-' : '';
-    const abs = Math.abs(n);
-    if (abs >= 1_000_000) {
-        const m = abs / 1_000_000;
-        const str = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(1)));
-        return `${sign}${str}kk`;
-    }
-    if (abs >= 1_000) {
-        const k = abs / 1_000;
-        const str = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1)));
-        return `${sign}${str}k`;
-    }
-    return `${sign}${Math.trunc(abs)}`;
-};
-
-const formatAdenaFull = (val) => {
-    const n = Number(val ?? 0);
-    return new Intl.NumberFormat(localeTag.value).format(Number.isFinite(n) ? Math.trunc(n) : 0);
-};
-
-const formatDateTime = (val) => {
-    if (!val) return '';
-    try {
-        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
-    } catch {
-        return String(val);
-    }
-};
-
-const entryAmountText = (entry) => {
-    if (!isAdenaEntry(entry)) return `x${formatQty(entry?.amount)}`;
-    return `x${formatAdenaShort(Math.abs(entry?.amount || 0))}`;
-};
-
-const entryAmountTitle = (entry) => {
-    if (!isAdenaEntry(entry)) return null;
-    return `x${formatAdenaFull(Math.abs(entry?.amount ?? 0))}`;
-};
-
-const pointsEventTypes = new Set(['FARM', 'BOSS', 'EPIC', 'SIEGE']);
-const reportHasPoints = computed(() => {
-    const type = String(props.report?.event_type || '').toUpperCase();
-    if (!pointsEventTypes.has(type)) return false;
-    return Number(props.report?.points_per_member || 0) > 0;
-});
-
-const entryAmountClass = (entry) => {
-    if (!isAdenaEntry(entry)) return 'text-gray-700 dark:text-gray-200';
-    const type = String(props.report?.event_type || '').toUpperCase();
-    const amount = Number(entry?.amount || 0);
-    const gains = ['FARM', 'BOSS', 'EPIC', 'SIEGE', 'ADENA_GRANT', 'SELL', 'VENTA', 'RETURN', 'ADMIN_ADJUST_IN', 'ADENA_GAIN'];
-    const losses = ['ADENA_PAYOUT', 'WAREHOUSE_CRAFT_CONSUME', 'ADMIN_ADJUST_OUT', 'CRAFT', 'ADENA_OFFSET', 'BUY', 'COMPRA'];
-    if (losses.includes(type) || amount < 0) return 'text-red-500';
-    if (gains.includes(type) || amount > 0) return 'text-emerald-600 dark:text-emerald-400';
-    return 'text-emerald-600 dark:text-emerald-400';
-};
-
-const getItemToneClass = (item) => {
-    const grade = String(item?.grade || '').toUpperCase();
-    if (grade === 'S') return 'border-purple-500/40 ring-1 ring-purple-500/30 shadow-[0_0_18px_rgba(168,85,247,0.18)]';
-    if (grade === 'A') return 'border-blue-500/40 ring-1 ring-blue-500/30 shadow-[0_0_18px_rgba(59,130,246,0.18)]';
-    if (grade === 'B') return 'border-emerald-500/40 ring-1 ring-emerald-500/30 shadow-[0_0_18px_rgba(16,185,129,0.16)]';
-    return 'border-gray-200/70 ring-1 ring-black/5 dark:border-gray-700/70 dark:ring-white/5';
-};
 
 const entries = computed(() => (Array.isArray(props.report?.entries) ? props.report.entries : []));
 

@@ -23,3 +23,20 @@ export const formatAdenaFull = (val, locale = 'en-US') => {
     const n = Number(val ?? 0);
     return new Intl.NumberFormat(locale).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
+
+// Generic locale-aware datetime formatter used wherever a report or log
+// row needs a short, readable timestamp. Falls back to the raw string if
+// Intl rejects the value (unparsable dates, null, etc.).
+export const formatDateTime = (val, locale = 'en-US') => {
+    if (!val) return '';
+    try {
+        return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(val));
+    } catch (_) {
+        return String(val);
+    }
+};
+
+export const formatQty = (val, locale = 'en-US') => {
+    const n = Number.parseInt(String(val ?? 0), 10);
+    return new Intl.NumberFormat(locale).format(Number.isFinite(n) ? n : 0);
+};
