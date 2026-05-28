@@ -37,9 +37,14 @@ class LootSearchController extends Controller
             $query->where('chronicle', $user->cp->chronicle);
         }
 
+        // Rank by usage_count DESC so items actually present in any CP's
+        // loot history / wishlist / recipes float to the top, instead of
+        // burying real results under junk catalog entries that match the
+        // LIKE. Secondary order by name keeps results stable.
         $paginator = $query
+            ->orderByDesc('usage_count')
             ->orderBy('name')
-            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle', 'market_price'], 'page', $page);
+            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle', 'market_price', 'usage_count'], 'page', $page);
 
         return response()->json([
             'items' => $paginator->items(),

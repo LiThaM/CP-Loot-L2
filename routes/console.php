@@ -14,3 +14,10 @@ Schedule::command('digits:rebuild-consensus')
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Recompute item usage_count nightly so the autocomplete ranking stays
+// fresh (most-used items float to the top instead of buried junk).
+Schedule::command('items:recompute-usage')
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->onOneServer();

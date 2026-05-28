@@ -24,6 +24,7 @@
         "@heroicons/vue": "^2.2.0",
         "@vueuse/motion": "^3.0.3",
         "chart.js": "^4.5.1",
+        "driver.js": "^1.4.0",
         "floating-vue": "^5.2.2",
         "lodash": "^4.18.1",
         "mitt": "^3.0.1",
