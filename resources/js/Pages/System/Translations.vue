@@ -3,6 +3,10 @@ import { Head, useForm, Link } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { ref } from 'vue';
 import { confirmAction } from '@/utils/swal';
+import StatCard from '@/Components/Admin/StatCard.vue';
+import EmptyState from '@/Components/Admin/EmptyState.vue';
+import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
+import { LanguageIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     entries: Array,
@@ -58,15 +62,20 @@ const deleteTranslation = async (entry) => {
 
     <MainLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-200 leading-tight l2-title">
-                    Administrador de Traducciones
-                </h2>
-                <Link :href="route('dashboard')" class="text-xs uppercase bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-gray-700 transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300">Volver al Panel</Link>
-            </div>
+            <AdminPageHeader title="Traducciones" subtitle="Catálogo de cadenas ES / EN">
+                <template #actions>
+                    <Link :href="route('dashboard')" class="text-xs font-bold uppercase tracking-widest bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-gray-700 transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300">Volver al Panel</Link>
+                </template>
+            </AdminPageHeader>
         </template>
 
         <div class="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard label="Claves totales" :value="entries.length" emoji="🔑" accent="blue" />
+                <StatCard label="ES rellenas" :value="entries.filter(e => e.es).length" emoji="🇪🇸" accent="purple" />
+                <StatCard label="EN rellenas" :value="entries.filter(e => e.en).length" emoji="🇬🇧" accent="emerald" />
+            </div>
+
             <!-- Formulario Nueva Traducción -->
             <div class="l2-panel p-6 rounded relative overflow-hidden">
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-900 via-blue-600 to-purple-900"></div>
@@ -123,6 +132,12 @@ const deleteTranslation = async (entry) => {
                         </tr>
                     </tbody>
                 </table>
+                <EmptyState
+                    v-if="!entries.length"
+                    :icon="LanguageIcon"
+                    title="Sin traducciones todavía"
+                    description="Añade tu primera clave usando el formulario de arriba."
+                />
             </div>
         </div>
     </MainLayout>

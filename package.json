@@ -21,6 +21,7 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "@heroicons/vue": "^2.2.0",
         "@vueuse/motion": "^3.0.3",
         "chart.js": "^4.5.1",
         "floating-vue": "^5.2.2",

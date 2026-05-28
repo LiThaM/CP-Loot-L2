@@ -1,1 +1,0 @@
-import{O as e,R as t}from"./app-0Mug_kc8.js";var n=(n,r)=>{let i=e=>{e.key===`Escape`&&n.value&&(e.preventDefault(),r())};t(n,e=>{e?document.addEventListener(`keydown`,i):document.removeEventListener(`keydown`,i)}),e(()=>document.removeEventListener(`keydown`,i))};export{n as t};

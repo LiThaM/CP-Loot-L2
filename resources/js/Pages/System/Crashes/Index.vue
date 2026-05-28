@@ -3,10 +3,18 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import { confirmAction } from '@/utils/swal';
+import { computed } from 'vue';
+import StatCard from '@/Components/Admin/StatCard.vue';
+import EmptyState from '@/Components/Admin/EmptyState.vue';
+import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
+import { BugAntIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     groups: Array,
 });
+
+const totalCrashes = computed(() => (props.groups || []).reduce((s, g) => s + Number(g.count || 0), 0));
+const distinctVersions = computed(() => new Set((props.groups || []).map((g) => g.last_bot_version).filter(Boolean)).size);
 
 const destroy = async (group) => {
     if (await confirmAction('Delete group?', `Delete all ${group.count} crashes for this fingerprint?`, 'Delete', 'Cancel')) {
@@ -19,7 +27,13 @@ const destroy = async (group) => {
     <Head title="Crashes" />
     <MainLayout>
         <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-            <h1 class="text-2xl font-bold dark:text-white">Crash reports</h1>
+            <AdminPageHeader title="Crash reports" subtitle="Desktop bot crash fingerprints" />
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <StatCard label="Fingerprints" :value="groups.length" emoji="🪲" accent="red" prominent />
+                <StatCard label="Crashes totales" :value="totalCrashes" emoji="📉" accent="amber" />
+                <StatCard label="Versiones afectadas" :value="distinctVersions" emoji="🛠️" accent="neutral" />
+            </div>
 
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
@@ -51,8 +65,12 @@ const destroy = async (group) => {
                             </td>
                         </tr>
                         <tr v-if="!groups.length">
-                            <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                                No crashes reported yet.
+                            <td colspan="7" class="px-0 py-0">
+                                <EmptyState
+                                    :icon="ShieldCheckIcon"
+                                    title="No hay crashes"
+                                    description="El bot no ha reportado ningún crash todavía. ¡Buena señal!"
+                                />
                             </td>
                         </tr>
                     </tbody>

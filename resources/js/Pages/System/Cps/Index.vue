@@ -3,6 +3,18 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { confirmAction } from '@/utils/swal';
 import { computed, ref } from 'vue';
+import StatCard from '@/Components/Admin/StatCard.vue';
+import EmptyState from '@/Components/Admin/EmptyState.vue';
+import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
+import {
+    BuildingOffice2Icon,
+    PencilSquareIcon,
+    PauseCircleIcon,
+    PlayCircleIcon,
+    TrashIcon,
+    UserCircleIcon,
+    PlusIcon,
+} from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     cps: { type: Array, default: () => [] },
@@ -116,6 +128,9 @@ const impersonate = (cp) => {
 
 const approveRequest = (req) => router.post(route('admin.cp-requests.approve', req.id), {}, { preserveScroll: true });
 const rejectRequest  = (req) => router.post(route('admin.cp-requests.reject', req.id), {}, { preserveScroll: true });
+
+const totalMembers = computed(() => props.cps.reduce((sum, cp) => sum + Number(cp.members_count || 0), 0));
+const activeCount = computed(() => props.cps.filter((cp) => cp.is_active).length);
 </script>
 
 <template>
@@ -124,14 +139,21 @@ const rejectRequest  = (req) => router.post(route('admin.cp-requests.reject', re
         <div class="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
 
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $t('system.cps.page_title') }}</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $t('system.cps.subtitle') }}</p>
-                </div>
-                <button @click="createModalOpen = true" class="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg bg-purple-600 hover:bg-purple-500 text-white">
-                    {{ $t('system.cps.action.new') }}
-                </button>
+            <AdminPageHeader :title="$t('system.cps.page_title')" :subtitle="$t('system.cps.subtitle')">
+                <template #actions>
+                    <button @click="createModalOpen = true" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20">
+                        <PlusIcon class="w-4 h-4" aria-hidden="true" />
+                        {{ $t('system.cps.action.new') }}
+                    </button>
+                </template>
+            </AdminPageHeader>
+
+            <!-- KPI overview -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total CPs" :value="cps.length" emoji="🛡️" accent="blue" />
+                <StatCard label="Activas" :value="activeCount" emoji="✅" accent="emerald" :subtitle="`${cps.length - activeCount} inactivas`" />
+                <StatCard label="Miembros (total)" :value="totalMembers" emoji="👥" accent="purple" />
+                <StatCard label="Solicitudes pendientes" :value="pendingRequests.length" emoji="📨" accent="amber" prominent />
             </div>
 
             <!-- Pending CP requests -->
@@ -183,17 +205,17 @@ const rejectRequest  = (req) => router.post(route('admin.cp-requests.reject', re
             </div>
 
             <!-- Table -->
-            <div class="bg-white dark:bg-gray-800 shadow rounded-2xl overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-2xl overflow-hidden overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr class="text-left text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400">
                             <th class="px-4 py-3">{{ $t('system.cps.col.name') }}</th>
-                            <th class="px-4 py-3">{{ $t('system.cps.col.chronicle') }}</th>
-                            <th class="px-4 py-3">{{ $t('system.cps.col.leader') }}</th>
+                            <th class="px-4 py-3 hidden md:table-cell">{{ $t('system.cps.col.chronicle') }}</th>
+                            <th class="px-4 py-3 hidden lg:table-cell">{{ $t('system.cps.col.leader') }}</th>
                             <th class="px-4 py-3 text-center">{{ $t('system.cps.col.members') }}</th>
-                            <th class="px-4 py-3 text-right">{{ $t('system.cps.col.cp_fund') }}</th>
-                            <th class="px-4 py-3 text-center">{{ $t('system.cps.col.reports') }}</th>
-                            <th class="px-4 py-3">{{ $t('system.cps.col.last_activity') }}</th>
+                            <th class="px-4 py-3 text-right hidden md:table-cell">{{ $t('system.cps.col.cp_fund') }}</th>
+                            <th class="px-4 py-3 text-center hidden lg:table-cell">{{ $t('system.cps.col.reports') }}</th>
+                            <th class="px-4 py-3 hidden xl:table-cell">{{ $t('system.cps.col.last_activity') }}</th>
                             <th class="px-4 py-3 text-right">{{ $t('system.cps.col.actions') }}</th>
                         </tr>
                     </thead>
@@ -207,38 +229,50 @@ const rejectRequest  = (req) => router.post(route('admin.cp-requests.reject', re
                                 </Link>
                                 <div v-if="cp.server" class="text-[11px] text-gray-500 dark:text-gray-400">{{ cp.server }}</div>
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 hidden md:table-cell">
                                 <span class="text-[10px] font-black border px-2 py-0.5 rounded uppercase" :class="chronicleColor(cp.chronicle)">{{ cp.chronicle }}</span>
                             </td>
-                            <td class="px-4 py-3 text-sm">
+                            <td class="px-4 py-3 text-sm hidden lg:table-cell">
                                 <span v-if="cp.leader">{{ cp.leader.name }}</span>
                                 <span v-else class="italic text-gray-400">—</span>
                             </td>
                             <td class="px-4 py-3 text-center font-mono">{{ cp.members_count }}</td>
-                            <td class="px-4 py-3 text-right font-mono text-amber-700 dark:text-amber-300">{{ formatAdena(cp.cp_fund_adena) }}</td>
-                            <td class="px-4 py-3 text-center font-mono text-gray-500">{{ cp.confirmed_reports_count }}</td>
-                            <td class="px-4 py-3 text-xs text-gray-500">{{ formatDate(cp.last_activity_at) }}</td>
+                            <td class="px-4 py-3 text-right font-mono text-amber-700 dark:text-amber-300 hidden md:table-cell">{{ formatAdena(cp.cp_fund_adena) }}</td>
+                            <td class="px-4 py-3 text-center font-mono text-gray-500 hidden lg:table-cell">{{ cp.confirmed_reports_count }}</td>
+                            <td class="px-4 py-3 text-xs text-gray-500 hidden xl:table-cell">{{ formatDate(cp.last_activity_at) }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center gap-1">
                                     <button v-if="cp.leader?.id" @click="impersonate(cp)"
-                                            class="p-1.5 rounded text-xs bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 transition"
-                                            :title="$t('system.cps.action.impersonate')">🎭</button>
+                                            class="p-1.5 rounded bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 transition"
+                                            :title="$t('system.cps.action.impersonate')">
+                                        <UserCircleIcon class="w-4 h-4" aria-hidden="true" />
+                                    </button>
                                     <button @click="openEdit(cp)"
-                                            class="p-1.5 rounded text-xs bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 transition"
-                                            :title="$t('system.cps.action.edit')">✏️</button>
+                                            class="p-1.5 rounded bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 transition"
+                                            :title="$t('system.cps.action.edit')">
+                                        <PencilSquareIcon class="w-4 h-4" aria-hidden="true" />
+                                    </button>
                                     <button @click="toggleActive(cp)"
-                                            class="p-1.5 rounded text-xs transition"
+                                            class="p-1.5 rounded transition"
                                             :class="cp.is_active ? 'bg-yellow-100 hover:bg-yellow-600 hover:text-white text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' : 'bg-emerald-100 hover:bg-emerald-600 hover:text-white text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'"
-                                            :title="cp.is_active ? $t('system.cps.action.deactivate') : $t('system.cps.action.activate')">{{ cp.is_active ? '⏸️' : '✅' }}</button>
+                                            :title="cp.is_active ? $t('system.cps.action.deactivate') : $t('system.cps.action.activate')">
+                                        <PauseCircleIcon v-if="cp.is_active" class="w-4 h-4" aria-hidden="true" />
+                                        <PlayCircleIcon v-else class="w-4 h-4" aria-hidden="true" />
+                                    </button>
                                     <button v-if="cp.members_count === 0" @click="destroy(cp)"
-                                            class="p-1.5 rounded text-xs bg-red-100 hover:bg-red-600 hover:text-white text-red-700 dark:bg-red-900/30 dark:text-red-300 transition"
-                                            :title="$t('common.delete')">🗑️</button>
+                                            class="p-1.5 rounded bg-red-100 hover:bg-red-600 hover:text-white text-red-700 dark:bg-red-900/30 dark:text-red-300 transition"
+                                            :title="$t('common.delete')">
+                                        <TrashIcon class="w-4 h-4" aria-hidden="true" />
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                         <tr v-if="!filtered.length">
-                            <td colspan="8" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400 italic">
-                                {{ $t('system.cps.empty') }}
+                            <td colspan="8" class="px-0 py-0">
+                                <EmptyState
+                                    :icon="BuildingOffice2Icon"
+                                    :title="$t('system.cps.empty')"
+                                />
                             </td>
                         </tr>
                     </tbody>

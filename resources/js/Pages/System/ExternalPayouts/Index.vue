@@ -3,6 +3,10 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { confirmAction } from '@/utils/swal';
 import { computed } from 'vue';
+import StatCard from '@/Components/Admin/StatCard.vue';
+import EmptyState from '@/Components/Admin/EmptyState.vue';
+import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
+import { BanknotesIcon, CheckCircleIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     payouts: { type: Array, default: () => [] },
@@ -41,15 +45,21 @@ const $t = (key, params = {}) => {
     if (!raw || typeof raw !== 'string') return raw;
     return raw.replace(/\{(\w+)\}/g, (m, p1) => Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : m);
 };
+
+const pendingTotal = computed(() => props.payouts.filter((p) => !p.paid_at).reduce((s, p) => s + Number(p.share_adena || 0), 0));
+const paidTotal = computed(() => props.payouts.filter((p) => p.paid_at).reduce((s, p) => s + Number(p.share_adena || 0), 0));
 </script>
 
 <template>
     <Head :title="$t('system.external_payouts.title')" />
     <MainLayout>
         <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-            <div>
-                <h1 class="text-2xl font-bold dark:text-white">{{ $t('system.external_payouts.title') }}</h1>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-3xl">{{ $t('system.external_payouts.subtitle') }}</p>
+            <AdminPageHeader :title="$t('system.external_payouts.title')" :subtitle="$t('system.external_payouts.subtitle')" />
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard label="Entradas" :value="payouts.length" emoji="📋" accent="neutral" />
+                <StatCard label="Pendiente" :value="formatAdena(pendingTotal)" emoji="⏳" accent="amber" prominent />
+                <StatCard label="Pagado" :value="formatAdena(paidTotal)" emoji="✅" accent="emerald" prominent />
             </div>
 
             <div class="flex gap-2">
@@ -91,10 +101,13 @@ const $t = (key, params = {}) => {
                             </td>
                         </tr>
                         <tr v-if="!payouts.length">
-                            <td colspan="5" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400 text-sm italic">
-                                {{ filter === 'paid'
-                                    ? $t('system.external_payouts.empty.paid')
-                                    : $t('system.external_payouts.empty.pending') }}
+                            <td colspan="5" class="px-0 py-0">
+                                <EmptyState
+                                    :icon="filter === 'paid' ? CheckCircleIcon : BanknotesIcon"
+                                    :title="filter === 'paid'
+                                        ? $t('system.external_payouts.empty.paid')
+                                        : $t('system.external_payouts.empty.pending')"
+                                />
                             </td>
                         </tr>
                     </tbody>

@@ -4,6 +4,9 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import MarketPriceCell from '@/Components/MarketPriceCell.vue';
 import { throttle } from 'lodash';
+import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
+import EmptyState from '@/Components/Admin/EmptyState.vue';
+import { CubeIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 
 const page = usePage();
 const localeTag = computed(() => (page.props.app?.locale === 'es' ? 'es-ES' : 'en-US'));
@@ -100,12 +103,14 @@ const getGradeColor = (itemGrade) => {
 
     <MainLayout>
         <template #header>
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 class="l2-title text-2xl text-purple-700 dark:text-purple-300 tracking-wider">{{ pageTitle }}</h2>
-                <div class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span class="font-bold text-purple-700 dark:text-purple-300">{{ items.total }}</span> {{ $t('system.items.items_found') }}
-                </div>
-            </div>
+            <AdminPageHeader :title="pageTitle">
+                <template #actions>
+                    <div class="px-3 py-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 flex items-center gap-2 text-xs">
+                        <span class="font-cinzel text-lg text-purple-700 dark:text-purple-300">{{ items.total }}</span>
+                        <span class="text-purple-600 dark:text-purple-400 font-bold uppercase tracking-widest">{{ $t('system.items.items_found') }}</span>
+                    </div>
+                </template>
+            </AdminPageHeader>
         </template>
 
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -174,7 +179,7 @@ const getGradeColor = (itemGrade) => {
                                                 class="w-full h-full object-contain"
                                                 alt="item icon"
                                             >
-                                            <svg v-else class="w-6 h-6 text-gray-600 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            <PhotoIcon v-else class="w-6 h-6 text-gray-500 dark:text-gray-600" aria-hidden="true" />
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-bold text-gray-900 dark:text-white">{{ item.name }}</div>
@@ -223,6 +228,11 @@ const getGradeColor = (itemGrade) => {
                         </tbody>
                     </table>
                 </div>
+                <EmptyState
+                    v-if="!items.data || items.data.length === 0"
+                    :icon="CubeIcon"
+                    :title="$t('system.items.no_items_found', 'Sin items para los filtros actuales')"
+                />
             </div>
 
             <!-- Pagination -->

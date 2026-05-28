@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { Line } from 'vue-chartjs';
 import { confirmAction, showToast as swalToast } from '../utils/swal';
+import StatCard from './Admin/StatCard.vue';
 import {
   Chart as ChartJS,
   Title,
@@ -201,33 +202,10 @@ const rejectRequest = async (req) => {
     <div class="space-y-8 animate-in fade-in duration-700">
         <!-- Global Engagement & Analytics -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">📈</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Tráfico (24h)</div>
-                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_visits_24h }}</div>
-                <div class="mt-2 text-[10px] text-purple-500 font-bold uppercase tracking-widest">Visitas Totales</div>
-            </div>
-
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🟢</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">DAU (24h)</div>
-                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.active_users_24h }}</div>
-                <div class="mt-2 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Usuarios Únicos</div>
-            </div>
-
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">⚡</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">En Tiempo Real (1h)</div>
-                <div class="text-4xl font-cinzel text-indigo-600 dark:text-indigo-400 font-black">{{ stats.active_users_1h }}</div>
-                <div class="mt-2 text-[10px] text-indigo-500 font-bold uppercase tracking-widest">Sesiones Activas</div>
-            </div>
-
-            <div class="l2-panel p-6 rounded-3xl border-gray-200 dark:border-gray-800 shadow-xl relative overflow-hidden group transition-all">
-                <div class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform">🛡️</div>
-                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">CPs Activas</div>
-                <div class="text-4xl font-cinzel text-gray-900 dark:text-white">{{ stats.total_cps }}</div>
-                <div class="mt-2 text-[10px] text-blue-500 font-bold uppercase tracking-widest">de {{ stats.total_cps_all }} totales</div>
-            </div>
+            <StatCard label="Tráfico (24h)" :value="stats.total_visits_24h" emoji="📈" accent="purple" subtitle="Visitas Totales" />
+            <StatCard label="DAU (24h)" :value="stats.active_users_24h" emoji="🟢" accent="emerald" subtitle="Usuarios Únicos" />
+            <StatCard label="En Tiempo Real (1h)" :value="stats.active_users_1h" emoji="⚡" accent="indigo" subtitle="Sesiones Activas" prominent />
+            <StatCard label="CPs Activas" :value="stats.total_cps" emoji="🛡️" accent="blue" :subtitle="`de ${stats.total_cps_all} totales`" />
         </div>
 
         <!-- System Totals -->

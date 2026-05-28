@@ -8,7 +8,11 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import Checkbox from '@/Components/Checkbox.vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import StatCard from '@/Components/Admin/StatCard.vue';
+import EmptyState from '@/Components/Admin/EmptyState.vue';
+import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
+import { CloudArrowUpIcon, ArchiveBoxIcon } from '@heroicons/vue/24/outline';
 import { confirmAction } from '@/utils/swal';
 
 const props = defineProps({
@@ -16,6 +20,13 @@ const props = defineProps({
 });
 
 const showForm = ref(false);
+
+const publishedCount = computed(() => (props.releases || []).filter((r) => r.published_at).length);
+const totalDownloads = computed(() => (props.releases || []).reduce((s, r) => s + Number(r.download_count || 0), 0));
+const lastReleaseDate = computed(() => {
+    const r = (props.releases || []).find((x) => x.released_at);
+    return r?.released_at ? String(r.released_at).slice(0, 10) : '—';
+});
 
 const form = useForm({
     name: '',
@@ -64,11 +75,20 @@ const human = (bytes) => {
     <Head title="Releases" />
     <MainLayout>
         <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-            <div class="flex items-center justify-between">
-                <h1 class="text-2xl font-bold dark:text-white">Releases (AdenaLedgerStats)</h1>
-                <PrimaryButton @click="showForm = !showForm">
-                    {{ showForm ? 'Cancel' : 'New release' }}
-                </PrimaryButton>
+            <AdminPageHeader title="Releases" subtitle="AdenaLedgerStats — desktop bot">
+                <template #actions>
+                    <PrimaryButton @click="showForm = !showForm">
+                        <CloudArrowUpIcon class="w-4 h-4 mr-2" aria-hidden="true" />
+                        {{ showForm ? 'Cancel' : 'New release' }}
+                    </PrimaryButton>
+                </template>
+            </AdminPageHeader>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Releases" :value="releases.length" emoji="📦" accent="neutral" />
+                <StatCard label="Published" :value="publishedCount" emoji="🚀" accent="emerald" />
+                <StatCard label="Total downloads" :value="totalDownloads" emoji="⬇️" accent="purple" prominent />
+                <StatCard label="Last release" :value="lastReleaseDate" emoji="🕒" accent="blue" />
             </div>
 
             <div v-if="showForm" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
@@ -183,8 +203,12 @@ const human = (bytes) => {
                             </td>
                         </tr>
                         <tr v-if="!releases.length">
-                            <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                                No releases yet. Upload your first build above.
+                            <td colspan="9" class="px-0 py-0">
+                                <EmptyState
+                                    :icon="ArchiveBoxIcon"
+                                    title="No releases yet"
+                                    description="Upload your first build using the form above."
+                                />
                             </td>
                         </tr>
                     </tbody>
