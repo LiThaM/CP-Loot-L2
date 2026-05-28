@@ -92,28 +92,69 @@ class LootController extends Controller
             }
         }
 
+        // ---- Bulk hydration (one query each instead of one-per-report) ----
+
+        // 1. Recipients: collect every recipient_id in the page, fetch once,
+        //    key by id. The map() below picks the relevant subset per report.
+        $allRecipientIds = collect();
+        foreach ($collection as $r) {
+            if (is_array($r->recipient_ids)) {
+                $allRecipientIds = $allRecipientIds->concat($r->recipient_ids);
+            }
+        }
+        $recipientsById = $allRecipientIds->unique()->isNotEmpty()
+            ? User::whereIn('id', $allRecipientIds->unique()->values())->get(['id', 'name'])->keyBy('id')
+            : collect();
+
+        // 2. The synthetic Adena entry for ADENA_PAYOUT/ADENA_GRANT reports
+        //    that arrived without entries. Look up the Adena item once and
+        //    batch-load every PointsLog whose description mentions any of
+        //    the relevant report ids — then index by id via regex on the
+        //    description.
+        $adenaReportIds = $collection
+            ->whereIn('event_type', ['ADENA_PAYOUT', 'ADENA_GRANT'])
+            ->filter(fn ($r) => $r->entries->count() === 0)
+            ->pluck('id')
+            ->all();
+        $adenaItem = ! empty($adenaReportIds)
+            ? Item::whereRaw('LOWER(name) = ?', ['adena'])->first()
+            : null;
+        $pointsLogByReport = [];
+        if (! empty($adenaReportIds) && $adenaItem) {
+            $logs = PointsLog::where('cp_id', $user->cp_id)
+                ->where(function ($q) use ($adenaReportIds) {
+                    foreach ($adenaReportIds as $rid) {
+                        $q->orWhere('description', 'like', '%Reporte #'.$rid.'%');
+                    }
+                })
+                ->orderBy('created_at')
+                ->get(['id', 'description', 'adena']);
+            foreach ($logs as $log) {
+                if (preg_match('/Reporte #(\d+)/', (string) $log->description, $m)) {
+                    $rid = (int) $m[1];
+                    // Keep the earliest log per report (orderBy created_at).
+                    $pointsLogByReport[$rid] ??= $log;
+                }
+            }
+        }
+
         $historyPaginator->setCollection(
-            $collection->map(function ($report) use ($craftProduceMap) {
+            $collection->map(function ($report) use ($craftProduceMap, $recipientsById, $adenaItem, $pointsLogByReport) {
                 $ids = is_array($report->recipient_ids) ? $report->recipient_ids : [];
-                $report->recipients = $ids ? User::whereIn('id', $ids)->get(['id', 'name']) : collect();
+                $report->recipients = $ids
+                    ? $recipientsById->only($ids)->values()
+                    : collect();
 
-                if (in_array($report->event_type, ['ADENA_PAYOUT', 'ADENA_GRANT'], true) && $report->entries->count() === 0) {
-                    $adenaItem = Item::whereRaw('LOWER(name) = ?', ['adena'])->first();
-                    if ($adenaItem) {
-                        $log = PointsLog::where('cp_id', $report->cp_id)
-                            ->where('description', 'like', '%Reporte #'.$report->id.'%')
-                            ->orderBy('created_at')
-                            ->first();
-
-                        if ($log) {
-                            $report->setRelation('entries', collect([
-                                [
-                                    'id' => 'virtual-'.$report->id,
-                                    'item' => $adenaItem,
-                                    'amount' => abs((int) $log->adena),
-                                ],
-                            ]));
-                        }
+                if (in_array($report->event_type, ['ADENA_PAYOUT', 'ADENA_GRANT'], true) && $report->entries->count() === 0 && $adenaItem) {
+                    $log = $pointsLogByReport[$report->id] ?? null;
+                    if ($log) {
+                        $report->setRelation('entries', collect([
+                            [
+                                'id' => 'virtual-'.$report->id,
+                                'item' => $adenaItem,
+                                'amount' => abs((int) $log->adena),
+                            ],
+                        ]));
                     }
                 }
 
