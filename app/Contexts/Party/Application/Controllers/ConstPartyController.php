@@ -142,8 +142,7 @@ class ConstPartyController extends Controller
 
     public function store(Request $request)
     {
-        // ... (existing code remains same)
-        if ($request->user()->role->name !== 'admin') {
+        if ($request->user()->role?->name !== 'admin') {
             abort(403, 'Unauthorized action.');
         }
 

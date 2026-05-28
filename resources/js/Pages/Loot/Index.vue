@@ -290,16 +290,35 @@ const submitResolve = () => {
     });
 };
 
+// Tracks reports with an in-flight resolve/reject so the action buttons
+// disable themselves until the round-trip finishes. Prevents the
+// double-click double-submit that the previous version had.
+const inflightReports = ref(new Set());
+const isReportInflight = (reportId) => inflightReports.value.has(reportId);
+const markInflight = (reportId, on) => {
+    const next = new Set(inflightReports.value);
+    if (on) next.add(reportId); else next.delete(reportId);
+    inflightReports.value = next;
+};
+
 const rejectReport = async (report) => {
+    if (isReportInflight(report.id)) return;
     if (await confirmAction(t('loot.swal.reject_title'), t('loot.swal.reject_text'), t('loot.swal.reject_confirm'), t('common.cancel'))) {
-        router.post(route('loot.report.resolve', { report: report.id }), {
-            status: 'rejected'
+        markInflight(report.id, true);
+        router.post(route('loot.report.resolve', { report: report.id }), { status: 'rejected' }, {
+            preserveScroll: true,
+            onFinish: () => markInflight(report.id, false),
         });
     }
 };
 
 const resolveQuick = (report, status) => {
-    router.post(route('loot.report.resolve', { report: report.id }), { status }, { preserveScroll: true });
+    if (isReportInflight(report.id)) return;
+    markInflight(report.id, true);
+    router.post(route('loot.report.resolve', { report: report.id }), { status }, {
+        preserveScroll: true,
+        onFinish: () => markInflight(report.id, false),
+    });
 };
 
 const isAdenaEntry = (entry) => String(entry?.item?.name || '').toLowerCase() === 'adena';
@@ -610,12 +629,12 @@ onMounted(async () => {
                             <template #extra>
                                 <div class="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-2">
                                     <template v-if="report.event_type === 'RETURN'">
-                                        <button @click="resolveQuick(report, 'confirmed')" class="w-full py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition">{{ $t('loot.accept_return') }}</button>
-                                        <button @click="resolveQuick(report, 'rejected')" class="w-full py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30">{{ $t('loot.reject_return') }}</button>
+                                        <button @click="resolveQuick(report, 'confirmed')" :disabled="isReportInflight(report.id)" class="w-full py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.accept_return') }}</button>
+                                        <button @click="resolveQuick(report, 'rejected')" :disabled="isReportInflight(report.id)" class="w-full py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.reject_return') }}</button>
                                     </template>
                                     <template v-else>
                                         <button @click="openResolveModal(report)" class="w-full py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition">{{ $t('loot.edit_and_approve') }}</button>
-                                        <button @click="rejectReport(report)" class="w-full py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30">{{ $t('loot.reject') }}</button>
+                                        <button @click="rejectReport(report)" :disabled="isReportInflight(report.id)" class="w-full py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.reject') }}</button>
                                     </template>
                                 </div>
                             </template>
@@ -624,11 +643,11 @@ onMounted(async () => {
 
                     <div v-if="isLeader" class="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-100/50 dark:bg-black/20 flex gap-3">
                         <template v-if="report.event_type === 'RETURN'">
-                            <button @click="resolveQuick(report, 'rejected')" class="flex-1 py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30">{{ $t('loot.reject') }}</button>
-                            <button @click="resolveQuick(report, 'confirmed')" class="flex-[2] py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition shadow-lg shadow-purple-950/20">{{ $t('loot.accept') }}</button>
+                            <button @click="resolveQuick(report, 'rejected')" :disabled="isReportInflight(report.id)" class="flex-1 py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.reject') }}</button>
+                            <button @click="resolveQuick(report, 'confirmed')" :disabled="isReportInflight(report.id)" class="flex-[2] py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition shadow-lg shadow-purple-950/20 disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.accept') }}</button>
                         </template>
                         <template v-else>
-                            <button @click="rejectReport(report)" class="flex-1 py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30">{{ $t('loot.reject') }}</button>
+                            <button @click="rejectReport(report)" :disabled="isReportInflight(report.id)" class="flex-1 py-2 bg-gray-800 hover:bg-red-950/30 hover:text-red-500 rounded-lg text-[10px] uppercase font-black tracking-widest transition border border-transparent hover:border-red-900/30 disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.reject') }}</button>
                             <button @click="openResolveModal(report)" class="flex-[2] py-2 bg-gradient-to-tr from-purple-600/80 to-blue-600/80 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest transition shadow-lg shadow-purple-950/20">{{ $t('loot.approve_and_distribute') }}</button>
                         </template>
                     </div>
@@ -667,11 +686,11 @@ onMounted(async () => {
                                 <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
                                 <td class="px-4 py-2 text-right whitespace-nowrap" @click.stop>
                                     <template v-if="report.event_type === 'RETURN'">
-                                        <button @click="resolveQuick(report, 'rejected')" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
-                                        <button @click="resolveQuick(report, 'confirmed')" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.accept') }}</button>
+                                        <button @click="resolveQuick(report, 'rejected')" :disabled="isReportInflight(report.id)" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.reject') }}</button>
+                                        <button @click="resolveQuick(report, 'confirmed')" :disabled="isReportInflight(report.id)" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.accept') }}</button>
                                     </template>
                                     <template v-else>
-                                        <button @click="rejectReport(report)" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md">{{ $t('loot.reject') }}</button>
+                                        <button @click="rejectReport(report)" :disabled="isReportInflight(report.id)" class="px-2 py-1 mr-1 text-[9px] font-black uppercase tracking-widest bg-gray-800 hover:bg-red-700 text-white rounded-md disabled:opacity-40 disabled:cursor-not-allowed">{{ $t('loot.reject') }}</button>
                                         <button @click="openResolveModal(report)" class="px-2 py-1 text-[9px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-500 text-white rounded-md">{{ $t('loot.approve_and_distribute') }}</button>
                                     </template>
                                 </td>

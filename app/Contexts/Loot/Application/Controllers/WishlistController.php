@@ -13,16 +13,17 @@ class WishlistController extends Controller
      */
     public function store(Request $request)
     {
+        // Auth gate FIRST so a non-leader can't probe item ids through
+        // 422 vs 403 timing/error-shape differences.
+        $user = $request->user();
+        if (! $user->cp_id || $user->id !== $user->cp->leader_id) {
+            abort(403, 'Solo el líder puede gestionar la wishlist.');
+        }
+
         $request->validate([
             'item_id' => 'required|exists:items,id',
             'priority' => 'required|in:low,medium,high',
         ]);
-
-        $user = $request->user();
-
-        if (! $user->cp_id || $user->id !== $user->cp->leader_id) {
-            abort(403, 'Solo el líder puede gestionar la wishlist.');
-        }
 
         Wishlist::updateOrCreate(
             ['cp_id' => $user->cp_id, 'item_id' => $request->item_id],

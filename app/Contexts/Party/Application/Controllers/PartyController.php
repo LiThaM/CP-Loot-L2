@@ -522,6 +522,13 @@ class PartyController extends Controller
             abort(403);
         }
 
+        // Even an admin needs the target user to still belong to a CP — a
+        // dangling user with cp_id = null would otherwise spill warehouse
+        // logs scoped to NULL across the response.
+        if (! $user->cp_id) {
+            abort(404);
+        }
+
         $cpId = $isAdmin ? $user->cp_id : $current->cp_id;
 
         $adenaGained = (int) PointsLog::where('cp_id', $cpId)
