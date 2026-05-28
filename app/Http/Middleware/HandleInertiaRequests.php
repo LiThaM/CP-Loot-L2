@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\Party\Domain\Models\CpRule;
 use App\Contexts\System\Domain\Models\ChangelogEntry;
 use App\Contexts\System\Domain\Models\Translation;
 use Illuminate\Http\Request;
@@ -94,6 +95,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'changelog' => fn () => $this->changelogSummary($authUser, $isBanned),
+            'cpRules' => fn () => $this->cpRulesSummary($authUser, $isBanned),
             'translations' => $translations,
         ];
     }
@@ -141,5 +143,42 @@ class HandleInertiaRequests extends Middleware
         }
 
         return ['unreadCount' => (int) $count, 'items' => $items];
+    }
+
+    /**
+     * CP rules acceptance state. Drives the blocking modal in MainLayout —
+     * `mustAccept` is true whenever the user's CP has a rule document
+     * whose version is ahead of the user's `cp_rules_accepted_version`.
+     */
+    private function cpRulesSummary(?User $user, bool $isBanned): array
+    {
+        $empty = ['hasRules' => false, 'mustAccept' => false, 'current' => null];
+        if (!$user || $isBanned || !$user->cp_id) {
+            return $empty;
+        }
+
+        try {
+            $rule = CpRule::with('updatedBy:id,name')->where('cp_id', $user->cp_id)->first();
+            if (!$rule) {
+                return $empty;
+            }
+
+            $accepted = (int) ($user->cp_rules_accepted_version ?? 0);
+            $version = (int) $rule->version;
+
+            return [
+                'hasRules' => true,
+                'mustAccept' => $accepted < $version,
+                'acceptedVersion' => $accepted,
+                'current' => [
+                    'version' => $version,
+                    'body' => $rule->body,
+                    'updated_at' => $rule->updated_at?->toIso8601String(),
+                    'updated_by' => $rule->updatedBy?->name,
+                ],
+            ];
+        } catch (\Throwable $e) {
+            return $empty;
+        }
     }
 }

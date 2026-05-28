@@ -57,4 +57,9 @@ class ConstParty extends Model
     {
         return $this->hasMany(CpEventConfig::class, 'cp_id');
     }
+
+    public function rules()
+    {
+        return $this->hasOne(CpRule::class, 'cp_id');
+    }
 }

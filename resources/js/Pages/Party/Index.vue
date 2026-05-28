@@ -11,6 +11,7 @@ import { throttle } from 'lodash';
 import axios from 'axios';
 import emitter from '@/event-bus';
 import { confirmAction, showToast, showAlert } from '@/utils/swal';
+import RulesView from '@/Components/CpRules/RulesView.vue';
 
 const props = defineProps({
     has_cp: Boolean,
@@ -248,6 +249,40 @@ const submitCpSettings = () => {
         preserveScroll: true,
         onSuccess: () => {
             showToast(t('cp.settings.success'));
+        },
+    });
+};
+
+// CP rules editor — leader-only. Reads the current rule from shared props
+// (so we don't need an extra controller fetch); on save, the middleware
+// re-emits the prop with the new version, RulesView updates and the
+// leader's accepted_version is bumped server-side in the same request.
+const cpRulesShared = computed(() => page.props.cpRules || { hasRules: false, mustAccept: false, current: null });
+const cpRulesEditorOpen = ref(false);
+const cpRulesForm = useForm({ body: '' });
+const openCpRulesEditor = () => {
+    cpRulesForm.body = cpRulesShared.value.current?.body || '';
+    cpRulesForm.clearErrors();
+    cpRulesEditorOpen.value = true;
+};
+const submitCpRules = async () => {
+    if (!cpRulesForm.body || !cpRulesForm.body.trim()) {
+        cpRulesForm.setError('body', t('validation.required'));
+        return;
+    }
+    const confirmed = await confirmAction(
+        t('cp.rules.editor.confirm_save_title'),
+        t('cp.rules.editor.confirm_save_text'),
+        t('cp.rules.editor.confirm_save_yes'),
+        t('cp.rules.editor.cancel'),
+    );
+    if (!confirmed) return;
+    cpRulesForm.post(route('cp.rules.update'), {
+        preserveScroll: true,
+        only: ['cpRules', 'auth', 'flash'],
+        onSuccess: () => {
+            cpRulesEditorOpen.value = false;
+            showToast(t('cp.rules.saved'));
         },
     });
 };
@@ -1479,6 +1514,10 @@ watch(buySearch, throttle(async (val) => {
                     <button @click="activeTab = 'members'" :class="activeTab === 'members' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.members') }}</button>
                     <button @click="activeTab = 'warehouse_cp'" :class="activeTab === 'warehouse_cp' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.vault') }}</button>
                     <button @click="activeTab = 'crafting'" :class="activeTab === 'crafting' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.crafting') }}</button>
+                    <button @click="activeTab = 'rules'" :class="activeTab === 'rules' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                        {{ $t('cp.rules.tab') }}
+                        <span v-if="cpRulesShared.mustAccept" class="w-2 h-2 rounded-full bg-red-500 animate-pulse" :title="$t('cp.rules.pending_badge')"></span>
+                    </button>
                     <button v-if="isLeader" @click="activeTab = 'config'" :class="activeTab === 'config' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.points_settings') }}</button>
                     <button v-if="isLeader" @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'text-gray-900 border-b-2 border-purple-500 pb-2 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-300'" class="text-xs font-black uppercase tracking-widest transition-all">{{ $t('party.tabs.settings') }}</button>
                 </div>
@@ -2273,6 +2312,61 @@ watch(buySearch, throttle(async (val) => {
                             </button>
                         </div>
                     </template>
+                </div>
+            </Modal>
+
+            <!-- Rules Tab (Members read, Leader edits) -->
+            <div v-if="activeTab === 'rules'" class="space-y-6">
+                <div class="l2-panel p-8 rounded-3xl border-gray-800">
+                    <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                            <h3 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('cp.rules.title') }}</h3>
+                            <p class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">{{ $t('cp.rules.subtitle') }}</p>
+                        </div>
+                        <button v-if="isLeader" @click="openCpRulesEditor"
+                                class="shrink-0 px-4 py-2 rounded-xl bg-gradient-to-tr from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white text-[10px] font-black uppercase tracking-widest transition shadow-lg shadow-amber-900/20">
+                            {{ cpRulesShared.hasRules ? $t('cp.rules.edit_button') : $t('cp.rules.empty_leader_cta') }}
+                        </button>
+                    </div>
+
+                    <RulesView
+                        v-if="cpRulesShared.hasRules"
+                        :rule="cpRulesShared.current"
+                        :accepted-version="cpRulesShared.acceptedVersion"
+                    />
+                    <div v-else class="py-12 text-center text-gray-600 dark:text-gray-500 italic">
+                        {{ isLeader ? '' : $t('cp.rules.empty_member') }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules editor modal (leader only) -->
+            <Modal :show="cpRulesEditorOpen" @close="cpRulesEditorOpen = false" max-width="2xl">
+                <div class="p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-cinzel text-lg text-gray-900 dark:text-white tracking-widest uppercase">{{ $t('cp.rules.editor.title') }}</h3>
+                        <button @click="cpRulesEditorOpen = false" type="button" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <textarea
+                        v-model="cpRulesForm.body"
+                        rows="14"
+                        maxlength="20000"
+                        :placeholder="$t('cp.rules.editor.placeholder')"
+                        class="w-full bg-white border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 focus:border-purple-500 dark:bg-black/40 dark:border-gray-700 dark:text-gray-200 dark:placeholder-gray-600 p-3 text-sm transition resize-y font-mono"
+                    ></textarea>
+                    <div v-if="cpRulesForm.errors.body" class="text-[10px] text-red-500 font-bold uppercase tracking-widest">{{ cpRulesForm.errors.body }}</div>
+                    <div class="flex gap-3">
+                        <button @click="cpRulesEditorOpen = false" type="button"
+                                class="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                            {{ $t('cp.rules.editor.cancel') }}
+                        </button>
+                        <button @click="submitCpRules" type="button" :disabled="cpRulesForm.processing"
+                                class="flex-[2] py-3 bg-gradient-to-tr from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30">
+                            {{ $t('cp.rules.editor.save') }}
+                        </button>
+                    </div>
                 </div>
             </Modal>
 

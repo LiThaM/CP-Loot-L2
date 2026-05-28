@@ -18,6 +18,36 @@ const changelogUnread = computed(() => Number(page.props.changelog?.unreadCount 
 const changelogItems = computed(() => Array.isArray(page.props.changelog?.items) ? page.props.changelog.items : []);
 const changelogModalOpen = ref(false);
 const changelogModalSubmitting = ref(false);
+
+// Blocking CP-rules modal. Driven by middleware-provided `cpRules` shared
+// prop: when the user's current accepted version is behind the published
+// version, the modal opens on mount and cannot be dismissed except by
+// pressing "I accept" (no close button, no ESC, no click-outside).
+const cpRules = computed(() => page.props.cpRules || { hasRules: false, mustAccept: false, current: null });
+const cpRulesModalOpen = ref(false);
+const cpRulesSubmitting = ref(false);
+const localizedCpRulesUpdatedAt = computed(() => {
+    const iso = cpRules.value?.current?.updated_at;
+    if (!iso) return '';
+    try {
+        return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(iso));
+    } catch (_) {
+        return String(iso).slice(0, 10);
+    }
+});
+const acceptCpRules = () => {
+    if (cpRulesSubmitting.value) return;
+    cpRulesSubmitting.value = true;
+    router.post(route('cp.rules.accept'), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['cpRules', 'auth'],
+        onFinish: () => {
+            cpRulesSubmitting.value = false;
+            cpRulesModalOpen.value = false;
+        },
+    });
+};
 const acknowledgeChangelog = () => {
     if (changelogModalSubmitting.value) return;
     changelogModalSubmitting.value = true;
@@ -504,6 +534,17 @@ onMounted(() => {
     const stored = Number(sessionStorage.getItem('lastAlertToastId') || 0);
     if (!stored && currentMaxId) sessionStorage.setItem('lastAlertToastId', String(currentMaxId));
 
+    // CP-rules blocking modal takes priority over changelog — if the
+    // leader has published a newer version than what this user has
+    // accepted, force them to read and accept before doing anything
+    // else. Skipped during impersonation: only the real user should
+    // bump their own accepted_version.
+    const isImpersonating = Boolean(page.props.auth?.isImpersonating);
+    if (cpRules.value?.mustAccept && !isImpersonating) {
+        cpRulesModalOpen.value = true;
+        return;
+    }
+
     // First-open changelog modal: shows once per "unread state". Once
     // the user acknowledges, `changelog_last_seen_at` is bumped server
     // side so unreadCount drops to 0 and the modal won't show again
@@ -752,6 +793,37 @@ watch(() => alerts.value.items, (items) => {
 
             </div>
         </footer>
+
+        <!-- Blocking CP-rules modal. No close affordance: the only way out
+             is to press "I accept". Sits above every other overlay
+             (z-[130] vs changelog's z-[120]). -->
+        <div v-if="cpRulesModalOpen" class="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <div class="l2-panel w-full max-w-2xl max-h-[88vh] rounded-2xl border-amber-500/40 overflow-hidden shadow-2xl flex flex-col">
+                <div class="bg-gradient-to-r from-amber-900 to-red-900 p-4 flex items-center justify-between border-b border-amber-500/30">
+                    <div>
+                        <div class="text-[10px] text-amber-200 font-black uppercase tracking-widest">{{ $t('cp.rules.modal.kicker') }}</div>
+                        <div class="text-lg font-cinzel text-white tracking-widest mt-0.5">{{ $t('cp.rules.modal.title') }}</div>
+                    </div>
+                    <span v-if="cpRules?.current?.version" class="px-2.5 py-1 rounded-full bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest">v{{ cpRules.current.version }}</span>
+                </div>
+                <div class="px-6 pt-4 text-[11px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-widest">
+                    {{ $t('cp.rules.modal.subtitle') }}
+                </div>
+                <div class="px-6 pt-2 pb-1 text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">
+                    {{ $t('cp.rules.version_meta', { version: cpRules?.current?.version, date: localizedCpRulesUpdatedAt, author: cpRules?.current?.updated_by || '—' }) }}
+                </div>
+                <div class="p-6 overflow-y-auto custom-scrollbar text-sm leading-relaxed text-gray-800 dark:text-gray-200 changelog-body" v-html="renderInlineMarkdown(cpRules?.current?.body || '')"></div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-black/30">
+                    <p class="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mb-3">
+                        {{ $t('cp.rules.modal.no_dismiss_hint') }}
+                    </p>
+                    <button @click="acceptCpRules" type="button" :disabled="cpRulesSubmitting"
+                            class="w-full py-3 bg-gradient-to-tr from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest disabled:opacity-30">
+                        {{ $t('cp.rules.modal.accept') }}
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- First-open changelog modal — shows whenever the user has any
              unread web changelog entry, until they acknowledge. -->

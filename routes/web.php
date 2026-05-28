@@ -349,6 +349,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/cp/settings', [ConstPartyController::class, 'update'])->name('cp.settings.update');
     Route::post('/cp/event-config', [CpEventConfigController::class, 'update'])->name('cp.event-config.update');
 
+    // CP Rules — leader edits, members accept (blocking modal when version changes)
+    Route::post('/cp/rules', [\App\Contexts\Party\Application\Controllers\CpRulesController::class, 'update'])->name('cp.rules.update');
+    Route::post('/cp/rules/accept', [\App\Contexts\Party\Application\Controllers\CpRulesController::class, 'accept'])->name('cp.rules.accept');
+
     // Wishlist
     Route::post('/wishlist', [WishlistController::class, 'store'])->name('wishlist.store');
     Route::delete('/wishlist/{wishlist}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
