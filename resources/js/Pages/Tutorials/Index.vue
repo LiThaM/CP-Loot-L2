@@ -7,7 +7,6 @@ import {
     AcademicCapIcon,
     UserGroupIcon,
     ShieldCheckIcon,
-    CommandLineIcon,
     PlayIcon,
 } from '@heroicons/vue/24/outline';
 
@@ -25,6 +24,11 @@ const t = appContext.config.globalProperties.$t;
 // Per-role content. The bullets array references key suffixes 0..3;
 // every key is seeded ES + EN by the tutorials seed migration so the
 // page works in either language without code changes.
+//
+// Admins are intentionally not on this page — the only admin is the
+// app maintainer, who doesn't need a tour of their own product.
+// Admins that visit /tutoriales fall back to the member view via the
+// `ownSection` lookup default.
 const sections = [
     {
         id: 'member',
@@ -39,13 +43,6 @@ const sections = [
         accent: 'text-purple-700 dark:text-purple-300',
         bulletCount: 4,
         tours: ['loot-pending', 'party-vault', 'party-rules', 'craft-bulk'],
-    },
-    {
-        id: 'admin',
-        icon: CommandLineIcon,
-        accent: 'text-amber-700 dark:text-amber-300',
-        bulletCount: 4,
-        tours: ['admin-cps', 'admin-users'],
     },
 ];
 
