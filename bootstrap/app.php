@@ -4,6 +4,7 @@ use App\Contexts\ClientApi\Application\Middleware\LogApiRequest;
 use App\Contexts\ClientApi\Application\Middleware\RequireClientKey;
 use App\Contexts\ClientApi\Application\Middleware\ResolveAnonToken;
 use App\Http\Middleware\EnsureCpMembershipApproved;
+use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
             EnsureCpMembershipApproved::class,
             \App\Http\Middleware\TrackActivity::class,
+        ]);
+
+        // Fuerza JSON en todas las rutas /api/v1/* — evita que un cliente
+        // sin Accept: application/json acabe leyendo HTML de la SPA tras
+        // un redirect implícito de validation/auth.
+        $middleware->api(prepend: [
+            ForceJsonResponse::class,
         ]);
 
         $middleware->alias([
