@@ -195,8 +195,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/changelog/ack', [ChangelogController::class, 'acknowledge'])->name('changelog.ack');
 
     // Per-role tutorials + interactive tour launchers (driver.js).
-    // Pure static page — no controller, just an Inertia render.
-    Route::get('/tutoriales', fn () => \Inertia\Inertia::render('Tutorials/Index'))->name('tutorials.index');
+    // Pure static page; admin bounces to dashboard since this content
+    // is for members and CP leaders only.
+    Route::get('/tutoriales', function (Request $request) {
+        if ($request->user()?->role?->name === 'admin') {
+            return redirect()->route('dashboard');
+        }
+        return \Inertia\Inertia::render('Tutorials/Index');
+    })->name('tutorials.index');
     Route::patch('/system/users/{user}/ban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'banMember'])->name('system.users.ban');
     Route::patch('/system/users/{user}/unban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'unbanMember'])->name('system.users.unban');
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
