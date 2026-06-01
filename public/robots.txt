@@ -1,2 +1,12 @@
 User-agent: *
-Disallow:
+Disallow: /system/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /loot
+Disallow: /party
+Disallow: /warehouse
+Disallow: /profile
+Disallow: /tickets
+
+Sitemap: https://adenaledger.com/sitemap.xml

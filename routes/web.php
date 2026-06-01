@@ -71,6 +71,40 @@ Route::get('/privacy', function () {
     return Inertia::render('Legal/Privacy');
 })->name('legal.privacy');
 
+// Public sitemap. Lists every page a non-authenticated visitor can
+// reach, with hreflang alternates so Google can pair the ES/EN
+// versions. Generated on the fly so adding a new public route only
+// requires editing this array.
+Route::get('/sitemap.xml', function () {
+    $base = rtrim((string) config('app.url', request()->getSchemeAndHttpHost()), '/');
+    $today = now()->toDateString();
+    $urls = [
+        ['path' => '/',          'priority' => '1.0', 'changefreq' => 'weekly'],
+        ['path' => '/download',  'priority' => '0.9', 'changefreq' => 'weekly'],
+        ['path' => '/recipes',   'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['path' => '/terms',     'priority' => '0.3', 'changefreq' => 'yearly'],
+        ['path' => '/privacy',   'priority' => '0.3', 'changefreq' => 'yearly'],
+    ];
+
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'."\n";
+    foreach ($urls as $u) {
+        $loc = htmlspecialchars($base.$u['path'], ENT_XML1);
+        $xml .= "  <url>\n";
+        $xml .= "    <loc>{$loc}</loc>\n";
+        $xml .= "    <lastmod>{$today}</lastmod>\n";
+        $xml .= "    <changefreq>{$u['changefreq']}</changefreq>\n";
+        $xml .= "    <priority>{$u['priority']}</priority>\n";
+        $xml .= "    <xhtml:link rel=\"alternate\" hreflang=\"es\" href=\"{$loc}?lang=es\"/>\n";
+        $xml .= "    <xhtml:link rel=\"alternate\" hreflang=\"en\" href=\"{$loc}?lang=en\"/>\n";
+        $xml .= "    <xhtml:link rel=\"alternate\" hreflang=\"x-default\" href=\"{$loc}\"/>\n";
+        $xml .= "  </url>\n";
+    }
+    $xml .= '</urlset>';
+
+    return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+})->name('sitemap');
+
 Route::prefix('api/public')->middleware('throttle:30,1')->group(function () {
     Route::get('/recipes/search', [PublicCraftingController::class, 'search'])->name('public.recipes.search');
     Route::get('/recipes/{recipe}/tree', [PublicCraftingController::class, 'tree'])->name('public.recipes.tree');
