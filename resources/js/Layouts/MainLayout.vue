@@ -532,8 +532,10 @@ onMounted(() => {
     // First-open changelog modal: shows once per "unread state". Once
     // the user acknowledges, `changelog_last_seen_at` is bumped server
     // side so unreadCount drops to 0 and the modal won't show again
-    // until a new entry is published.
-    if (changelogUnread.value > 0 && changelogItems.value.length > 0) {
+    // until a new entry is published. Skipped during impersonation so
+    // an admin doesn't "eat" the impersonated user's pending notice
+    // (back-end ChangelogController also no-ops in that case).
+    if (changelogUnread.value > 0 && changelogItems.value.length > 0 && !isImpersonating) {
         changelogModalOpen.value = true;
     }
 });

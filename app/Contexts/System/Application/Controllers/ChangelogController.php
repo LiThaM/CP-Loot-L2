@@ -32,7 +32,10 @@ class ChangelogController extends Controller
 
         // Visiting this page clears the navbar pulse badge — drop the
         // "unread" marker by stamping the user's last-seen timestamp.
-        if ($user = $request->user()) {
+        // Skipped during impersonation so the admin doesn't dismiss
+        // the impersonated user's pending notice on their behalf; the
+        // real user still sees their modal on next login.
+        if (($user = $request->user()) && ! $request->session()->has('impersonated_by')) {
             $user->forceFill(['changelog_last_seen_at' => now()])->save();
         }
 
@@ -49,6 +52,13 @@ class ChangelogController extends Controller
      */
     public function acknowledge(Request $request)
     {
+        // Impersonation never bumps the impersonated user's last-seen
+        // timestamp — the real account must keep seeing the modal
+        // when they log in themselves.
+        if ($request->session()->has('impersonated_by')) {
+            return back();
+        }
+
         $user = $request->user();
         if ($user) {
             $user->forceFill(['changelog_last_seen_at' => now()])->save();
