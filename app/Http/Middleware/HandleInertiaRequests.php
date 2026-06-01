@@ -34,7 +34,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $requestedLocale = $request->session()->get('locale') ?: $request->cookie('locale');
+        // Locale resolution priority: ?lang= query (for hreflang
+        // crawlers + manual share links) > session > cookie. Without the
+        // query option, Google would hit /?lang=es and still get the
+        // English document, which breaks the hreflang signal we promise
+        // in app.blade.php.
+        $requestedLocale = $request->query('lang')
+            ?: ($request->session()->get('locale') ?: $request->cookie('locale'));
         if (is_string($requestedLocale) && in_array($requestedLocale, ['en', 'es'], true)) {
             app()->setLocale($requestedLocale);
         }

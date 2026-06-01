@@ -71,6 +71,18 @@ Route::get('/privacy', function () {
     return Inertia::render('Legal/Privacy');
 })->name('legal.privacy');
 
+// Serve the PWA manifest through Laravel so the response carries the
+// correct `application/manifest+json` mime — the static file under
+// /public/manifest.webmanifest gets served as octet-stream by some
+// hosts (cPanel default), which makes Chrome log a console warning.
+Route::get('/manifest.webmanifest', function () {
+    $json = file_get_contents(public_path('manifest.webmanifest'));
+    return response($json, 200, [
+        'Content-Type' => 'application/manifest+json; charset=UTF-8',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+})->name('manifest');
+
 // Public sitemap. Lists every page a non-authenticated visitor can
 // reach, with hreflang alternates so Google can pair the ES/EN
 // versions. Generated on the fly so adding a new public route only
