@@ -8,6 +8,7 @@ const user = page.props.auth.user;
 const form = useForm({
     theme_preference:    user.theme_preference    ?? 'system',
     language_preference: user.language_preference ?? 'system',
+    changelog_emails_enabled: user.changelog_emails_enabled ?? true,
 });
 
 const submit = () => {
@@ -83,6 +84,25 @@ const submit = () => {
                         <span>{{ opt.label }}</span>
                     </button>
                 </div>
+            </div>
+
+            <!-- Changelog email opt-in -->
+            <div>
+                <label class="flex items-start gap-3 cursor-pointer group">
+                    <input
+                        type="checkbox"
+                        v-model="form.changelog_emails_enabled"
+                        class="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-purple-600 focus:ring-purple-500"
+                    >
+                    <span class="flex-1">
+                        <span class="block text-sm font-bold text-gray-900 dark:text-gray-100">
+                            {{ $t('profile.preferences.changelog_emails.label') }}
+                        </span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{ $t('profile.preferences.changelog_emails.help') }}
+                        </span>
+                    </span>
+                </label>
             </div>
 
             <div class="flex items-center gap-4">

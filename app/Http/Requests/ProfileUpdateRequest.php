@@ -28,6 +28,7 @@ class ProfileUpdateRequest extends FormRequest
             ],
             'theme_preference'    => ['sometimes', 'string', 'in:light,dark,system'],
             'language_preference' => ['sometimes', 'string', 'in:es,en,system'],
+            'changelog_emails_enabled' => ['sometimes', 'boolean'],
             // Optional details for the main character — see migration
             // 2026_05_22_000019_add_main_char_fields_to_users.
             'main_class_id' => ['nullable', 'integer', 'exists:l2_classes,id'],

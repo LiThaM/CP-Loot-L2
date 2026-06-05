@@ -20,7 +20,7 @@ class User extends Authenticatable
     // via `User::create($request->all())` or `->update($request->only(...))`.
     // The only legitimate code paths that change a user's role
     // (`UserManagementController::updateRole`) use forceFill() explicitly.
-    protected $fillable = ['name', 'email', 'password', 'cp_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at', 'main_class_id', 'main_race', 'main_level'];
+    protected $fillable = ['name', 'email', 'password', 'cp_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at', 'changelog_emails_enabled', 'main_class_id', 'main_race', 'main_level'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -30,6 +30,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'changelog_last_seen_at' => 'datetime',
+            'changelog_emails_enabled' => 'boolean',
         ];
     }
 

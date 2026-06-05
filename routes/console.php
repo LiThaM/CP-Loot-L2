@@ -21,3 +21,11 @@ Schedule::command('items:recompute-usage')
     ->dailyAt('03:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Email web changelog entries to opted-in CP leaders. Picks up any entry
+// where `notified_at IS NULL` and `audience IN ('web','both')`; sync send
+// because there's no persistent queue:work in production.
+Schedule::command('changelog:notify')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();

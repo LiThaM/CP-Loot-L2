@@ -18,10 +18,12 @@ class ChangelogEntry extends Model
         'body_es',
         'body_en',
         'published_at',
+        'notified_at',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
+        'notified_at' => 'datetime',
     ];
 
     public function scopeForAudience($query, string $audience)
