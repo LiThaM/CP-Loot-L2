@@ -207,12 +207,14 @@ const getGradeColor = (itemGrade) => {
                                     <MarketPriceCell
                                         :item-id="item.id"
                                         :value="item.market_price"
+                                        :fallback-price="item.npc_sell_price"
                                         :updated-at="item.market_price_updated_at"
                                         :updated-by-name="item.market_price_updated_by_name"
                                         :locale-tag="localeTag"
                                         :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
                                         :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
                                         :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
+                                        :label-base="tFromProps('market_price.base_label', 'Base price (NPC)')"
                                         @update="(p) => onPriceUpdate(item, p)"
                                     />
                                 </td>

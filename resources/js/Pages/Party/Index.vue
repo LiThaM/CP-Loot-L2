@@ -1865,12 +1865,14 @@ watch(buySearch, throttle(async (val) => {
                                 <MarketPriceCell
                                     :item-id="item.id"
                                     :value="item.market_price"
+                                    :fallback-price="item.npc_sell_price"
                                     :updated-at="item.market_price_updated_at"
                                     :updated-by-name="item.market_price_updated_by_name"
                                     :locale-tag="localeTag"
                                     :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
                                     :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
                                     :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
+                                    :label-base="tFromProps('market_price.base_label', 'Base price (NPC)')"
                                     @update="(p) => onWarehousePriceUpdate(item.id, p)"
                                 />
                             </div>
@@ -1879,6 +1881,9 @@ watch(buySearch, throttle(async (val) => {
                                 <div class="text-base font-cinzel text-amber-700 dark:text-amber-300">
                                     <span v-if="item.market_price != null" v-tooltip="formatAdenaFull(item.market_price * item.total_amount)">
                                         {{ formatAdenaShort(item.market_price * item.total_amount) }}
+                                    </span>
+                                    <span v-else-if="item.npc_sell_price != null" :class="'italic text-gray-500 dark:text-gray-400'" v-tooltip="formatAdenaFull(item.npc_sell_price * item.total_amount)">
+                                        {{ formatAdenaShort(item.npc_sell_price * item.total_amount) }}
                                     </span>
                                     <span v-else class="text-gray-400 dark:text-gray-600">—</span>
                                 </div>
@@ -1915,18 +1920,21 @@ watch(buySearch, throttle(async (val) => {
                                     <MarketPriceCell
                                         :item-id="item.id"
                                         :value="item.market_price"
+                                        :fallback-price="item.npc_sell_price"
                                         :updated-at="item.market_price_updated_at"
                                         :updated-by-name="item.market_price_updated_by_name"
                                         :locale-tag="localeTag"
                                         :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
                                         :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
                                         :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
+                                        :label-base="tFromProps('market_price.base_label', 'Base price (NPC)')"
                                         size="sm"
                                         @update="(p) => onWarehousePriceUpdate(item.id, p)"
                                     />
                                 </td>
                                 <td class="px-4 py-2 text-right text-amber-700 dark:text-amber-300 font-cinzel text-xs">
                                     <span v-if="item.market_price != null" v-tooltip="formatAdenaFull(item.market_price * item.total_amount)">{{ formatAdenaShort(item.market_price * item.total_amount) }}</span>
+                                    <span v-else-if="item.npc_sell_price != null" class="italic text-gray-500 dark:text-gray-400" v-tooltip="formatAdenaFull(item.npc_sell_price * item.total_amount)">{{ formatAdenaShort(item.npc_sell_price * item.total_amount) }}</span>
                                     <span v-else class="text-gray-400 dark:text-gray-600">—</span>
                                 </td>
                                 <td v-if="canManageWarehouse" class="px-4 py-2 text-right whitespace-nowrap">

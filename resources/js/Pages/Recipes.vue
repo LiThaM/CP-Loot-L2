@@ -349,11 +349,13 @@ const totalRecipeCost = computed(() => {
                                                     v-if="!node.is_recipe"
                                                     :item-id="node.item_id"
                                                     :value="node.market_price"
+                                                    :fallback-price="node.npc_sell_price"
                                                     :editable="isAuthenticated"
                                                     :locale-tag="localeTag"
                                                     :label-edit="t('market_price.edit_cta')"
                                                     :label-empty="t('market_price.empty_cta')"
                                                     :label-updated="t('market_price.tooltip_updated', { user: '{user}', ago: '{ago}' })"
+                                                    :label-base="t('market_price.base_label')"
                                                     size="sm"
                                                     @update="onRecipePriceUpdate"
                                                 />

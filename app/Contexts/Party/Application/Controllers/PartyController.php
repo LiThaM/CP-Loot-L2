@@ -78,6 +78,7 @@ class PartyController extends Controller
                 'items.market_price',
                 'items.market_price_updated_at',
                 'items.market_price_updated_by',
+                'items.npc_sell_price',
                 DB::raw('SUM(loot_entries.amount) as incoming_amount'),
                 DB::raw('MAX(loot_reports.created_at) as last_added_at'),
             ])
@@ -88,7 +89,7 @@ class PartyController extends Controller
             ->whereNull('loot_reports.voided_at')
             ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
             ->whereRaw('LOWER(items.name) != ?', ['adena'])
-            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade', 'items.category', 'items.market_price', 'items.market_price_updated_at', 'items.market_price_updated_by')
+            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade', 'items.category', 'items.market_price', 'items.market_price_updated_at', 'items.market_price_updated_by', 'items.npc_sell_price')
             ->get()
             ->keyBy('id');
 
@@ -120,7 +121,11 @@ class PartyController extends Controller
             $in = (int) ($row->incoming_amount ?? 0);
             $row->total_amount = max(0, $in - $out);
             $row->market_price = $row->market_price !== null ? (int) $row->market_price : null;
-            $row->stock_value = $row->market_price !== null ? $row->market_price * $row->total_amount : null;
+            $row->npc_sell_price = $row->npc_sell_price !== null ? (int) $row->npc_sell_price : null;
+            // Stock value uses the effective price: user-set market_price wins,
+            // npc_sell_price acts as base floor when no one priced it yet.
+            $effectivePrice = $row->market_price ?? $row->npc_sell_price;
+            $row->stock_value = $effectivePrice !== null ? $effectivePrice * $row->total_amount : null;
             $row->market_price_updated_by_name = $row->market_price_updated_by ? ($priceEditorNames[$row->market_price_updated_by] ?? null) : null;
             $row->grade_rank = $gradeRank[$row->grade] ?? 0;
             unset($row->incoming_amount, $row->market_price_updated_by);
@@ -166,6 +171,7 @@ class PartyController extends Controller
                         'name' => $mat->item?->name,
                         'image_url' => $mat->item?->image_url,
                         'market_price' => $mat->item?->market_price !== null ? (int) $mat->item->market_price : null,
+                        'npc_sell_price' => $mat->item?->npc_sell_price !== null ? (int) $mat->item->npc_sell_price : null,
                         'need' => $need,
                         'have' => $have,
                         'missing' => max(0, $need - $have),

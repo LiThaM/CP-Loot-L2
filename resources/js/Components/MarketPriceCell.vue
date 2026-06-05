@@ -6,6 +6,9 @@ import { formatAdenaShort, formatAdenaFull } from '@/utils/adena.js';
 const props = defineProps({
     itemId: { type: [Number, String], required: true },
     value: { type: [Number, String, null], default: null },
+    // Game-default NPC sell price. Shown when no user-set value exists, and
+    // also acts as the server-side floor: the API rejects market_price < this.
+    fallbackPrice: { type: [Number, String, null], default: null },
     editable: { type: Boolean, default: true },
     updatedAt: { type: [String, null], default: null },
     updatedByName: { type: [String, null], default: null },
@@ -14,6 +17,7 @@ const props = defineProps({
     labelEdit: { type: String, default: 'Click to edit' },
     labelUpdated: { type: String, default: 'Updated by :user :ago' },
     labelEmpty: { type: String, default: '+ Set price' },
+    labelBase: { type: String, default: 'Base price (NPC)' },
 });
 
 const emit = defineEmits(['update']);
@@ -22,6 +26,7 @@ const localValue = ref(props.value);
 const editing = ref(false);
 const draft = ref('');
 const saving = ref(false);
+const errorMsg = ref('');
 const inputEl = ref(null);
 
 const display = computed(() => {
@@ -30,10 +35,26 @@ const display = computed(() => {
     return Number.isFinite(n) ? n : null;
 });
 
-const shortDisplay = computed(() => display.value === null ? null : formatAdenaShort(display.value, props.localeTag));
+const fallback = computed(() => {
+    if (props.fallbackPrice === null || props.fallbackPrice === undefined || props.fallbackPrice === '') return null;
+    const n = Number(props.fallbackPrice);
+    return Number.isFinite(n) && n > 0 ? n : null;
+});
+
+const showingFallback = computed(() => display.value === null && fallback.value !== null);
+
+const effective = computed(() => display.value !== null ? display.value : fallback.value);
+
+const shortDisplay = computed(() => effective.value === null ? null : formatAdenaShort(effective.value, props.localeTag));
 
 const tooltip = computed(() => {
-    if (display.value === null) return props.editable ? props.labelEdit : '';
+    if (errorMsg.value) return errorMsg.value;
+    if (display.value === null) {
+        if (fallback.value !== null) {
+            return props.labelBase + ' · ' + formatAdenaFull(fallback.value, props.localeTag) + ' a' + (props.editable ? ' · ' + props.labelEdit : '');
+        }
+        return props.editable ? props.labelEdit : '';
+    }
     const parts = [formatAdenaFull(display.value, props.localeTag) + ' a'];
     if (props.updatedByName) {
         const ago = formatAgo(props.updatedAt);
@@ -81,6 +102,7 @@ const save = async () => {
     localValue.value = parsedPrice;
     editing.value = false;
     saving.value = true;
+    errorMsg.value = '';
 
     try {
         const { data } = await axios.patch(
@@ -96,6 +118,14 @@ const save = async () => {
         });
     } catch (e) {
         localValue.value = previous;
+        const data = e?.response?.data;
+        if (data?.errors?.price?.[0]) {
+            errorMsg.value = data.errors.price[0];
+        } else if (data?.message) {
+            errorMsg.value = data.message;
+        } else {
+            errorMsg.value = '';
+        }
     } finally {
         saving.value = false;
     }
@@ -138,9 +168,11 @@ const formatAgo = (iso) => {
             class="font-cinzel rounded transition-colors"
             :class="[
                 sizeClass,
-                display !== null ? 'text-orange-700 dark:text-orange-300' : '',
-                display === null && editable ? 'text-orange-600/70 dark:text-orange-400/70 border border-dashed border-orange-400/40 hover:border-orange-400' : '',
-                display === null && !editable ? 'text-gray-400 dark:text-gray-500' : '',
+                errorMsg ? 'text-red-700 dark:text-red-300 border border-red-400/60' : '',
+                !errorMsg && display !== null ? 'text-orange-700 dark:text-orange-300' : '',
+                !errorMsg && showingFallback ? 'text-gray-500 dark:text-gray-400 italic border border-dotted border-gray-400/40' : '',
+                !errorMsg && display === null && !showingFallback && editable ? 'text-orange-600/70 dark:text-orange-400/70 border border-dashed border-orange-400/40 hover:border-orange-400' : '',
+                !errorMsg && display === null && !showingFallback && !editable ? 'text-gray-400 dark:text-gray-500' : '',
                 editable
                     ? 'hover:bg-orange-100 dark:hover:bg-orange-900/30 cursor-pointer'
                     : 'cursor-default',
@@ -149,6 +181,7 @@ const formatAgo = (iso) => {
             @click="startEdit"
         >
             <span v-if="display !== null">{{ shortDisplay }}</span>
+            <span v-else-if="showingFallback">{{ shortDisplay }}</span>
             <span v-else-if="editable">{{ labelEmpty }}</span>
             <span v-else>—</span>
         </button>
