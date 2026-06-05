@@ -4,6 +4,8 @@ import { useSwal } from '../utils/swal';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
+import { memberTopics, leaderTopics } from '@/utils/tutorialsTopics';
+import { UserGroupIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     canLogin: { type: Boolean },
@@ -245,28 +247,86 @@ onMounted(() => {
                 </div>
             </section>
 
-            <!-- Features -->
-            <section id="features" class="py-16 sm:py-20 scroll-mt-16">
-                <div class="max-w-6xl mx-auto px-4 sm:px-6">
+            <!-- "What you'll find inside" — public mirror of /tutoriales -->
+            <section id="features" class="py-16 sm:py-20 scroll-mt-16 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6">
                     <div class="text-center mb-12">
-                        <p class="text-xs font-bold uppercase tracking-widest mb-2" :class="darkMode ? 'text-purple-400' : 'text-purple-600'">{{ $t('welcome.features.title') }}</p>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.features.heading') }}</h2>
+                        <p class="text-xs font-bold uppercase tracking-widest mb-2" :class="darkMode ? 'text-purple-400' : 'text-purple-600'">{{ $t('welcome.tour.kicker') }}</p>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.tour.heading') }}</h2>
+                        <p class="text-sm mt-4 max-w-2xl mx-auto leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">
+                            {{ $t('welcome.tour.subtitle') }}
+                        </p>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div v-for="(f, i) in [
-                            { icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', color: 'amber', kicker: $t('welcome.features.adena.kicker'), title: $t('welcome.features.adena.title'), text: $t('welcome.features.adena.text') },
-                            { icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', color: 'purple', kicker: $t('welcome.features.loot.kicker'), title: $t('welcome.features.loot.title'), text: $t('welcome.features.loot.text') },
-                            { icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', color: 'blue', kicker: $t('welcome.features.warehouse.kicker'), title: $t('welcome.features.warehouse.title'), text: $t('welcome.features.warehouse.text') },
-                            { icon: 'M13 10V3L4 14h7v7l9-11h-7z', color: 'orange', kicker: $t('welcome.features.crafting.kicker'), title: $t('welcome.features.crafting.title'), text: $t('welcome.features.crafting.text') },
-                            { icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', color: 'pink', kicker: $t('welcome.features.roles.kicker'), title: $t('welcome.features.roles.title'), text: $t('welcome.features.roles.text') },
-                            { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'emerald', kicker: $t('welcome.features.audit.kicker'), title: $t('welcome.features.audit.title'), text: $t('welcome.features.audit.text') },
-                        ]" :key="i" class="card-base p-5 sm:p-6 group hover:-translate-y-0.5 transition-all duration-200">
-                            <div class="w-9 h-9 rounded-lg flex items-center justify-center mb-4 transition-colors" :class="`bg-${f.color}-500/10 text-${f.color}-400 group-hover:bg-${f.color}-500/20`">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="f.icon"/></svg>
-                            </div>
-                            <p class="text-[10px] font-bold uppercase tracking-widest mb-1" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ f.kicker }}</p>
-                            <h3 class="text-sm font-bold mb-1.5" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ f.title }}</h3>
-                            <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ f.text }}</p>
+
+                    <!-- Group: member topics -->
+                    <div class="mb-10">
+                        <div class="flex items-center gap-3 mb-3">
+                            <UserGroupIcon class="w-6 h-6 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                            <h3 class="font-cinzel text-lg tracking-widest uppercase" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('tutorials.role.member.title') }}</h3>
+                        </div>
+                        <p class="text-sm mb-4 leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">
+                            {{ $t('tutorials.role_intro.member') }}
+                        </p>
+                        <div class="space-y-2">
+                            <details
+                                v-for="topic in memberTopics"
+                                :key="`mem-${topic.id}`"
+                                class="card-base rounded-2xl group overflow-hidden"
+                            >
+                                <summary class="px-5 py-4 cursor-pointer flex items-center gap-3 list-none">
+                                    <component :is="topic.icon" class="w-5 h-5 shrink-0" :class="topic.accent" aria-hidden="true" />
+                                    <span class="font-cinzel text-sm tracking-widest uppercase flex-1" :class="darkMode ? 'text-white' : 'text-gray-900'">
+                                        {{ $t(`tutorials.topic.${topic.id}.title`) }}
+                                    </span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest group-open:hidden" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ $t('tutorials.expand') }}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest hidden group-open:inline" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ $t('tutorials.collapse') }}</span>
+                                </summary>
+                                <div class="px-5 pb-5 space-y-3 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                                    <p class="text-sm leading-relaxed mt-4 changelog-body" :class="darkMode ? 'text-gray-300' : 'text-gray-700'" v-html="renderInlineMarkdown($t(`tutorials.topic.${topic.id}.intro`))"></p>
+                                    <ul class="space-y-2">
+                                        <li v-for="i in topic.bulletCount" :key="`mem-${topic.id}-${i}`" class="text-sm leading-relaxed flex gap-3" :class="darkMode ? 'text-gray-400' : 'text-gray-700'">
+                                            <span class="select-none mt-0.5" :class="darkMode ? 'text-purple-500' : 'text-purple-600'">▸</span>
+                                            <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.${topic.id}.bullet.${i - 1}`))"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Group: leader-only extras -->
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <ShieldCheckIcon class="w-6 h-6 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                            <h3 class="font-cinzel text-lg tracking-widest uppercase" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('tutorials.role.cp_leader.title') }}</h3>
+                        </div>
+                        <p class="text-sm mb-4 leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">
+                            {{ $t('tutorials.role_intro.cp_leader') }}
+                        </p>
+                        <div class="space-y-2">
+                            <details
+                                v-for="topic in leaderTopics"
+                                :key="`lead-${topic.id}`"
+                                class="card-base rounded-2xl group overflow-hidden"
+                            >
+                                <summary class="px-5 py-4 cursor-pointer flex items-center gap-3 list-none">
+                                    <component :is="topic.icon" class="w-5 h-5 shrink-0" :class="topic.accent" aria-hidden="true" />
+                                    <span class="font-cinzel text-sm tracking-widest uppercase flex-1" :class="darkMode ? 'text-white' : 'text-gray-900'">
+                                        {{ $t(`tutorials.topic.${topic.id}.title`) }}
+                                    </span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest group-open:hidden" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ $t('tutorials.expand') }}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest hidden group-open:inline" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ $t('tutorials.collapse') }}</span>
+                                </summary>
+                                <div class="px-5 pb-5 space-y-3 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                                    <p class="text-sm leading-relaxed mt-4 changelog-body" :class="darkMode ? 'text-gray-300' : 'text-gray-700'" v-html="renderInlineMarkdown($t(`tutorials.topic.${topic.id}.intro`))"></p>
+                                    <ul class="space-y-2">
+                                        <li v-for="i in topic.bulletCount" :key="`lead-${topic.id}-${i}`" class="text-sm leading-relaxed flex gap-3" :class="darkMode ? 'text-gray-400' : 'text-gray-700'">
+                                            <span class="select-none mt-0.5" :class="darkMode ? 'text-purple-500' : 'text-purple-600'">▸</span>
+                                            <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.${topic.id}.bullet.${i - 1}`))"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 </div>

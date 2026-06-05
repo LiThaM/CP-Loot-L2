@@ -4,26 +4,12 @@ import { computed, getCurrentInstance } from 'vue';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import { startTour } from '@/utils/tour';
 import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
+import { memberTopics, leaderTopics } from '@/utils/tutorialsTopics';
 import {
     AcademicCapIcon,
     UserGroupIcon,
     ShieldCheckIcon,
     PlayIcon,
-    UserIcon,
-    ChartBarIcon,
-    ClipboardDocumentCheckIcon,
-    ArchiveBoxIcon,
-    BanknotesIcon,
-    BeakerIcon,
-    BookOpenIcon,
-    LifebuoyIcon,
-    CheckBadgeIcon,
-    CurrencyEuroIcon,
-    ArrowDownTrayIcon,
-    PencilSquareIcon,
-    TrophyIcon,
-    Cog6ToothIcon,
-    CalculatorIcon,
 } from '@heroicons/vue/24/outline';
 
 const page = usePage();
@@ -35,32 +21,6 @@ const roleName = computed(() => user.value?.role?.name || 'member');
 // resolved synchronously before opening).
 const { appContext } = getCurrentInstance();
 const t = appContext.config.globalProperties.$t;
-
-// 8 member topics — visible to every role. Each entry is metadata
-// only; text lives in the translation table under
-// `tutorials.topic.{id}.{title,intro,bullet.0..N}`.
-const memberTopics = [
-    { id: 'profile',             icon: UserIcon,                       accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 6, tour: 'profile-characters' },
-    { id: 'dashboard',           icon: ChartBarIcon,                   accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 5, tour: 'dashboard-overview' },
-    { id: 'report_loot',         icon: ClipboardDocumentCheckIcon,     accent: 'text-emerald-700 dark:text-emerald-300', bulletCount: 6, tour: null },
-    { id: 'cp_vault',            icon: ArchiveBoxIcon,                 accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: 'party-vault' },
-    { id: 'personal_warehouse',  icon: BanknotesIcon,                  accent: 'text-emerald-700 dark:text-emerald-300', bulletCount: 5, tour: 'warehouse-personal' },
-    { id: 'crafting',            icon: BeakerIcon,                     accent: 'text-indigo-700 dark:text-indigo-300',   bulletCount: 6, tour: null },
-    { id: 'rules',               icon: BookOpenIcon,                   accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: 'party-rules' },
-    { id: 'misc_member',         icon: LifebuoyIcon,                   accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 4, tour: null },
-];
-
-// 8 leader-only topics on top of member ones.
-const leaderTopics = [
-    { id: 'approve_loot',        icon: CheckBadgeIcon,                 accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 5, tour: 'loot-pending' },
-    { id: 'vault_sell',          icon: CurrencyEuroIcon,               accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: 'vault-sell' },
-    { id: 'add_buy_recheck',     icon: ArrowDownTrayIcon,              accent: 'text-emerald-700 dark:text-emerald-300', bulletCount: 5, tour: null },
-    { id: 'edit_rules',          icon: PencilSquareIcon,               accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: null },
-    { id: 'points_config',       icon: TrophyIcon,                     accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: null },
-    { id: 'cp_settings',         icon: Cog6ToothIcon,                  accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 5, tour: 'party-settings' },
-    { id: 'members_mgmt',        icon: UserGroupIcon,                  accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 6, tour: null },
-    { id: 'craft_bulk_external', icon: CalculatorIcon,                 accent: 'text-indigo-700 dark:text-indigo-300',   bulletCount: 6, tour: 'craft-bulk' },
-];
 
 const sections = [
     {
