@@ -54,8 +54,14 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
-            'ignore_exceptions' => false,
+            // Default now layers `errorlog` under `single` so a future
+            // disk / permission issue on storage/logs (which once tanked
+            // every /api/v1/* with 500) falls back to PHP's error_log
+            // instead of propagating to the request handler.
+            // `ignore_exceptions=true` means a channel that throws while
+            // writing doesn't bubble — the request still completes.
+            'channels' => explode(',', (string) env('LOG_STACK', 'single,errorlog')),
+            'ignore_exceptions' => true,
         ],
 
         'single' => [
