@@ -102,6 +102,52 @@ const TOURS = {
         ],
     },
 
+    'party-settings': {
+        role: ['cp_leader', 'accountant'],
+        path: '/party',
+        steps: [
+            {
+                element: 'body',
+                titleKey: 'tour.party-settings.step.0.title',
+                descKey: 'tour.party-settings.step.0.desc',
+            },
+            {
+                element: 'body',
+                titleKey: 'tour.party-settings.step.1.title',
+                descKey: 'tour.party-settings.step.1.desc',
+            },
+        ],
+    },
+
+    'warehouse-personal': {
+        role: ['member', 'cp_leader', 'accountant'],
+        path: '/warehouse',
+        steps: [
+            {
+                element: 'body',
+                titleKey: 'tour.warehouse-personal.step.0.title',
+                descKey: 'tour.warehouse-personal.step.0.desc',
+            },
+        ],
+    },
+
+    'vault-sell': {
+        role: ['cp_leader', 'accountant'],
+        path: '/party',
+        steps: [
+            {
+                element: 'body',
+                titleKey: 'tour.vault-sell.step.0.title',
+                descKey: 'tour.vault-sell.step.0.desc',
+            },
+            {
+                element: 'body',
+                titleKey: 'tour.vault-sell.step.1.title',
+                descKey: 'tour.vault-sell.step.1.desc',
+            },
+        ],
+    },
+
     'admin-cps': {
         role: ['admin'],
         path: '/system/cps',
