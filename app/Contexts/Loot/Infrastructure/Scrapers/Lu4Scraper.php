@@ -101,6 +101,7 @@ class Lu4Scraper
         }
         $iconName = $this->extractIconName($iconSrc);
         $description = '';
+        $npcSellPrice = $this->extractStatNumber($crawler, 'NPC Sell Price');
 
         return [
             'external_id' => $id,
@@ -113,7 +114,43 @@ class Lu4Scraper
             'source' => 'lu4',
             'grade' => $grade ?: null,
             'image_url' => $imageUrl,
+            'npc_sell_price' => $npcSellPrice,
         ];
+    }
+
+    /**
+     * Pulls an integer out of a `<div class="stat_line">` whose
+     * `<div class="stat_name">` matches the given label. Strips
+     * thousands separators (the wiki uses regular spaces) and any
+     * trailing currency word like "Adena". Returns null when the
+     * stat is absent — most items have NPC Sell Price but a few
+     * special / NO-SELL items don't.
+     */
+    private function extractStatNumber(Crawler $crawler, string $label): ?int
+    {
+        $value = null;
+        $crawler->filter('.stat_line')->each(function (Crawler $node) use ($label, &$value) {
+            if ($value !== null) {
+                return;
+            }
+            $name = trim($node->filter('.stat_name')->count() ? $node->filter('.stat_name')->text() : '');
+            if ($name !== $label) {
+                return;
+            }
+            $span = $node->filter('span');
+            if (! $span->count()) {
+                return;
+            }
+            $raw = trim($span->first()->text());
+            // "75 000 Adena" / "1 Adena" / "10 370 500 Adena". Strip
+            // any non-digit and parse.
+            $digits = preg_replace('/[^\d]/', '', $raw);
+            if ($digits !== '' && ctype_digit($digits)) {
+                $value = (int) $digits;
+            }
+        });
+
+        return $value;
     }
 
     public function downloadIconFromUrl(?string $imageUrl, int $itemId): ?string

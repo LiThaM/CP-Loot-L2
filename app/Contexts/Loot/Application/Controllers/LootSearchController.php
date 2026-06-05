@@ -64,6 +64,18 @@ class LootSearchController extends Controller
         ]);
 
         $price = $data['price'] ?? null;
+
+        // Market price (user wiki) can never undercut the NPC sell
+        // price (the in-game baseline). If the user sets it lower the
+        // NPC would buy the item for more than the "market" — economic
+        // nonsense and a fast way to lose adena. Reject with a 422 so
+        // the inline editor surfaces the error.
+        if ($price !== null && $item->npc_sell_price !== null && $price < (int) $item->npc_sell_price) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'price' => "Market price (".number_format($price, 0, '.', ' ').") cannot be lower than the NPC sell price (".number_format($item->npc_sell_price, 0, '.', ' ').").",
+            ]);
+        }
+
         $now = now();
         $user = $request->user();
 

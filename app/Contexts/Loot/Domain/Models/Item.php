@@ -55,7 +55,7 @@ class Item extends Model
         'name', 'grade', 'category', 'image_url', 'base_points',
         'external_id', 'chronicle', 'source', 'icon_name', 'description',
         'hidden', 'market_price', 'market_price_updated_at', 'market_price_updated_by',
-        'usage_count',
+        'usage_count', 'npc_sell_price',
     ];
 
     public function lootEntries()
