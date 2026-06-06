@@ -22,6 +22,11 @@ class NotifyChangelogEntriesTest extends TestCase
         parent::setUp();
         $this->leaderRole = Role::firstOrCreate(['name' => 'cp_leader'], ['display_name' => 'CP Leader']);
         $this->memberRole = Role::firstOrCreate(['name' => 'member'], ['display_name' => 'Member']);
+        // Seed migrations insert feature-announcement entries that survive
+        // RefreshDatabase's per-test rollback because they happen during
+        // migration, not the test. Wipe them so each test controls exactly
+        // which entries the command sees.
+        ChangelogEntry::query()->delete();
         Mail::fake();
     }
 

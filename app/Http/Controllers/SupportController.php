@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Contexts\Identity\Domain\Models\Role;
+use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\CpRequest;
 use App\Mail\NewCpRequestAdminNotification;
 use App\Mail\NewTicketAdminNotification;
 use App\Mail\TicketAuthorConfirmation;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 
 class SupportController extends Controller
 {
@@ -83,53 +90,74 @@ class SupportController extends Controller
 
     public function cpRequest(Request $request): RedirectResponse
     {
+        // Single funnel: visitor submits CP details AND their account
+        // credentials in one form. Backend transactionally creates the
+        // user, the CP, and binds the user as cp_leader. Auto-login on
+        // success — no more "magic link → register later" two-step that
+        // could leave the CP orphaned if the requester never returned.
         $data = $request->validate([
             'cp_name' => 'required|string|max:255',
             'server' => 'nullable|string|max:255',
             'chronicle' => 'nullable|string|in:'.implode(',', $this->chronicles()),
             'leader_name' => 'nullable|string|max:255',
-            'contact_email' => 'required|string|email|max:255',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'message' => 'nullable|string|max:5000',
         ]);
 
+        $leaderRole = Role::where('name', 'cp_leader')->first();
+        if (! $leaderRole) {
+            throw ValidationException::withMessages([
+                'cp_name' => 'System error: Required role cp_leader is missing.',
+            ]);
+        }
+
         $inviteCode = Str::random(12);
-
-        $cp = ConstParty::create([
-            'leader_id' => null, // First member to register with the code usually claims it
-            'name' => $data['cp_name'],
-            'server' => $data['server'] ?? null,
-            'chronicle' => $data['chronicle'] ?? 'IL',
-            'invite_code' => $inviteCode,
-        ]);
-
+        $user = null;
+        $cp = null;
         $cpRequest = null;
-        try {
+
+        DB::transaction(function () use ($data, $inviteCode, $leaderRole, &$user, &$cp, &$cpRequest) {
+            $cp = ConstParty::create([
+                'leader_id' => null,
+                'name' => $data['cp_name'],
+                'server' => $data['server'] ?? null,
+                'chronicle' => $data['chronicle'] ?? 'IL',
+                'invite_code' => $inviteCode,
+            ]);
+
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'cp_id' => $cp->id,
+                'membership_status' => 'approved',
+            ]);
+            $user->forceFill(['role_id' => $leaderRole->id])->save();
+
+            $cp->forceFill(['leader_id' => $user->id])->save();
+
             $cpRequest = CpRequest::create([
                 'cp_name' => $data['cp_name'],
                 'server' => $data['server'] ?? null,
                 'chronicle' => $data['chronicle'] ?? null,
                 'leader_name' => $data['leader_name'] ?? null,
-                'contact_email' => $data['contact_email'] ?? null,
+                'contact_email' => $data['email'],
                 'message' => $data['message'] ?? null,
                 'status' => 'approved',
                 'approved_at' => now(),
             ]);
-        } catch (\Throwable $e) {
-            Log::error('CP Request audit log failed: ' . $e->getMessage());
-        }
-
-        $magicLink = route('register', ['invite' => $inviteCode]);
+        });
 
         if ($cpRequest) {
-            $this->notifyCpRequestAdmin($cpRequest, $magicLink);
+            $this->notifyCpRequestAdmin($cpRequest, route('register', ['invite' => $inviteCode]));
         }
 
-        return back()->with('success', [
-            'message' => 'CP Creada exitosamente',
-            'link' => $magicLink,
-            'invite_code' => $inviteCode,
-            'cp_name' => $cp->name,
-        ]);
+        event(new Registered($user));
+        Auth::login($user);
+
+        return redirect()->route('dashboard');
     }
 
     private function notifyCpRequestAdmin(CpRequest $cpRequest, ?string $inviteLink): void

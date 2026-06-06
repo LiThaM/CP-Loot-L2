@@ -71,20 +71,18 @@ const submitSupport = () => {
     });
 };
 
-const cpRequestForm = useForm({ cp_name: '', server: '', chronicle: 'IL', leader_name: '', contact_email: '', message: '' });
+const cpRequestForm = useForm({
+    cp_name: '', server: '', chronicle: 'LU4', leader_name: '',
+    name: '', email: '', password: '', password_confirmation: '',
+    message: '',
+});
 const submitCpRequest = () => {
-    const swal = useSwal();
+    // The endpoint auto-creates the user + CP and logs them in, so the
+    // server returns a redirect to /dashboard — Inertia follows it and
+    // we never reach onSuccess for the visitor (they're already gone).
+    // We keep onError for validation issues (422 stays on this page).
     cpRequestForm.post(route('cp.requests.store'), {
         preserveScroll: true,
-        onSuccess: (page) => {
-            showCpRequestModal.value = false; cpRequestForm.reset();
-            const fs = page.props.flash?.success;
-            if (fs && typeof fs === 'object' && fs.link) {
-                swal.fire({ title: t('welcome.modal.cp_request.title'), html: `${t('admin.create_modal.success')}<br><br><div class="p-3 mt-2 bg-black/60 text-amber-400 font-mono tracking-widest text-xs rounded border border-amber-500/30 select-all mb-2">${fs.link}</div>`, icon: 'success' });
-                return;
-            }
-            swal.fire({ icon: 'success', title: t('welcome.modal.cp_request.title'), text: t('toast.request_sent') });
-        },
         onError: () => { useSwal().fire({ icon: 'error', title: t('welcome.modal.cp_request.title'), text: t('toast.check_fields') }); }
     });
 };
@@ -487,19 +485,38 @@ onMounted(() => {
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="form-label">{{ $t('welcome.modal.cp_request.leader', { optional: '' }) }}</label>
-                        <input v-model="cpRequestForm.leader_name" type="text" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                <div>
+                    <label class="form-label">{{ $t('welcome.modal.cp_request.leader', { optional: '' }) }}</label>
+                    <input v-model="cpRequestForm.leader_name" type="text" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                </div>
+
+                <div class="pt-3 border-t" :class="darkMode ? 'border-white/10' : 'border-gray-200'">
+                    <p class="text-[10px] font-black uppercase tracking-widest mb-3" :class="darkMode ? 'text-purple-400' : 'text-purple-700'">{{ $t('welcome.modal.cp_request.account_section') }}</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">{{ $t('welcome.modal.cp_request.account_name') }} *</label>
+                            <input v-model="cpRequestForm.name" type="text" autocomplete="name" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                        </div>
+                        <div>
+                            <label class="form-label">{{ $t('welcome.modal.cp_request.email') }} *</label>
+                            <input v-model="cpRequestForm.email" type="email" autocomplete="email" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label">{{ $t('welcome.modal.cp_request.email') }} *</label>
-                        <input v-model="cpRequestForm.contact_email" type="email" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                    <div class="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label class="form-label">{{ $t('welcome.modal.cp_request.password') }} *</label>
+                            <input v-model="cpRequestForm.password" type="password" autocomplete="new-password" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                        </div>
+                        <div>
+                            <label class="form-label">{{ $t('welcome.modal.cp_request.password_confirmation') }} *</label>
+                            <input v-model="cpRequestForm.password_confirmation" type="password" autocomplete="new-password" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
+                        </div>
                     </div>
                 </div>
+
                 <div>
                     <label class="form-label">{{ $t('welcome.modal.cp_request.message', { optional: '' }) }}</label>
-                    <textarea v-model="cpRequestForm.message" rows="3" class="form-input resize-none" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'"></textarea>
+                    <textarea v-model="cpRequestForm.message" rows="2" class="form-input resize-none" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'"></textarea>
                 </div>
             </div>
             <div class="flex gap-2 p-5 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-200'">
