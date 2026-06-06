@@ -38,13 +38,14 @@ export const memberTopics = [
     { id: 'misc_member',         icon: LifebuoyIcon,                   accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 4, tour: null },
 ];
 
-// 8 leader-only topics layered on top of the member ones.
+// 9 leader-only topics layered on top of the member ones.
 export const leaderTopics = [
     { id: 'approve_loot',        icon: CheckBadgeIcon,                 accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 5, tour: 'loot-pending' },
     { id: 'vault_sell',          icon: CurrencyEuroIcon,               accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: 'vault-sell' },
     { id: 'add_buy_recheck',     icon: ArrowDownTrayIcon,              accent: 'text-emerald-700 dark:text-emerald-300', bulletCount: 5, tour: null },
     { id: 'edit_rules',          icon: PencilSquareIcon,               accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: null },
     { id: 'points_config',       icon: TrophyIcon,                     accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: null },
+    { id: 'dkp_tracker',         icon: TrophyIcon,                     accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 6, tour: null },
     { id: 'cp_settings',         icon: Cog6ToothIcon,                  accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 5, tour: 'party-settings' },
     { id: 'members_mgmt',        icon: UserGroupIcon,                  accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 6, tour: null },
     { id: 'craft_bulk_external', icon: CalculatorIcon,                 accent: 'text-indigo-700 dark:text-indigo-300',   bulletCount: 6, tour: 'craft-bulk' },

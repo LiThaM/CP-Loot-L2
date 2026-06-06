@@ -8,6 +8,7 @@ use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Loot\Domain\Models\LootReportAttendee;
 use App\Contexts\Loot\Domain\Services\LootDistributionService;
+use App\Contexts\Party\Application\Services\TrackerContributionService;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -16,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 class LootActionController extends Controller
 {
     public function __construct(
-        protected LootDistributionService $distributionService
+        protected LootDistributionService $distributionService,
+        protected TrackerContributionService $trackerService,
     ) {}
 
     /**
@@ -219,6 +221,13 @@ class LootActionController extends Controller
             ->all();
 
         $this->distributionService->distribute($report, $attendeeUserIds, $points);
+
+        // Best-effort: if this CP has the value-based DKP tracker turned on,
+        // derive parallel tracker_contributions from the confirmed entries.
+        // Failures here must not roll back the loot confirmation above.
+        if ($report->fresh()->status === 'confirmed') {
+            $this->trackerService->recordFromReport($report->fresh()->load('cp', 'attendees'));
+        }
 
         // Adena distribution on the FARM report itself (legacy path for
         // sessions that include adena drops directly, not via SELL). The

@@ -76,6 +76,25 @@ const emit = defineEmits(['logo-change', 'submit', 'copy-invite']);
                             </label>
                         </div>
 
+                        <div class="pt-4 border-t border-gray-200 dark:border-gray-800">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" v-model="form.tracker_enabled"
+                                       class="mt-1 w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-600">
+                                <div class="flex-1">
+                                    <div class="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">{{ $t('cp.settings.tracker_enabled') }}</div>
+                                    <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">{{ $t('cp.settings.tracker_enabled_hint') }}</div>
+                                </div>
+                            </label>
+
+                            <div v-if="form.tracker_enabled" class="mt-4 ml-8">
+                                <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('cp.settings.tracker_divisor') }}</label>
+                                <input v-model.number="form.tracker_divisor" type="number" min="50" max="2000" step="50"
+                                       class="w-40 bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-600 h-11 px-4 font-bold shadow-inner dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
+                                <p class="mt-2 text-[10px] text-gray-500 leading-relaxed">{{ $t('cp.settings.tracker_divisor_hint') }}</p>
+                                <div v-if="form.errors.tracker_divisor" class="mt-2 text-[10px] text-red-500 font-bold uppercase tracking-widest">{{ form.errors.tracker_divisor }}</div>
+                            </div>
+                        </div>
+
                         <div class="pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-end">
                             <button
                                 @click="emit('submit')"

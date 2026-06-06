@@ -237,6 +237,15 @@ Route::middleware('auth')->group(function () {
         ->name('party.craft_bulk.plan');
     Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
     Route::post('/party/points/reset', [PartyController::class, 'resetPoints'])->name('party.points.reset');
+
+    // DKP value tracker (opt-in via CP settings). 404s for CPs that don't
+    // have it enabled so leakage is contained at the route level.
+    Route::get('/party/tracker', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'index'])
+        ->name('party.tracker');
+    Route::post('/party/tracker/contributions', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'storeContribution'])
+        ->name('party.tracker.contributions.store');
+    Route::delete('/party/tracker/contributions/{contribution}', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'destroyContribution'])
+        ->name('party.tracker.contributions.destroy');
     Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog.index');
     Route::post('/changelog/ack', [ChangelogController::class, 'acknowledge'])->name('changelog.ack');
 

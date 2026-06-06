@@ -184,13 +184,33 @@ class ConstPartyController extends Controller
             'server' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:3072', // 3MB
             'image_proof_required' => 'nullable|boolean',
+            'tracker_enabled' => 'sometimes|boolean',
+            'tracker_divisor' => 'sometimes|integer|min:50|max:2000',
         ]);
 
-        $cp->update([
-            'name' => $request->name,
-            'server' => $request->server,
+        // Note: `$request->server` is Symfony's ServerBag property, not the
+        // form field. Always use `input()` for fields that could clash with
+        // a Request property (server, query, request, attributes, cookies).
+        $payload = [
+            'name' => $request->input('name'),
+            'server' => $request->input('server'),
             'image_proof_required' => $request->boolean('image_proof_required', true),
-        ]);
+        ];
+
+        if ($request->has('tracker_enabled')) {
+            $wantsEnabled = $request->boolean('tracker_enabled');
+            $payload['tracker_enabled'] = $wantsEnabled;
+            // Stamp the first time we go from off→on so the auto-derive
+            // service can ignore loot from before the opt-in.
+            if ($wantsEnabled && ! $cp->tracker_enabled_at) {
+                $payload['tracker_enabled_at'] = now();
+            }
+        }
+        if ($request->has('tracker_divisor')) {
+            $payload['tracker_divisor'] = (int) $request->tracker_divisor;
+        }
+
+        $cp->update($payload);
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');

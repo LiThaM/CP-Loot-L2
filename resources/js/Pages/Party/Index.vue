@@ -237,6 +237,8 @@ const cpSettingsForm = useForm({
     server: props.cp?.server || '',
     logo: null,
     image_proof_required: props.cp?.image_proof_required ?? true,
+    tracker_enabled: Boolean(props.cp?.tracker_enabled ?? false),
+    tracker_divisor: Number(props.cp?.tracker_divisor ?? 1000),
 });
 
 const logoPreview = ref(null);

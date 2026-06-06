@@ -15,11 +15,14 @@ class ConstParty extends Model
     // (`RegisteredUserController` on first-member registration,
     // `ConstPartyController::toggleActive` for the admin) that use
     // forceFill() to bypass the guard after their own authorization.
-    protected $fillable = ['name', 'server', 'chronicle', 'invite_code', 'logo_path', 'image_proof_required'];
+    protected $fillable = ['name', 'server', 'chronicle', 'invite_code', 'logo_path', 'image_proof_required', 'tracker_enabled', 'tracker_divisor', 'tracker_enabled_at'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'image_proof_required' => 'boolean',
+        'tracker_enabled' => 'boolean',
+        'tracker_enabled_at' => 'datetime',
+        'tracker_divisor' => 'integer',
     ];
 
     protected $appends = ['logo_url'];
