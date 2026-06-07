@@ -458,7 +458,7 @@ onMounted(() => {
 
     <!-- CP Request Modal -->
     <div v-if="showCpRequestModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showCpRequestModal = false">
-        <div class="modal-base w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div class="modal-base w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between p-5 border-b" :class="darkMode ? 'border-white/5' : 'border-gray-200'">
                 <h3 class="font-bold text-base" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.modal.cp_request.title') }}</h3>
                 <button @click="showCpRequestModal = false" class="p-1 rounded-md transition" :class="darkMode ? 'text-gray-500 hover:text-white hover:bg-white/5' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'">
@@ -473,7 +473,7 @@ onMounted(() => {
                     <label class="form-label">{{ $t('welcome.modal.cp_request.cp_name') }} *</label>
                     <input v-model="cpRequestForm.cp_name" type="text" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">{{ $t('welcome.modal.cp_request.server', { optional: '' }) }}</label>
                         <input v-model="cpRequestForm.server" type="text" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
@@ -492,7 +492,7 @@ onMounted(() => {
 
                 <div class="pt-3 border-t" :class="darkMode ? 'border-white/10' : 'border-gray-200'">
                     <p class="text-[10px] font-black uppercase tracking-widest mb-3" :class="darkMode ? 'text-purple-400' : 'text-purple-700'">{{ $t('welcome.modal.cp_request.account_section') }}</p>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">{{ $t('welcome.modal.cp_request.account_name') }} *</label>
                             <input v-model="cpRequestForm.name" type="text" autocomplete="name" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
@@ -502,7 +502,7 @@ onMounted(() => {
                             <input v-model="cpRequestForm.email" type="email" autocomplete="email" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mt-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                         <div>
                             <label class="form-label">{{ $t('welcome.modal.cp_request.password') }} *</label>
                             <input v-model="cpRequestForm.password" type="password" autocomplete="new-password" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
@@ -528,7 +528,7 @@ onMounted(() => {
 
     <!-- Support Modal -->
     <div v-if="showSupportModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showSupportModal = false">
-        <div class="modal-base w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div class="modal-base w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between p-5 border-b" :class="darkMode ? 'border-white/5' : 'border-gray-200'">
                 <h3 class="font-bold text-base" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.modal.support.title') }}</h3>
                 <button @click="showSupportModal = false" class="p-1 rounded-md transition" :class="darkMode ? 'text-gray-500 hover:text-white hover:bg-white/5' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'">
@@ -547,7 +547,7 @@ onMounted(() => {
                     <label class="form-label">{{ $t('welcome.modal.support.message') }} *</label>
                     <textarea v-model="supportForm.message" rows="4" class="form-input resize-none" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'"></textarea>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">Email *</label>
                         <input v-model="supportForm.email" type="email" class="form-input" :class="darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'">
@@ -567,7 +567,7 @@ onMounted(() => {
 
     <!-- Donation Modal -->
     <div v-if="showDonationModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showDonationModal = false">
-        <div class="modal-base w-full max-w-sm">
+        <div class="modal-base w-[calc(100%-1rem)] sm:w-full max-w-sm">
             <div class="flex items-center justify-between p-5 border-b" :class="darkMode ? 'border-white/5' : 'border-gray-200'">
                 <h3 class="font-bold text-base" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.modal.donation.title') }}</h3>
                 <button @click="showDonationModal = false" class="p-1 rounded-md transition" :class="darkMode ? 'text-gray-500 hover:text-white hover:bg-white/5' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'">

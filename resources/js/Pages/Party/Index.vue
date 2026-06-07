@@ -2380,7 +2380,7 @@ watch(buySearch, throttle(async (val) => {
     
     <!-- Assign Modal -->
     <div v-if="assignModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                 <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.assign_from_warehouse') }}</div>
                 <button @click="assignModalOpen = false" class="text-white/50 hover:text-white transition">
@@ -2479,7 +2479,7 @@ watch(buySearch, throttle(async (val) => {
 
     <!-- Sell Modal -->
     <div v-if="sellModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-emerald-900 to-green-800 p-4 flex justify-between items-center border-b border-emerald-500/20">
                 <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.sell_from_warehouse') }}</div>
                 <button @click="sellModalOpen = false" class="text-white/50 hover:text-white transition">
@@ -2669,7 +2669,7 @@ watch(buySearch, throttle(async (val) => {
     </div>
 
     <div v-if="addStockModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                 <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.add_items_to_warehouse') }}</div>
                 <button @click="addStockModalOpen = false" class="text-white/50 hover:text-white transition">
@@ -2775,7 +2775,7 @@ watch(buySearch, throttle(async (val) => {
     </div>
 
     <div v-if="buyStockModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-amber-800 to-orange-700 p-4 flex justify-between items-center border-b border-amber-500/20">
                 <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ $t('party.buy_items_for_warehouse') }}</div>
                 <button @click="buyStockModalOpen = false" class="text-white/50 hover:text-white transition">
@@ -2878,7 +2878,7 @@ watch(buySearch, throttle(async (val) => {
 
     <!-- Warehouse Recheck Modal -->
     <div v-if="recheckModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-3xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-3xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-cyan-900 to-sky-900 p-4 flex justify-between items-center border-b border-cyan-500/20">
                 <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">🔍 {{ $t('warehouse.recheck.title') }}</div>
                 <button @click="recheckModalOpen = false" class="text-white/50 hover:text-white">
@@ -2973,7 +2973,7 @@ watch(buySearch, throttle(async (val) => {
 
     <!-- Management: User Edit Modal -->
     <div v-if="showUserEditModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-        <div class="l2-panel w-full max-w-md rounded-3xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-md rounded-3xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-blue-900 to-indigo-900 p-5 flex justify-between items-center border-b border-blue-500/20">
                 <div>
                     <div class="text-[10px] text-white/70 font-black uppercase tracking-widest mb-1">{{ $t('system.users.actions.edit_role_cp') }}</div>
@@ -3014,7 +3014,7 @@ watch(buySearch, throttle(async (val) => {
 
     <!-- Management: User Adena Adjustment Modal -->
     <div v-if="showUserAdenaModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-        <div class="l2-panel w-full max-w-md rounded-3xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-md rounded-3xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
             <div class="bg-gradient-to-r from-purple-900 to-indigo-900 p-5 flex justify-between items-center border-b border-purple-500/20">
                 <div>
                     <div class="text-[10px] text-white/70 font-black uppercase tracking-widest mb-1">{{ $t('system.users.actions.manage_adena') }}</div>

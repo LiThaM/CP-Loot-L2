@@ -182,7 +182,7 @@ const podiumStyle = (idx) => {
 
         <!-- Add contribution modal -->
         <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showAddModal = false">
-            <div class="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div class="bg-white dark:bg-zinc-900 rounded-2xl w-[calc(100%-1rem)] sm:w-full sm:max-w-md flex flex-col max-h-[90vh]">
                 <div class="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800">
                     <h3 class="font-bold text-base text-gray-900 dark:text-white">{{ t('tracker.add.title') }}</h3>
                     <button @click="showAddModal = false" class="p-1 text-gray-400 hover:text-gray-900 dark:hover:text-white">

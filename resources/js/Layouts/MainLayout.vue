@@ -584,7 +584,21 @@ watch(() => alerts.value.items, (items) => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans selection:bg-purple-200 dark:selection:bg-purple-900 selection:text-black dark:selection:text-white pb-24 lg:pb-0">
+    <!--
+        Z-index stack (mobile-aware), top → bottom:
+        - z-[200]: toast (one-off, must always win)
+        - z-[130] CpRules / z-[120] Changelog: priority modals that must sit
+          above regular Inertia modals.
+        - z-[100..110]: regular modals (Loot, Sell, CP Request, Support).
+        - z-[60]: impersonation banner (was z-[100] — that competed with
+          modals which is wrong; the banner should be UNDER modals).
+        - z-50: top navbar + bottom-nav (siblings, never overlap in space).
+        - z-40: dropdowns inside the navbar.
+        Padding bottom on the root accounts for the fixed bottom-nav PLUS
+        iOS safe-area-inset (notch / home indicator). Without this, the
+        last row of tables in /loot or /party was getting clipped.
+    -->
+    <div class="min-h-screen bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans selection:bg-purple-200 dark:selection:bg-purple-900 selection:text-black dark:selection:text-white pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-0">
         <div v-if="toast.open" class="fixed top-4 right-4 z-[200]">
             <div
                 class="px-4 py-3 rounded-2xl border shadow-2xl backdrop-blur-md cursor-pointer select-none"
@@ -613,7 +627,7 @@ watch(() => alerts.value.items, (items) => {
         </div>
 
         <!-- Impersonation Banner -->
-        <div v-if="$page.props.auth.isImpersonating" class="sticky top-0 z-[100] bg-gradient-to-r from-red-600 to-amber-600 dark:from-red-900 dark:to-amber-900 text-white px-4 py-2 shadow-xl border-b border-white/20">
+        <div v-if="$page.props.auth.isImpersonating" class="sticky top-0 z-[60] bg-gradient-to-r from-red-600 to-amber-600 dark:from-red-900 dark:to-amber-900 text-white px-4 py-2 shadow-xl border-b border-white/20">
             <div class="max-w-7xl mx-auto flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="text-xl animate-pulse">🎭</span>
@@ -954,7 +968,10 @@ watch(() => alerts.value.items, (items) => {
         </div>
 
         <!-- Mobile/Main Navigation (Lineage 2 Style) -->
-        <div class="fixed bottom-0 w-full bg-white/90 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 flex justify-around p-2 z-50 shadow-2xl lg:hidden">
+        <!-- `pb-[env(safe-area-inset-bottom)]` keeps the icons above the iOS
+             home indicator. Root pads the page bottom to make sure no table
+             row hides behind this. -->
+        <div class="fixed bottom-0 left-0 right-0 w-full bg-white/90 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 flex justify-around p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-50 shadow-2xl lg:hidden">
             <template v-if="isAdmin">
                 <Link :href="route('dashboard')" class="flex flex-col items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('dashboard') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>

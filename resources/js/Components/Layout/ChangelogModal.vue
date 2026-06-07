@@ -18,8 +18,8 @@ const emit = defineEmits(['accept', 'see-all']);
 <template>
     <!-- First-open changelog modal — shows whenever the user has any
          unread web changelog entry, until they acknowledge. -->
-    <div v-if="open" class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-2xl max-h-[88vh] rounded-2xl border-purple-500/30 overflow-hidden shadow-2xl flex flex-col">
+    <div v-if="open" class="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[88vh] rounded-2xl border-purple-500/30 overflow-hidden shadow-2xl flex flex-col">
             <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/30">
                 <div>
                     <div class="text-[10px] text-purple-200 font-black uppercase tracking-widest">{{ $t('changelog.modal.kicker', 'Novedades') }}</div>
@@ -27,7 +27,7 @@ const emit = defineEmits(['accept', 'see-all']);
                 </div>
                 <span class="px-2.5 py-1 rounded-full bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest">{{ unread }}</span>
             </div>
-            <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+            <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                 <article v-for="entry in items" :key="'cl-'+entry.id" class="border-l-2 border-purple-500/40 pl-4 py-1">
                     <div class="flex items-baseline gap-3 mb-1 flex-wrap">
                         <span :class="['text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border', typeClass(entry.type)]">{{ entry.type }}</span>
@@ -37,7 +37,7 @@ const emit = defineEmits(['accept', 'see-all']);
                     <div v-if="localizedBody(entry)" class="text-sm mt-1 leading-relaxed text-gray-700 dark:text-gray-300 changelog-body" v-html="renderInlineMarkdown(localizedBody(entry))"></div>
                 </article>
             </div>
-            <div class="p-4 border-t border-gray-200 dark:border-gray-800 flex gap-3 bg-white/40 dark:bg-black/30">
+            <div class="p-4 border-t border-gray-200 dark:border-gray-800 flex gap-3 bg-white/40 dark:bg-black/30 flex-shrink-0">
                 <button @click="emit('see-all')" type="button"
                         class="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                     {{ $t('changelog.modal.see_all', 'Ver historial completo') }}

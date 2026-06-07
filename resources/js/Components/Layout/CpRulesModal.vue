@@ -15,8 +15,8 @@ const emit = defineEmits(['accept']);
     <!-- Blocking CP-rules modal. No close affordance: the only way out is
          to press "I accept". Sits above every other overlay (z-[130] vs
          changelog's z-[120]). -->
-    <div v-if="open" class="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-        <div class="l2-panel w-full max-w-2xl max-h-[88vh] rounded-2xl border-amber-500/40 overflow-hidden shadow-2xl flex flex-col">
+    <div v-if="open" class="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm">
+        <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[88vh] rounded-2xl border-amber-500/40 overflow-hidden shadow-2xl flex flex-col">
             <div class="bg-gradient-to-r from-amber-900 to-red-900 p-4 flex items-center justify-between border-b border-amber-500/30">
                 <div>
                     <div class="text-[10px] text-amber-200 font-black uppercase tracking-widest">{{ $t('cp.rules.modal.kicker') }}</div>
@@ -30,8 +30,8 @@ const emit = defineEmits(['accept']);
             <div class="px-6 pt-2 pb-1 text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">
                 {{ $t('cp.rules.version_meta', { version: rules?.current?.version, date: updatedAtFormatted, author: rules?.current?.updated_by || '—' }) }}
             </div>
-            <div class="p-6 overflow-y-auto custom-scrollbar text-sm leading-relaxed text-gray-800 dark:text-gray-200 changelog-body" v-html="renderInlineMarkdown(rules?.current?.body || '')"></div>
-            <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-black/30">
+            <div class="p-6 overflow-y-auto custom-scrollbar text-sm leading-relaxed text-gray-800 dark:text-gray-200 changelog-body flex-1 min-h-0" v-html="renderInlineMarkdown(rules?.current?.body || '')"></div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-black/30 flex-shrink-0">
                 <p class="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mb-3">
                     {{ $t('cp.rules.modal.no_dismiss_hint') }}
                 </p>
