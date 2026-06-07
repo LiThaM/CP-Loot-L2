@@ -395,7 +395,7 @@ const totalRecipeCost = computed(() => {
                                         <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                                         <span class="text-[10px] font-black uppercase tracking-widest text-amber-400">{{ $t('recipes.calc.title') }}</span>
                                     </div>
-                                    <div class="max-h-[65vh] overflow-y-auto">
+                                    <div class="max-h-none lg:max-h-[65vh] overflow-y-auto">
                                         <div v-for="(it, i) in getCalcItems(tree.nodes)" :key="i"
                                              class="border-b border-white/[0.03] last:border-0"
                                              :style="{ paddingLeft: (it.depth * 16 + 12) + 'px' }">

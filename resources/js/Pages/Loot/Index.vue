@@ -662,7 +662,7 @@ onMounted(async () => {
             </div>
 
             <!-- Pending LIST mode -->
-            <div v-if="activeTab === 'pending' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+            <div v-if="activeTab === 'pending' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-x-auto">
                 <div v-if="filteredPendingLoot.length === 0" class="py-12 text-center text-gray-600 font-cinzel text-xl italic opacity-50">
                     {{ $t('loot.no_pending_loot') }}
                 </div>
@@ -688,7 +688,7 @@ onMounted(async () => {
                                         {{ report.event_type }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{{ report.requested_by?.name || '—' }}</td>
+                                <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[120px] sm:max-w-[180px]">{{ report.requested_by?.name || '—' }}</td>
                                 <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.created_at) }}</td>
                                 <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>
                                 <td class="px-4 py-2 text-right whitespace-nowrap" @click.stop>
@@ -788,7 +788,7 @@ onMounted(async () => {
             </div>
 
             <!-- History LIST mode -->
-            <div v-if="activeTab === 'history' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+            <div v-if="activeTab === 'history' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-x-auto">
                 <div v-if="filteredHistory.length === 0" class="py-12 text-center text-gray-600 font-cinzel text-xl italic opacity-50">
                     {{ $t('loot.no_results') }}
                 </div>
@@ -870,7 +870,7 @@ onMounted(async () => {
             </div>
 
             <!-- WISHLIST LIST MODE -->
-            <div v-if="activeTab === 'wishlist' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+            <div v-if="activeTab === 'wishlist' && viewMode === 'list'" class="l2-panel rounded-2xl border-gray-800 overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
                     <thead class="bg-white/60 dark:bg-gray-900/40">
                         <tr>

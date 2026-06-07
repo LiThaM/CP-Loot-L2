@@ -721,7 +721,7 @@ watch(() => alerts.value.items, (items) => {
                                 <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                                 <span v-if="alerts.unreadCount > 0" class="absolute -top-1 -right-1 bg-purple-600 text-white text-[10px] font-black rounded-full px-1.5 py-0.5">{{ alerts.unreadCount }}</span>
                             </button>
-                            <div v-if="alertsOpen" class="absolute right-0 mt-2 w-80 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl p-2">
+                            <div v-if="alertsOpen" class="absolute right-0 mt-2 w-[min(20rem,calc(100vw-1rem))] max-h-[70vh] overflow-y-auto bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl p-2">
                                 <div class="flex items-center justify-between px-2 py-1">
                                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('alerts.title') }}</div>
                                     <button @click="markAllAlerts" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white">{{ $t('alerts.mark_all') }}</button>
@@ -818,7 +818,7 @@ watch(() => alerts.value.items, (items) => {
         />
 
         <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
-            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
+            <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.support.title') }}</h3>
                     <button @click="showSupportModal = false" class="text-white/50 hover:text-white transition" type="button">
@@ -865,7 +865,7 @@ watch(() => alerts.value.items, (items) => {
         </div>
 
         <div v-if="showCpRequestModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
-            <div class="l2-panel w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
+            <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.cp_request.title') }}</h3>
                     <button @click="showCpRequestModal = false" class="text-white/50 hover:text-white transition" type="button">
@@ -934,7 +934,7 @@ watch(() => alerts.value.items, (items) => {
         </div>
 
         <div v-if="showDonationModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
-            <div class="l2-panel w-full max-w-md max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
+            <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-md max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('modal.donations.title') }}</h3>
                     <button @click="showDonationModal = false" class="text-white/50 hover:text-white transition" type="button">
@@ -1025,7 +1025,7 @@ watch(() => alerts.value.items, (items) => {
 
         <!-- Loot Session Registration Modal (Refactored) -->
         <div v-if="showLootModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-            <div class="l2-panel w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+            <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-2xl max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-purple-900 to-blue-900 p-4 flex justify-between items-center border-b border-purple-500/20">
                     <h3 class="font-cinzel text-xl text-white tracking-widest">{{ $t('loot.modal.title') }}</h3>
                     <button @click="showLootModal = false" class="text-white/50 hover:text-white transition">

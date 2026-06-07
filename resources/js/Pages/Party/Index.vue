@@ -1524,8 +1524,8 @@ watch(buySearch, throttle(async (val) => {
             <div v-if="activeTab === 'members'" class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
                 <div class="divide-y divide-gray-200 dark:divide-gray-800">
                     <div v-for="(member, idx) in members" :key="member.id" class="bg-white/60 dark:bg-black/20">
-                        <div class="grid grid-cols-12 items-center gap-4 p-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-900/40" @click="toggleExpandedMember(member.id)">
-                            <div class="col-span-7 flex items-center min-w-0">
+                        <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-3 sm:gap-4 p-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-900/40" @click="toggleExpandedMember(member.id)">
+                            <div class="sm:col-span-7 flex items-center min-w-0">
                                 <div class="relative shrink-0">
                                     <div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-lg font-cinzel border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white">
                                         {{ member.name.charAt(0) }}
@@ -1551,7 +1551,7 @@ watch(buySearch, throttle(async (val) => {
                                 </div>
                             </div>
 
-                            <div class="col-span-5 flex items-center justify-end gap-3 px-4">
+                            <div class="sm:col-span-5 flex items-center justify-end gap-2 sm:gap-3 sm:px-4 flex-wrap">
                                 <!-- Member Donation Button (Current User) -->
                                 <button
                                     v-if="member.id === $page.props.auth.user.id"
@@ -1895,7 +1895,7 @@ watch(buySearch, throttle(async (val) => {
                 </div>
 
                 <!-- LIST MODE -->
-                <div v-else class="l2-panel rounded-2xl border-gray-800 overflow-hidden">
+                <div v-else class="l2-panel rounded-2xl border-gray-800 overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
                         <thead class="bg-white/60 dark:bg-gray-900/40">
                             <tr>
