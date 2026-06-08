@@ -1,8 +1,10 @@
 <?php
 
+use App\Contexts\ClientApi\Application\Controllers\Admin\GpsRoutesAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\ReleasesPublishApiController;
 use App\Contexts\ClientApi\Application\Controllers\ChangelogController;
 use App\Contexts\ClientApi\Application\Controllers\CrashReportController;
+use App\Contexts\ClientApi\Application\Controllers\GpsRoutesController;
 use App\Contexts\ClientApi\Application\Controllers\HealthController;
 use App\Contexts\ClientApi\Application\Controllers\Items\Lu4Controller;
 use App\Contexts\ClientApi\Application\Controllers\MeDataController;
@@ -84,6 +86,12 @@ Route::middleware(['api.log'])->group(function () {
         Route::get('/items/lu4', [Lu4Controller::class, 'index'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.items.lu4.index');
+
+        // GPS routes (raidboss + ciudades) — el cliente lo refresca al
+        // abrir el overlay GPS. Bug C de bugsApi/BUGS.md.
+        Route::get('/gps/routes', [GpsRoutesController::class, 'show'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.gps.routes.show');
     });
 
     // Tracking público de ticket por token secreto. Sin client_key porque el
@@ -139,5 +147,11 @@ Route::middleware(['api.log'])->group(function () {
             ->middleware('throttle:api-v1')
             ->where('version', '[\w.\-+]+')
             ->name('api.v1.admin.releases.update');
+
+        // Upload del routes.json del GPS — body es el JSON crudo. Reusa
+        // la ability 'release:upload' (mismo token admin). Bug C.
+        Route::post('/admin/gps/routes', [GpsRoutesAdminController::class, 'store'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.admin.gps.routes.store');
     });
 });
