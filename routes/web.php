@@ -240,6 +240,12 @@ Route::middleware('auth')->group(function () {
 
     // DKP value tracker (opt-in via CP settings). 404s for CPs that don't
     // have it enabled so leakage is contained at the route level.
+    // CP deep-dive stats page: KPIs + charts + heatmap aggregated from
+    // loot reports, points logs, warehouse and (if enabled) tracker rows.
+    // Accessible to all members of the CP in read-only mode.
+    Route::get('/party/stats', [\App\Contexts\Party\Application\Controllers\PartyStatsController::class, 'index'])
+        ->name('party.stats');
+
     Route::get('/party/tracker', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'index'])
         ->name('party.tracker');
     Route::post('/party/tracker/contributions', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'storeContribution'])

@@ -9,6 +9,7 @@ import { renderInlineMarkdown } from '@/utils/inlineMarkdown';
 import { formatAdenaShort as adenaFormatShort } from '@/utils/adena';
 import CpRulesModal from '@/Components/Layout/CpRulesModal.vue';
 import ChangelogModal from '@/Components/Layout/ChangelogModal.vue';
+import NavDropdown from '@/Components/Layout/NavDropdown.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -654,51 +655,77 @@ watch(() => alerts.value.items, (items) => {
                         </Link>
                     </div>
                     
+                    <!--
+                        Desktop navbar (lg+). Reorganized 2026-06-08:
+                        - 11 member/leader links → 4 dropdowns + Home.
+                        - 8 admin links → 3 dropdowns + Dashboard.
+                        Routes themselves are unchanged; only the grouping
+                        in the UI changes. Existing bookmarks keep working.
+                    -->
                     <div class="hidden lg:flex flex-1 items-center justify-center gap-x-6 xl:gap-x-8 min-w-0 px-4">
                         <template v-if="isAdmin">
-                            <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.dashboard') }}</Link>
-                            <Link :href="route('system.cps.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.cps.*')}">{{ $t('system.cps.nav') }}</Link>
-                            <Link :href="route('system.users.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.users.index')}">{{ $t('nav.members') }}</Link>
-                            <Link :href="route('system.items.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.items.index')}">{{ $t('nav.items') }}</Link>
-                            <Link :href="route('system.translations.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.translations.index')}">{{ $t('nav.translations') }}</Link>
-                            <Link :href="route('system.releases.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.releases.*')}">Releases</Link>
-                            <Link :href="route('system.crashes.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.crashes.*')}">Crashes</Link>
-                            <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
+                            <Link :href="route('dashboard')"
+                                  class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition"
+                                  :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">
+                                {{ $t('nav.dashboard') }}
+                            </Link>
+                            <NavDropdown
+                                :label="$t('nav.manage')"
+                                :items="[
+                                    { label: $t('system.cps.nav'), route: route('system.cps.index'), active: route().current('system.cps.*') },
+                                    { label: $t('nav.members'), route: route('system.users.index'), active: route().current('system.users.index') },
+                                    { label: $t('nav.items'), route: route('system.items.index'), active: route().current('system.items.index') },
+                                    { label: $t('nav.translations'), route: route('system.translations.index'), active: route().current('system.translations.index') },
+                                ]"
+                            />
+                            <NavDropdown
+                                :label="$t('nav.system')"
+                                :items="[
+                                    { label: 'Releases', route: route('system.releases.index'), active: route().current('system.releases.*') },
+                                    { label: 'Crashes', route: route('system.crashes.index'), active: route().current('system.crashes.*') },
+                                    { label: 'Tickets', route: route('tickets.index'), active: route().current('tickets.*') },
+                                ]"
+                            />
                         </template>
                         <template v-else>
-                            <Link :href="route('dashboard')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">{{ $t('nav.home') }}</Link>
-                            <Link :href="route('loot.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('loot.index')}">{{ $t('nav.loot') }}</Link>
-                            <Link :href="route('party.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.index')}">{{ $t('nav.party') }}</Link>
-                            <Link :href="route('party.warehouse_cp')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('party.warehouse_cp')}">{{ $t('nav.cp_vault') }}</Link>
-                            <Link v-if="user.cp?.tracker_enabled" :href="route('party.tracker')" class="text-sm uppercase font-bold tracking-widest text-amber-700 hover:text-amber-600 dark:text-amber-300 dark:hover:text-amber-200 transition" :class="{'text-amber-600 dark:text-amber-200': route().current('party.tracker')}">{{ $t('nav.tracker') }}</Link>
-                            <Link :href="route('warehouse.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('warehouse.index')}">{{ $t('nav.warehouse') }}</Link>
-                            <div v-if="['admin','cp_leader','accountant'].includes(user.role?.name) && user.cp_id" class="relative" @mouseenter="craftMenuOpenWithDelay" @mouseleave="craftMenuScheduleClose">
-                                <button type="button"
-                                        class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition inline-flex items-center gap-1"
-                                        :class="{'text-purple-700 dark:text-purple-300': route().current('party.crafting') || route().current('party.craft_bulk.*')}"
-                                        @click="craftMenuOpen = !craftMenuOpen">
-                                    {{ $t('nav.craft') }}
-                                    <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                </button>
-                                <!-- pt-2 on the panel creates an invisible bridge so the cursor never
-                                     exits the container while crossing from the button to the items. -->
-                                <div v-if="craftMenuOpen" class="absolute left-0 top-full pt-2 w-56 z-50"
-                                     @mouseenter="craftMenuOpenWithDelay" @mouseleave="craftMenuScheduleClose">
-                                    <div class="bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl py-2">
-                                        <Link :href="route('party.crafting')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" :class="{'text-purple-700 dark:text-purple-300 font-bold': route().current('party.crafting')}" @click="craftMenuOpen = false">
-                                            <div class="font-bold">{{ $t('nav.craft.individual') }}</div>
-                                            <div class="text-[10px] text-gray-500 dark:text-gray-500 tracking-widest uppercase mt-0.5">{{ $t('nav.craft.individual_hint') }}</div>
-                                        </Link>
-                                        <Link :href="route('party.craft_bulk.index')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" :class="{'text-purple-700 dark:text-purple-300 font-bold': route().current('party.craft_bulk.*')}" @click="craftMenuOpen = false">
-                                            <div class="font-bold">{{ $t('nav.craft.bulk') }}</div>
-                                            <div class="text-[10px] text-gray-500 dark:text-gray-500 tracking-widest uppercase mt-0.5">{{ $t('nav.craft.bulk_hint') }}</div>
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                            <Link :href="route('itemsdb.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">{{ $t('nav.items_db') }}</Link>
-                            <Link :href="route('system.external_payouts.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('system.external_payouts.*')}">{{ $t('system.external_payouts.nav') }}</Link>
-                            <Link :href="route('tickets.index')" class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition" :class="{'text-purple-700 dark:text-purple-300': route().current('tickets.*')}">Tickets</Link>
+                            <Link :href="route('dashboard')"
+                                  class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition"
+                                  :class="{'text-purple-700 dark:text-purple-300': route().current('dashboard')}">
+                                {{ $t('nav.home') }}
+                            </Link>
+                            <NavDropdown
+                                :label="$t('nav.cp')"
+                                :items="[
+                                    { label: $t('nav.party'), route: route('party.index'), active: route().current('party.index') },
+                                    { label: $t('nav.cp_vault'), route: route('party.warehouse_cp'), active: route().current('party.warehouse_cp') },
+                                    { label: $t('nav.cp.stats'), route: route('party.stats'), active: route().current('party.stats') },
+                                    { label: $t('nav.tracker'), route: route('party.tracker'), active: route().current('party.tracker'), condition: !!user.cp?.tracker_enabled },
+                                    { label: $t('system.external_payouts.nav'), route: route('system.external_payouts.index'), active: route().current('system.external_payouts.*'), condition: ['cp_leader','accountant'].includes(user.role?.name) },
+                                ]"
+                            />
+                            <NavDropdown
+                                :label="$t('nav.loot')"
+                                :items="[
+                                    { label: $t('nav.loot.pending_history'), route: route('loot.index'), active: route().current('loot.index') },
+                                    { label: $t('nav.warehouse'), route: route('warehouse.index'), active: route().current('warehouse.index') },
+                                ]"
+                            />
+                            <NavDropdown
+                                v-if="['admin','cp_leader','accountant'].includes(user.role?.name) && user.cp_id"
+                                :label="$t('nav.craft')"
+                                :items="[
+                                    { label: $t('nav.craft.individual'), route: route('party.crafting'), hint: $t('nav.craft.individual_hint'), active: route().current('party.crafting') },
+                                    { label: $t('nav.craft.bulk'), route: route('party.craft_bulk.index'), hint: $t('nav.craft.bulk_hint'), active: route().current('party.craft_bulk.*') },
+                                ]"
+                            />
+                            <NavDropdown
+                                :label="$t('nav.more')"
+                                :items="[
+                                    { label: $t('nav.items_db'), route: route('itemsdb.index'), active: route().current('itemsdb.index') },
+                                    { label: $t('nav.tutorials'), route: route('tutorials.index'), active: route().current('tutorials.*'), condition: !isAdmin },
+                                    { label: 'Tickets', route: route('tickets.index'), active: route().current('tickets.*') },
+                                ]"
+                            />
                         </template>
                     </div>
 
@@ -987,34 +1014,27 @@ watch(() => alerts.value.items, (items) => {
                 </Link>
             </template>
             <template v-else>
+                <!-- Slimmed to 5 entries + FAB. Items DB, Tickets and audit
+                     access move into the profile menu (which is a sheet on
+                     mobile). The user can still reach them; the bottom-nav
+                     now mirrors the desktop mental model: Home / CP / Loot
+                     with Report as a giant centered action. -->
                 <Link :href="route('dashboard')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('dashboard') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                     <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.home') }}</span>
                 </Link>
-                <Link :href="route('party.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('party.index') }">
+                <Link :href="route('party.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('party.index') || route().current('party.warehouse_cp') || route().current('party.stats') || route().current('party.tracker') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.party') }}</span>
+                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.cp') }}</span>
                 </Link>
-                
+
                 <button @click="openLootModal" class="relative -top-6 flex flex-col items-center justify-center bg-gradient-to-tr from-purple-600 to-blue-600 rounded-full w-16 h-16 shadow-lg shadow-purple-950/40 border-4 border-gray-100 dark:border-gray-900 text-white transform hover:scale-110 transition-all duration-300">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                 </button>
 
-                <Link :href="route('loot.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('loot.index') }">
+                <Link :href="route('loot.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('loot.index') || route().current('warehouse.index') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                     <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.loot') }}</span>
-                </Link>
-                <Link :href="route('itemsdb.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('itemsdb.index') }">
-                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.items_db') }}</span>
-                </Link>
-                <Link v-if="canAuditCp" :href="route('system.users.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('system.users.index') }">
-                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">{{ $t('nav.members') }}</span>
-                </Link>
-                <Link :href="route('tickets.index')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('tickets.*') }">
-                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
-                    <span class="text-[9px] uppercase font-bold tracking-widest">Tickets</span>
                 </Link>
                 <Link :href="route('profile.edit')" class="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-500" :class="{ 'text-purple-700 dark:text-purple-300': route().current('profile.edit') }">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
