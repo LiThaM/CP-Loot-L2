@@ -59,7 +59,7 @@ class ProfileStatsController extends Controller
             'myRank' => $this->myRank($user->id, $cp->id),
             'myTracker' => $cp->tracker_enabled ? $this->myTracker($user->id, $cp->id) : null,
             'activityCalendar' => $this->activityCalendar($user->id, $cp->id, $from, $now),
-            'characters' => $user->characters()->with('mainClass:id,name,race')->get([
+            'characters' => $user->characters()->with('l2Class:id,name,race')->get([
                 'id', 'name', 'l2_class_id', 'race', 'level',
             ]),
         ]);

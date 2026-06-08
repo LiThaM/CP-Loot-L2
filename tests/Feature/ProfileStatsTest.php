@@ -140,6 +140,29 @@ class ProfileStatsTest extends TestCase
             );
     }
 
+    public function test_loads_when_user_has_characters_eager_loaded(): void
+    {
+        // Regression: the controller eager-loads `characters.l2Class`. An
+        // earlier version used a non-existent `mainClass` relation, which
+        // didn't fail when characters were empty but blew up in prod with
+        // RelationNotFoundException for any user that had registered one.
+        $cp = $this->makeCp();
+        $me = $this->makeUser($cp, $this->memberRole);
+        \App\Contexts\Identity\Domain\Models\Character::create([
+            'user_id' => $me->id,
+            'name' => 'TestHero',
+            'race' => 'Human',
+            'level' => 76,
+        ]);
+
+        $this->actingAs($me)->get(route('profile.stats'))
+            ->assertOk()
+            ->assertInertia(fn ($p) => $p
+                ->has('characters', 1)
+                ->where('characters.0.name', 'TestHero')
+            );
+    }
+
     public function test_tracker_panel_only_when_enabled(): void
     {
         $cpOff = $this->makeCp(['tracker_enabled' => false]);

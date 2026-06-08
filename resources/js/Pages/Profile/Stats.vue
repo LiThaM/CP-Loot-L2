@@ -251,7 +251,7 @@ const rankMedal = (pos) => {
                     <div v-for="ch in characters" :key="ch.id" class="rounded-xl border border-gray-200 dark:border-gray-800 p-4 bg-white/40 dark:bg-black/30">
                         <div class="font-cinzel font-bold text-gray-900 dark:text-white">{{ ch.name }}</div>
                         <div class="text-xs text-gray-500 mt-1">
-                            <span v-if="ch.mainClass">{{ ch.mainClass.name }}</span>
+                            <span v-if="ch.l2_class">{{ ch.l2_class.name }}</span>
                             <span v-if="ch.race"> · {{ ch.race }}</span>
                         </div>
                         <div class="text-[10px] font-black uppercase tracking-widest text-purple-700 dark:text-purple-300 mt-2">Lv {{ ch.level || '—' }}</div>
