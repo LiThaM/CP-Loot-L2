@@ -29,8 +29,15 @@ const props = defineProps({
 
 const page = usePage();
 const translations = computed(() => page.props.translations || {});
-const t = (key, params = {}) => {
-    const raw = translations.value?.[key] ?? key;
+// Supports both (key, params) and (key, fallback, params). The 3-arg form
+// is used heavily in this page for placeholder substitution ({position},
+// {total}, etc.) — the previous 2-arg-only version silently dropped the
+// params object, leaving raw `{placeholder}` in the rendered text.
+const t = (key, fallbackOrParams = undefined, paramsArg = undefined) => {
+    const hasFallback = typeof fallbackOrParams === 'string';
+    const fallback = hasFallback ? fallbackOrParams : undefined;
+    const params = (hasFallback ? paramsArg : fallbackOrParams) || {};
+    const raw = translations.value?.[key] ?? fallback ?? key;
     if (!raw || typeof raw !== 'string') return raw;
     return raw.replace(/\{(\w+)\}/g, (m, p1) => (Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : m));
 };
