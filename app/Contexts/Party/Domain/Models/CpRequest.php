@@ -14,6 +14,7 @@ class CpRequest extends Model
         'chronicle',
         'leader_name',
         'contact_email',
+        'preferred_language',
         'message',
         'status',
         'approved_at',

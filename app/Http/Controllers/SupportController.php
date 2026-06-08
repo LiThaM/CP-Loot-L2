@@ -118,7 +118,14 @@ class SupportController extends Controller
         $cp = null;
         $cpRequest = null;
 
-        DB::transaction(function () use ($data, $inviteCode, $leaderRole, &$user, &$cp, &$cpRequest) {
+        // Capture the locale already resolved by HandleInertiaRequests
+        // (?lang= query > session > cookie > app fallback). Persisting it
+        // on both the new user and the cp_requests audit row means future
+        // transactional mails (changelog, reminders) hit the right language.
+        $locale = app()->getLocale();
+        $preferredLanguage = in_array($locale, ['es', 'en'], true) ? $locale : null;
+
+        DB::transaction(function () use ($data, $inviteCode, $leaderRole, $preferredLanguage, &$user, &$cp, &$cpRequest) {
             $cp = ConstParty::create([
                 'leader_id' => null,
                 'name' => $data['cp_name'],
@@ -133,6 +140,7 @@ class SupportController extends Controller
                 'password' => Hash::make($data['password']),
                 'cp_id' => $cp->id,
                 'membership_status' => 'approved',
+                'language_preference' => $preferredLanguage ?: 'system',
             ]);
             $user->forceFill(['role_id' => $leaderRole->id])->save();
 
@@ -144,6 +152,7 @@ class SupportController extends Controller
                 'chronicle' => $data['chronicle'] ?? null,
                 'leader_name' => $data['leader_name'] ?? null,
                 'contact_email' => $data['email'],
+                'preferred_language' => $preferredLanguage,
                 'message' => $data['message'] ?? null,
                 'status' => 'approved',
                 'approved_at' => now(),
