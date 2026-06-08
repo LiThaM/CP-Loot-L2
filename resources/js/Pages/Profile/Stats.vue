@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
+import UserAvatar from '@/Components/UserAvatar.vue';
 import { Bar, Line } from 'vue-chartjs';
 import {
     Chart as ChartJS,
@@ -100,9 +101,7 @@ const rankMedal = (pos) => {
             <!-- Header -->
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-2xl bg-purple-200 dark:bg-purple-900/60 text-purple-900 dark:text-purple-100 flex items-center justify-center text-2xl font-cinzel font-bold border border-purple-300/40">
-                        {{ me.name.charAt(0).toUpperCase() }}
-                    </div>
+                    <UserAvatar :user="me" size="lg" :square="true" />
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">{{ t('profile.stats.kicker', 'My personal stats') }}</div>
                         <h1 class="text-2xl sm:text-3xl font-cinzel font-bold text-gray-900 dark:text-white mt-1">{{ me.name }}</h1>

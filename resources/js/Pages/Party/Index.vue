@@ -4,6 +4,7 @@ import MainLayout from '@/Layouts/MainLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import LoadMoreSection from '@/Components/LoadMoreSection.vue';
 import MarketPriceCell from '@/Components/MarketPriceCell.vue';
+import UserAvatar from '@/Components/UserAvatar.vue';
 import ViewModeToggle from '@/Components/ViewModeToggle.vue';
 import { useViewMode } from '@/Composables/useViewMode.js';
 import { ref, computed, watch } from 'vue';
@@ -1500,9 +1501,7 @@ watch(buySearch, throttle(async (val) => {
                             <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{{ $t('party.cp_leader') }}</div>
                             <div class="text-sm font-black text-gray-900 dark:text-white hover:text-purple-700 dark:hover:text-purple-300 transition">{{ cp.leader.name }}</div>
                         </div>
-                        <div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-black text-gray-800 dark:text-white">
-                            {{ cp.leader.name.charAt(0) }}
-                        </div>
+                        <UserAvatar :user="cp.leader" size="md" />
                     </div>
                 </div>
 
@@ -1527,9 +1526,7 @@ watch(buySearch, throttle(async (val) => {
                         <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-3 sm:gap-4 p-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-900/40" @click="toggleExpandedMember(member.id)">
                             <div class="sm:col-span-7 flex items-center min-w-0">
                                 <div class="relative shrink-0">
-                                    <div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-lg font-cinzel border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white">
-                                        {{ member.name.charAt(0) }}
-                                    </div>
+                                    <UserAvatar :user="member" size="md" :square="true" />
                                     <div class="absolute -top-2 -left-2 w-6 h-6 bg-gray-900 border border-gray-700 rounded-full flex items-center justify-center text-[10px] font-black text-gray-500">
                                         #{{ idx + 1 }}
                                     </div>

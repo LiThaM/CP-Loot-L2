@@ -4,6 +4,7 @@ import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import axios from 'axios';
 import StatCard from '@/Components/Admin/StatCard.vue';
+import UserAvatar from '@/Components/UserAvatar.vue';
 import EmptyState from '@/Components/Admin/EmptyState.vue';
 import AdminPageHeader from '@/Components/Admin/AdminPageHeader.vue';
 import {
@@ -309,8 +310,8 @@ const toggleUserLogs = async (user) => {
                             <tr class="transition group cursor-pointer" :class="user.membership_status === 'banned' ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-purple-500/5 dark:hover:bg-purple-950/10'" @click="toggleUserLogs(user)">
                                 <td class="p-5">
                                 <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-black mr-3 border" :class="user.membership_status === 'banned' ? 'bg-red-100 border-red-200 text-red-800 dark:bg-red-900 dark:border-red-800 dark:text-white' : 'bg-gray-100 border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-white'">
-                                        {{ user.name.charAt(0) }}
+                                    <div class="mr-3 shrink-0" :class="user.membership_status === 'banned' ? 'opacity-60 grayscale' : ''">
+                                        <UserAvatar :user="user" size="sm" />
                                     </div>
                                     <div>
                                         <div class="text-sm font-black transition" :class="user.membership_status === 'banned' ? 'text-red-600 dark:text-red-400 line-through' : 'text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300'">{{ user.name }}</div>

@@ -49,6 +49,7 @@ class ProfileStatsController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'role' => $user->role?->name,
+                    'avatar_url' => $user->avatar_url,
                     'cp' => null,
                 ],
                 'period' => $period,
@@ -78,6 +79,7 @@ class ProfileStatsController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'role' => $user->role?->name,
+                'avatar_url' => $user->avatar_url,
                 'cp' => [
                     'id' => $cp->id,
                     'name' => $cp->name,

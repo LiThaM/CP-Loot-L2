@@ -10,6 +10,7 @@ import { formatAdenaShort as adenaFormatShort } from '@/utils/adena';
 import CpRulesModal from '@/Components/Layout/CpRulesModal.vue';
 import ChangelogModal from '@/Components/Layout/ChangelogModal.vue';
 import NavDropdown from '@/Components/Layout/NavDropdown.vue';
+import UserAvatar from '@/Components/UserAvatar.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -776,9 +777,7 @@ watch(() => alerts.value.items, (items) => {
                         <div class="relative">
                             <button @click="userMenuOpen = !userMenuOpen" class="flex items-center space-x-3 p-2 px-4 rounded-full border transition bg-gray-100 border-gray-300 hover:border-purple-500 dark:bg-gray-800/50 dark:border-gray-700">
                                 <span class="text-xs text-gray-700 dark:text-gray-400 group-hover:text-black dark:group-hover:text-white font-bold tracking-widest uppercase">{{ user.name }}</span>
-                                <div class="w-6 h-6 bg-purple-200 text-purple-900 dark:bg-purple-900/70 dark:text-white rounded-full flex items-center justify-center text-[10px]">
-                                    {{ user.name.charAt(0) }}
-                                </div>
+                                <UserAvatar :user="user" size="xs" />
                             </button>
                             <!-- Avatar menu is for account-y links that don't fit the
                                  main nav: tutorials (help), changelog (release notes),

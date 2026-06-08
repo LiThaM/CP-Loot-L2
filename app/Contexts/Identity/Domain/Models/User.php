@@ -20,9 +20,11 @@ class User extends Authenticatable
     // via `User::create($request->all())` or `->update($request->only(...))`.
     // The only legitimate code paths that change a user's role
     // (`UserManagementController::updateRole`) use forceFill() explicitly.
-    protected $fillable = ['name', 'email', 'password', 'cp_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at', 'changelog_emails_enabled', 'main_class_id', 'main_race', 'main_level'];
+    protected $fillable = ['name', 'email', 'password', 'cp_id', 'membership_status', 'theme_preference', 'language_preference', 'changelog_last_seen_at', 'changelog_emails_enabled', 'main_class_id', 'main_race', 'main_level', 'avatar_path'];
 
     protected $hidden = ['password', 'remember_token'];
+
+    protected $appends = ['avatar_url'];
 
     protected function casts(): array
     {
@@ -32,6 +34,14 @@ class User extends Authenticatable
             'changelog_last_seen_at' => 'datetime',
             'changelog_emails_enabled' => 'boolean',
         ];
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if ($this->avatar_path) {
+            return asset('storage/' . $this->avatar_path);
+        }
+        return null;
     }
 
     public function role()
