@@ -25,8 +25,15 @@ class LootController extends Controller
             ]);
         }
 
-        // Load Pending Sessions (Reports)
-        $pendingLoot = LootReport::with(['entries.item', 'requestedBy'])
+        // Load Pending Sessions (Reports). Eager-loading `attendees` is
+        // critical for the resolve modal: the Vue page builds
+        // `resolveForm.attendees` from `report.attendees` filtering by
+        // `is_external` so the leader sees and preserves externals on
+        // confirm. Without it, externals were dropped during confirm
+        // because the form sent an empty externals list to the backend,
+        // which then rebuilt the attendee table from `recipient_ids`
+        // alone (internals only).
+        $pendingLoot = LootReport::with(['entries.item', 'requestedBy', 'attendees'])
             ->where('cp_id', $user->cp_id)
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc')
@@ -39,7 +46,7 @@ class LootController extends Controller
         $historyPage = max(1, (int) $request->query('history_page', 1));
         $historyDir = $historySort === 'oldest' ? 'asc' : 'desc';
 
-        $historyQuery = LootReport::with(['entries.item', 'requestedBy'])
+        $historyQuery = LootReport::with(['entries.item', 'requestedBy', 'attendees'])
             ->where('cp_id', $user->cp_id)
             ->whereIn('status', ['confirmed', 'rejected']);
 

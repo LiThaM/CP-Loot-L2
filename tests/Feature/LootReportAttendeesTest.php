@@ -130,4 +130,45 @@ class LootReportAttendeesTest extends TestCase
         $this->assertCount(2, $report->attendees);
         $this->assertSame(0, $report->attendees->where('is_external', true)->count());
     }
+
+    /**
+     * Regression — discovered 2026-06-09. When the leader confirmed a
+     * FARM report, externals were dropped from `loot_report_attendees`
+     * because `LootController::index` didn't eager-load the `attendees`
+     * relation. Vue's resolve modal built `resolveForm.attendees` from
+     * `report.attendees` (empty array), the form submitted `attendees:[]`
+     * and the backend rebuilt the attendee list using only `recipient_ids`,
+     * wiping every external row.
+     */
+    public function test_pending_loot_payload_includes_attendees_so_externals_survive_confirm(): void
+    {
+        $member = $this->member('M1');
+        $report = LootReport::create([
+            'cp_id' => $this->cp->id,
+            'requested_by_id' => $member->id,
+            'event_type' => 'FARM',
+            'status' => 'pending',
+            'points_per_member' => 0,
+        ]);
+        LootReportAttendee::create([
+            'loot_report_id' => $report->id,
+            'user_id' => $member->id, 'is_external' => false,
+        ]);
+        LootReportAttendee::create([
+            'loot_report_id' => $report->id,
+            'user_id' => null, 'external_name' => 'ExternoUno', 'is_external' => true,
+        ]);
+
+        $response = $this->actingAs($this->leader)->get(route('loot.index'));
+        $response->assertOk();
+
+        $payload = $response->original->getData()['page']['props'] ?? [];
+        $pending = $payload['pendingLoot'] ?? [];
+        $this->assertNotEmpty($pending, 'pendingLoot is missing from props');
+
+        $first = (array) $pending[0];
+        $this->assertArrayHasKey('attendees', $first, 'attendees should be eager-loaded on pending reports');
+        $attendees = collect($first['attendees']);
+        $this->assertGreaterThan(0, $attendees->where('is_external', true)->count(), 'external attendees should be present in pending payload');
+    }
 }
