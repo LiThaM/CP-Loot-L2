@@ -25,15 +25,20 @@ export const renderInlineMarkdown = (input) => {
     if (input == null) return '';
     let out = escapeHtml(input);
 
-    // `code` (before bold/italic so the asterisks inside are kept literal).
-    out = out.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-gray-200/60 dark:bg-gray-800/60 text-[0.9em]">$1</code>');
-
-    // [label](href)
+    // [label](href) — MUST run before `code`. Otherwise a label containing
+    // backticks (e.g. `[``/party/auctions``](/party/auctions)`) gets turned
+    // into a <code> element whose Tailwind class contains `text-[0.9em]`
+    // (literal brackets). The link-regex label pattern `[^\]]+` then stops
+    // at the inner `]` of the class name and the whole link fails to match,
+    // leaving the surrounding `[`, `](...)` as plain text.
     out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (match, label, href) => {
         if (!isSafeHref(href)) return match; // leave literal
         const safeHref = escapeHtml(href);
         return `<a href="${safeHref}" class="font-bold text-purple-700 dark:text-purple-300 underline-offset-2 hover:underline">${label}</a>`;
     });
+
+    // `code` (before bold/italic so the asterisks inside are kept literal).
+    out = out.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-gray-200/60 dark:bg-gray-800/60 text-[0.9em]">$1</code>');
 
     // **bold**
     out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
