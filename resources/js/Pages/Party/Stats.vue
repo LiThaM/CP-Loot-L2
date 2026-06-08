@@ -126,7 +126,7 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
                 </div>
             </div>
 
-            <div v-if="!hasAnyData" class="l2-panel p-12 rounded-3xl text-center bg-white/60 dark:bg-black/40">
+            <div v-if="!hasAnyData" class="l2-panel p-12 rounded-3xl text-center">
                 <div class="text-4xl mb-3 opacity-40">📊</div>
                 <div class="font-bold text-lg text-gray-600 dark:text-gray-400">{{ t('cp.stats.empty.title', 'No activity yet in this period') }}</div>
                 <div class="text-xs text-gray-500 mt-2">{{ t('cp.stats.empty.hint', 'Once members confirm loot reports the charts will fill up here.') }}</div>
@@ -135,7 +135,7 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
             <template v-else>
                 <!-- KPI strip -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <div class="l2-panel p-5 rounded-2xl bg-white/60 dark:bg-black/40 border border-gray-200 dark:border-gray-800">
+                    <div class="l2-panel p-5 rounded-2xl border border-gray-200 dark:border-gray-800">
                         <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('cp.stats.kpi.reports', 'Reports') }}</div>
                         <div class="text-2xl font-cinzel font-bold text-gray-900 dark:text-white">{{ kpis.reports.value }}</div>
                         <div v-if="kpis.reports.prev > 0" class="text-[10px] mt-1 font-bold" :class="kpis.reports.delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'">
@@ -162,11 +162,11 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
 
                 <!-- Charts row -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                    <div class="l2-panel p-6 rounded-2xl">
                         <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('cp.stats.report_trend', 'Report trend (by event type)') }}</div>
                         <div class="h-64"><Bar :data="trendChartData" :options="trendChartOptions" /></div>
                     </div>
-                    <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                    <div class="l2-panel p-6 rounded-2xl">
                         <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('cp.stats.adena_flow', 'Adena flow (in vs out)') }}</div>
                         <div class="h-64"><Bar :data="adenaChartData" :options="adenaChartOptions" /></div>
                     </div>
@@ -174,7 +174,7 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
 
                 <!-- Top items + Grade distribution -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                    <div class="lg:col-span-2 l2-panel p-6 rounded-2xl ">
                         <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('cp.stats.top_items', 'Top items dropped') }}</div>
                         <div v-if="topItems.length === 0" class="text-center py-8 text-sm text-gray-500">{{ t('cp.stats.no_items', 'No drops in this period.') }}</div>
                         <table v-else class="w-full text-sm">
@@ -208,7 +208,7 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
                             </tbody>
                         </table>
                     </div>
-                    <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                    <div class="l2-panel p-6 rounded-2xl">
                         <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('cp.stats.grade_distribution', 'Vault by grade') }}</div>
                         <div class="h-64 flex items-center justify-center">
                             <Doughnut v-if="gradeChartData.datasets[0].data.length" :data="gradeChartData" :options="gradeChartOptions" />
@@ -218,7 +218,7 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
                 </div>
 
                 <!-- Activity heatmap -->
-                <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                <div class="l2-panel p-6 rounded-2xl">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('cp.stats.heatmap', 'Member activity heatmap') }}</div>
                     <div v-if="activityHeatmap.members.length === 0" class="text-center py-8 text-sm text-gray-500">{{ t('cp.stats.no_activity', 'No member activity in this period.') }}</div>
                     <div v-else class="overflow-x-auto">
@@ -245,7 +245,7 @@ const hasAnyData = computed(() => props.kpis.reports.value > 0 || props.kpis.ade
 
                 <!-- Bottom row: financial scoreboard + tracker top -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                    <div class="l2-panel p-6 rounded-2xl">
                         <div class="flex items-center justify-between mb-4">
                             <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ t('cp.stats.financial', 'CP financial scoreboard') }}</div>
                             <div class="text-xs font-cinzel text-gray-500">

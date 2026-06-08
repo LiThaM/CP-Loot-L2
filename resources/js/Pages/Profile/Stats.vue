@@ -145,7 +145,7 @@ const rankMedal = (pos) => {
             <template v-if="!noCp">
             <!-- KPI strip -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div class="l2-panel p-5 rounded-2xl bg-white/60 dark:bg-black/40 border border-gray-200 dark:border-gray-800">
+                <div class="l2-panel p-5 rounded-2xl border border-gray-200 dark:border-gray-800">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('profile.stats.kpi.total_points', 'Total points') }}</div>
                     <div class="text-2xl font-cinzel font-bold text-purple-700 dark:text-purple-300">{{ kpis.total_points }}</div>
                 </div>
@@ -183,11 +183,11 @@ const rankMedal = (pos) => {
 
             <!-- Charts row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                <div class="l2-panel p-6 rounded-2xl">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('profile.stats.points_timeline', 'Points earned per day') }}</div>
                     <div class="h-64"><Line :data="pointsChartData" :options="chartOptions" /></div>
                 </div>
-                <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                <div class="l2-panel p-6 rounded-2xl">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('profile.stats.adena_flow', 'Adena flow (in vs out)') }}</div>
                     <div class="h-64"><Bar :data="adenaChartData" :options="stackedOptions" /></div>
                 </div>
@@ -195,7 +195,7 @@ const rankMedal = (pos) => {
 
             <!-- Top items + My tracker -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+                <div class="lg:col-span-2 l2-panel p-6 rounded-2xl ">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('profile.stats.top_items', 'Top items I received') }}</div>
                     <div v-if="topItemsReceived.length === 0" class="text-center py-8 text-sm text-gray-500">{{ t('profile.stats.no_items', 'No items assigned to you in this period.') }}</div>
                     <table v-else class="w-full text-sm">
@@ -250,7 +250,7 @@ const rankMedal = (pos) => {
             </div>
 
             <!-- Activity calendar -->
-            <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+            <div class="l2-panel p-6 rounded-2xl">
                 <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('profile.stats.activity_calendar', 'My activity calendar') }}</div>
                 <div class="flex gap-1 flex-wrap">
                     <div v-for="cell in activityCalendar" :key="cell.date"
@@ -270,7 +270,7 @@ const rankMedal = (pos) => {
             </template>
 
             <!-- My characters (visible always — character mgmt is per-user, not per-CP) -->
-            <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
+            <div class="l2-panel p-6 rounded-2xl">
                 <div class="flex items-center justify-between mb-4">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ t('profile.stats.my_characters', 'My characters') }}</div>
                     <Link :href="route('characters.index')" class="text-[10px] font-bold uppercase tracking-widest text-purple-700 dark:text-purple-300 hover:underline">{{ t('profile.stats.manage', 'Manage') }} →</Link>

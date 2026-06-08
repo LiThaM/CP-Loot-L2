@@ -109,7 +109,7 @@ const podiumStyle = (idx) => {
             </div>
 
             <!-- Leaderboard -->
-            <section class="l2-panel p-6 rounded-3xl border-gray-800 bg-white/60 dark:bg-black/40">
+            <section class="l2-panel p-6 rounded-3xl border-gray-800">
                 <h2 class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">{{ t('tracker.leaderboard.title') }}</h2>
                 <div v-if="leaderboard.length === 0" class="text-center py-8 text-sm text-gray-500">{{ t('tracker.leaderboard.empty') }}</div>
                 <ol v-else class="space-y-2">
@@ -129,7 +129,7 @@ const podiumStyle = (idx) => {
             </section>
 
             <!-- Filters + Contributions -->
-            <section class="l2-panel p-6 rounded-3xl border-gray-800 bg-white/60 dark:bg-black/40">
+            <section class="l2-panel p-6 rounded-3xl border-gray-800">
                 <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
                     <h2 class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ t('tracker.contributions.title') }}</h2>
                     <div class="flex gap-2">
@@ -184,20 +184,20 @@ const podiumStyle = (idx) => {
             </section>
         </div>
 
-        <!-- Add contribution modal -->
-        <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showAddModal = false">
-            <div class="bg-white dark:bg-zinc-900 rounded-2xl w-[calc(100%-1rem)] sm:w-full sm:max-w-md flex flex-col max-h-[90vh]">
-                <div class="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800">
-                    <h3 class="font-bold text-base text-gray-900 dark:text-white">{{ t('tracker.add.title') }}</h3>
-                    <button @click="showAddModal = false" class="p-1 text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <!-- Add contribution modal — same shape as the Sell/Assign modals in Party/Index. -->
+        <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm" @click.self="showAddModal = false">
+            <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-md max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
+                <div class="bg-gradient-to-r from-amber-900 to-orange-800 p-4 flex justify-between items-center border-b border-amber-500/20">
+                    <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ t('tracker.add.title') }}</div>
+                    <button @click="showAddModal = false" class="text-white/50 hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <div class="p-5 space-y-4 overflow-y-auto">
+                <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                     <div>
                         <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('tracker.add.members') }} *</label>
                         <select multiple v-model="addForm.user_ids"
-                                class="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm h-32">
+                                class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 p-3 font-bold dark:bg-black/60 dark:border-gray-700 dark:text-gray-100 h-32">
                             <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
                         </select>
                         <p class="text-[10px] text-gray-500 mt-1">{{ t('tracker.add.members_hint') }}</p>
@@ -206,27 +206,28 @@ const podiumStyle = (idx) => {
                     <div>
                         <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('tracker.add.description') }} *</label>
                         <input v-model="addForm.description" type="text" maxlength="255"
-                               class="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm">
+                               class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 h-11 px-4 font-bold dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
                         <p v-if="addForm.errors.description" class="text-[10px] text-red-500 mt-1">{{ addForm.errors.description }}</p>
                     </div>
                     <div>
                         <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('tracker.add.points') }} *</label>
                         <input v-model.number="addForm.points" type="number" min="0.01" step="0.01"
-                               class="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm">
+                               class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 h-11 px-4 font-bold dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
                         <p class="text-[10px] text-gray-500 mt-1">{{ addForm.is_event ? t('tracker.add.points_hint_event') : t('tracker.add.points_hint_split') }}</p>
                         <p v-if="addForm.errors.points" class="text-[10px] text-red-500 mt-1">{{ addForm.errors.points }}</p>
                     </div>
-                    <label class="flex items-center gap-3 cursor-pointer pt-2">
-                        <input type="checkbox" v-model="addForm.is_event" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-600">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" v-model="addForm.is_event" class="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500">
                         <span class="text-xs">
-                            <span class="font-bold">{{ t('tracker.add.is_event') }}</span>
+                            <span class="font-bold text-gray-900 dark:text-gray-100">{{ t('tracker.add.is_event') }}</span>
                             <span class="block text-[10px] text-gray-500 mt-0.5">{{ t('tracker.add.is_event_hint') }}</span>
                         </span>
                     </label>
                 </div>
-                <div class="flex gap-2 p-5 border-t border-gray-200 dark:border-gray-800">
-                    <button @click="showAddModal = false" class="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold">{{ t('common.close') }}</button>
-                    <button @click="submitAdd" :disabled="addForm.processing" class="flex-[2] px-4 py-2.5 rounded-lg bg-gradient-to-tr from-amber-600 to-orange-500 text-white text-sm font-black uppercase tracking-widest disabled:opacity-40">
+                <div class="p-6 pt-0 flex space-x-4">
+                    <button @click="showAddModal = false" class="flex-1 py-3.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ t('common.cancel', 'Cancelar') }}</button>
+                    <button @click="submitAdd" :disabled="addForm.processing"
+                            class="flex-[2] py-3.5 bg-gradient-to-tr from-amber-700 to-orange-600 hover:from-amber-600 hover:to-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-amber-950/50 disabled:opacity-30">
                         {{ t('common.save') }}
                     </button>
                 </div>
