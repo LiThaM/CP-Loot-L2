@@ -14,6 +14,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, LineElement, LinearScale, P
 
 const props = defineProps({
     me: { type: Object, required: true },
+    noCp: { type: Boolean, default: false },
     period: { type: Number, required: true },
     periodOptions: { type: Array, default: () => [7, 30, 90] },
     kpis: { type: Object, required: true },
@@ -98,10 +99,13 @@ const rankMedal = (pos) => {
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">{{ t('profile.stats.kicker', 'My personal stats') }}</div>
                         <h1 class="text-2xl sm:text-3xl font-cinzel font-bold text-gray-900 dark:text-white mt-1">{{ me.name }}</h1>
-                        <div class="text-xs text-gray-500 mt-1">{{ me.cp.name }} · {{ me.cp.chronicle }} · <span class="capitalize">{{ me.role }}</span></div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            <template v-if="me.cp">{{ me.cp.name }} · {{ me.cp.chronicle }} · </template>
+                            <span class="capitalize">{{ me.role }}</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-2">
+                <div v-if="!noCp" class="flex gap-2">
                     <button v-for="p in periodOptions" :key="p" @click="selectedPeriod = p"
                             class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition"
                             :class="selectedPeriod === p
@@ -112,6 +116,27 @@ const rankMedal = (pos) => {
                 </div>
             </div>
 
+            <!-- No-CP banner: admins or orphan accounts see this instead of empty charts. -->
+            <div v-if="noCp" class="l2-panel p-8 rounded-3xl bg-amber-500/5 border border-amber-500/30 text-center">
+                <div class="text-4xl mb-3">🏰</div>
+                <h2 class="text-xl font-cinzel font-bold text-amber-700 dark:text-amber-300">
+                    {{ t('profile.stats.no_cp.title', 'Personal stats require a CP') }}
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                    {{ t('profile.stats.no_cp.hint', 'Join an existing CP or create your own to see your reports, rank, points and adena history here.') }}
+                </p>
+                <div class="mt-5 flex flex-wrap justify-center gap-3">
+                    <Link :href="route('dashboard')" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-black uppercase tracking-widest">
+                        {{ t('profile.stats.no_cp.dashboard_cta', 'Back to dashboard') }}
+                    </Link>
+                    <Link :href="route('characters.index')" class="px-5 py-2.5 rounded-xl bg-white/80 dark:bg-black/40 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-[11px] font-black uppercase tracking-widest">
+                        {{ t('profile.stats.no_cp.characters_cta', 'Manage characters') }}
+                    </Link>
+                </div>
+            </div>
+
+            <!-- All CP-scoped sections hidden when the user has no CP. -->
+            <template v-if="!noCp">
             <!-- KPI strip -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="l2-panel p-5 rounded-2xl bg-white/60 dark:bg-black/40 border border-gray-200 dark:border-gray-800">
@@ -236,8 +261,9 @@ const rankMedal = (pos) => {
                     <span>{{ t('profile.stats.more', 'more') }}</span>
                 </div>
             </div>
+            </template>
 
-            <!-- My characters -->
+            <!-- My characters (visible always — character mgmt is per-user, not per-CP) -->
             <div class="l2-panel p-6 rounded-2xl bg-white/60 dark:bg-black/40">
                 <div class="flex items-center justify-between mb-4">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ t('profile.stats.my_characters', 'My characters') }}</div>

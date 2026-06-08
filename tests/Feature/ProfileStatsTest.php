@@ -61,15 +61,24 @@ class ProfileStatsTest extends TestCase
         $this->actingAs($member)->get(route('profile.stats'))->assertOk();
     }
 
-    public function test_orphan_user_is_forbidden(): void
+    public function test_orphan_user_sees_no_cp_state(): void
     {
+        // Previously 403'd; now we render the page with `noCp: true` so admins
+        // and orphan accounts see a friendly empty state instead of a broken
+        // permission error.
         $orphan = User::forceCreate([
             'name' => 'orphan', 'email' => 'orphan@t.l', 'password' => bcrypt('x'),
             'cp_id' => null, 'membership_status' => 'approved',
         ]);
         $orphan->forceFill(['role_id' => $this->memberRole->id])->save();
 
-        $this->actingAs($orphan)->get(route('profile.stats'))->assertStatus(403);
+        $this->actingAs($orphan)->get(route('profile.stats'))
+            ->assertOk()
+            ->assertInertia(fn ($p) => $p
+                ->where('noCp', true)
+                ->where('me.cp', null)
+                ->where('myRank.position', null)
+            );
     }
 
     public function test_period_clamps_invalid_to_30(): void

@@ -25,10 +25,9 @@ class ProfileStatsController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user && $user->cp_id, 403);
+        abort_unless($user, 403);
 
         $cp = $user->cp;
-        abort_unless($cp, 403);
 
         $period = (int) $request->query('period', 30);
         if (! in_array($period, self::ALLOWED_PERIODS, true)) {
@@ -38,7 +37,43 @@ class ProfileStatsController extends Controller
         $now = now();
         $from = $now->copy()->subDays($period - 1)->startOfDay();
 
+        // No CP → render the page with empty data and a `noCp` flag so the
+        // frontend can show a friendly "you're not in a CP yet" state. This
+        // covers admins (who never have a cp_id) and orphan accounts that
+        // got here by typing the URL. Previously we 403'd, which made the
+        // page look broken for every admin testing the section.
+        if (! $user->cp_id || ! $cp) {
+            return Inertia::render('Profile/Stats', [
+                'noCp' => true,
+                'me' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role?->name,
+                    'cp' => null,
+                ],
+                'period' => $period,
+                'periodOptions' => self::ALLOWED_PERIODS,
+                'kpis' => [
+                    'total_points' => 0,
+                    'adena_gained_period' => 0,
+                    'adena_owed' => 0,
+                    'reports_submitted' => 0,
+                    'characters_count' => $user->characters()->count(),
+                ],
+                'pointsTimeline' => ['labels' => [], 'values' => []],
+                'adenaTimeline' => ['labels' => [], 'in' => [], 'out' => []],
+                'topItemsReceived' => [],
+                'myRank' => ['position' => null, 'total_members' => 0, 'points' => 0],
+                'myTracker' => null,
+                'activityCalendar' => [],
+                'characters' => $user->characters()->with('l2Class:id,name,race')->get([
+                    'id', 'name', 'l2_class_id', 'race', 'level',
+                ]),
+            ]);
+        }
+
         return Inertia::render('Profile/Stats', [
+            'noCp' => false,
             'me' => [
                 'id' => $user->id,
                 'name' => $user->name,
