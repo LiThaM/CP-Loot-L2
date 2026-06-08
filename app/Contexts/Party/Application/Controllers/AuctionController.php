@@ -4,6 +4,7 @@ namespace App\Contexts\Party\Application\Controllers;
 
 use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Loot\Domain\Models\Item;
+use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Party\Application\Services\AuctionService;
 use App\Contexts\Party\Domain\Models\CpAuction;
 use App\Http\Controllers\Controller;
@@ -55,7 +56,67 @@ class AuctionController extends Controller
                 'available_points' => round($availablePoints, 2),
                 'available_adena' => (int) $availableAdena,
             ],
+            // Only the leader / accountant / admin can open auctions, so the
+            // warehouse list (used by the picker in the "Open auction" modal)
+            // is only computed for them. Each entry carries the available
+            // stock so the picker can show "x N in vault" and cap the
+            // amount field client-side.
+            'warehouseItems' => $isLeader ? $this->warehouseItemsInStock($cpId) : [],
         ]);
+    }
+
+    /**
+     * Items in the CP warehouse with a positive net balance. Mirrors the
+     * aggregation used by AuctionService::vaultAvailable but at list-of-
+     * items granularity, so the auction "Open" modal can autocomplete on
+     * the actual contents of the warehouse instead of the global catalogue.
+     */
+    private function warehouseItemsInStock(int $cpId): array
+    {
+        $incoming = DB::table('loot_entries')
+            ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+            ->join('items', 'items.id', '=', 'loot_entries.item_id')
+            ->where('loot_reports.cp_id', $cpId)
+            ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
+            ->whereNotIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
+            ->whereRaw('LOWER(items.name) != ?', ['adena'])
+            ->groupBy('items.id', 'items.name', 'items.image_url', 'items.grade', 'items.market_price', 'items.npc_sell_price')
+            ->get([
+                'items.id', 'items.name', 'items.image_url', 'items.grade',
+                'items.market_price', 'items.npc_sell_price',
+                DB::raw('SUM(loot_entries.amount) as incoming'),
+            ])
+            ->keyBy('id');
+
+        $outgoing = DB::table('loot_entries')
+            ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+            ->where('loot_reports.cp_id', $cpId)
+            ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
+            ->whereIn('loot_reports.event_type', ['ASSIGN', 'SELL', 'WAREHOUSE_CRAFT_CONSUME', 'WAREHOUSE_RECHECK_LOSS'])
+            ->groupBy('loot_entries.item_id')
+            ->pluck(DB::raw('SUM(loot_entries.amount) as outgoing'), 'loot_entries.item_id');
+
+        $rows = [];
+        foreach ($incoming as $row) {
+            $available = max(0, (int) $row->incoming - (int) ($outgoing[$row->id] ?? 0));
+            if ($available <= 0) {
+                continue;
+            }
+            $rows[] = [
+                'id' => (int) $row->id,
+                'name' => $row->name,
+                'image_url' => $row->image_url,
+                'grade' => $row->grade,
+                'market_price' => $row->market_price !== null ? (int) $row->market_price : null,
+                'npc_sell_price' => $row->npc_sell_price !== null ? (int) $row->npc_sell_price : null,
+                'available' => $available,
+            ];
+        }
+        // Sort by name for predictable autocomplete order.
+        usort($rows, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+        return $rows;
     }
 
     public function store(Request $request): RedirectResponse

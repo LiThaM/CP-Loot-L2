@@ -212,6 +212,34 @@ class AuctionTest extends TestCase
             ->exists());
     }
 
+    public function test_index_exposes_warehouse_items_only_for_leader(): void
+    {
+        $response = $this->actingAs($this->leader)->get(route('party.auctions.index'));
+        $response->assertOk();
+        $props = $response->original->getData()['page']['props'];
+        $this->assertNotEmpty($props['warehouseItems']);
+        $first = (array) $props['warehouseItems'][0];
+        $this->assertSame($this->item->id, $first['id']);
+        $this->assertSame(5, $first['available']);
+
+        // Regular member sees an empty list — auction creation isn't theirs.
+        $response = $this->actingAs($this->member)->get(route('party.auctions.index'));
+        $response->assertOk();
+        $this->assertSame([], $response->original->getData()['page']['props']['warehouseItems']);
+    }
+
+    public function test_warehouse_items_excludes_items_not_in_stock(): void
+    {
+        $unowned = Item::create([
+            'name' => 'NotMineItem', 'grade' => 'B', 'category' => 'misc',
+            'chronicle' => 'LU4', 'source' => 'test', 'hidden' => false,
+        ]);
+
+        $response = $this->actingAs($this->leader)->get(route('party.auctions.index'));
+        $ids = collect($response->original->getData()['page']['props']['warehouseItems'] ?? [])->pluck('id');
+        $this->assertFalse($ids->contains($unowned->id));
+    }
+
     public function test_points_auction_requires_tracker_enabled(): void
     {
         $cpNoTracker = ConstParty::create([

@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Head, Link, router, usePage, useForm } from '@inertiajs/vue3';
-import axios from 'axios';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import UserAvatar from '@/Components/UserAvatar.vue';
 import { formatAdenaShort, formatAdenaFull } from '@/utils/adena';
@@ -12,6 +11,10 @@ const props = defineProps({
     auctions: { type: Array, default: () => [] },
     isLeader: { type: Boolean, default: false },
     me: { type: Object, required: true },
+    // Subset of the CP warehouse: only items with available > 0. The picker
+    // in the "Open auction" modal filters from this — auction items MUST
+    // come from the CP's own warehouse, never from the global catalogue.
+    warehouseItems: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -88,32 +91,46 @@ const openForm = useForm({
     duration_minutes: 1440,
 });
 const itemSearch = ref('');
-const itemResults = ref([]);
-// Uses the same endpoint the loot session + warehouse buy modals use
-// in Party/Index.vue (axios + route('api.items.search')). The /api/loot/items
-// path I had here doesn't exist — that was the broken search the user
-// reported.
-const searchItems = async () => {
-    if (!itemSearch.value || itemSearch.value.length < 2) { itemResults.value = []; return; }
-    try {
-        const { data } = await axios.get(route('api.items.search'), { params: { q: itemSearch.value, per_page: 10 } });
-        // The endpoint returns { data: [...], current_page, ... } (paginated).
-        itemResults.value = (data.data || data.items || data || []).slice(0, 10);
-    } catch (_) {
-        itemResults.value = [];
-    }
+const pickedItem = ref(null);
+// Picker now filters from the CP warehouse contents (passed as a prop)
+// so leaders can only auction items they actually own. Backend
+// `AuctionService::open` keeps a stock check as a backstop, but the
+// UI never lets you reach that error path.
+const itemResults = computed(() => {
+    const q = itemSearch.value.trim().toLowerCase();
+    if (!q) return props.warehouseItems.slice(0, 15);
+    return props.warehouseItems.filter((it) => it.name.toLowerCase().includes(q)).slice(0, 15);
+});
+const showItemDropdown = ref(false);
+const pickItem = (it) => {
+    pickedItem.value = it;
+    openForm.item_id = it.id;
+    itemSearch.value = it.name;
+    showItemDropdown.value = false;
+    // Cap amount to what's actually available.
+    if (openForm.amount > it.available) openForm.amount = it.available;
 };
-const pickItem = (it) => { openForm.item_id = it.id; itemSearch.value = it.name; itemResults.value = []; };
+const clearPick = () => {
+    pickedItem.value = null;
+    openForm.item_id = null;
+    itemSearch.value = '';
+};
 const submitOpen = () => {
     openForm.post(route('party.auctions.store'), {
         preserveScroll: true,
         onSuccess: () => {
             openModal.value = false;
             openForm.reset();
-            itemSearch.value = '';
+            openForm.currency = props.cp.tracker_enabled ? 'points' : 'adena';
+            clearPick();
             swal.fire({ icon: 'success', title: t('auction.open.success', 'Subasta abierta'), timer: 1500, showConfirmButton: false });
         },
     });
+};
+// Reset picker when leader closes the modal without submitting.
+const closeOpenModal = () => {
+    openModal.value = false;
+    clearPick();
 };
 
 // --- Leader actions ---
@@ -247,35 +264,54 @@ const statusBadgeClass = (status) => {
 
         <!-- Open auction modal (leader) — uses the same shape as the Sell / Assign modals in Party/Index.vue:
              l2-panel container + colored gradient header. -->
-        <div v-if="openModal" class="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm" @click.self="openModal = false">
+        <div v-if="openModal" class="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm" @click.self="closeOpenModal">
             <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-amber-900 to-orange-800 p-4 flex justify-between items-center border-b border-amber-500/20">
                     <div class="text-[10px] text-white/70 font-black uppercase tracking-widest">{{ t('auction.open.title', 'Nueva subasta') }}</div>
-                    <button @click="openModal = false" class="text-white/50 hover:text-white transition">
+                    <button @click="closeOpenModal" class="text-white/50 hover:text-white transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
 
                 <div class="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                     <div>
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('auction.open.item', 'Item') }} *</label>
-                        <input v-model="itemSearch" @input="searchItems" type="text" :placeholder="t('auction.open.item_search', 'Buscar item…')"
-                               class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 h-11 px-4 font-bold shadow-inner dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
-                        <div v-if="itemResults.length" class="mt-1 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-black max-h-40 overflow-y-auto custom-scrollbar">
-                            <button v-for="it in itemResults" :key="it.id" type="button" @click="pickItem(it)"
-                                    class="w-full text-left px-3 py-2 hover:bg-amber-500/10 text-sm flex items-center gap-2">
-                                <img v-if="it.image_url" :src="it.image_url" class="w-6 h-6 rounded border border-gray-200 dark:border-gray-700">
-                                <span class="font-bold text-gray-900 dark:text-gray-100 truncate">{{ it.name }}</span>
-                                <span class="text-[10px] text-gray-500 ml-auto">{{ it.grade || '—' }}</span>
-                            </button>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('auction.open.item', 'Item del almacén CP') }} *</label>
+
+                        <!-- Picked state: solid card with the chosen item + clear button -->
+                        <div v-if="pickedItem" class="flex items-center gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/5">
+                            <img v-if="pickedItem.image_url" :src="pickedItem.image_url" class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-gray-900 dark:text-gray-100 truncate">{{ pickedItem.name }}</div>
+                                <div class="text-[10px] text-gray-500 uppercase tracking-widest">{{ pickedItem.grade || '—' }} · {{ t('auction.open.in_stock', 'En almacén') }}: {{ pickedItem.available }}</div>
+                            </div>
+                            <button type="button" @click="clearPick" class="text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 hover:underline">{{ t('common.change', 'Cambiar') }}</button>
+                        </div>
+
+                        <!-- Search input + filtered dropdown over warehouse items -->
+                        <div v-else>
+                            <input v-model="itemSearch" @focus="showItemDropdown = true" type="text"
+                                   :placeholder="warehouseItems.length === 0 ? t('auction.open.empty_warehouse', 'El almacén CP no tiene items.') : t('auction.open.item_search', 'Buscar en el almacén…')"
+                                   :disabled="warehouseItems.length === 0"
+                                   class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 h-11 px-4 font-bold shadow-inner dark:bg-black/60 dark:border-gray-700 dark:text-gray-100 disabled:opacity-50">
+                            <div v-if="showItemDropdown && itemResults.length" class="mt-1 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-black max-h-60 overflow-y-auto custom-scrollbar">
+                                <button v-for="it in itemResults" :key="it.id" type="button" @click="pickItem(it)"
+                                        class="w-full text-left px-3 py-2 hover:bg-amber-500/10 text-sm flex items-center gap-2">
+                                    <img v-if="it.image_url" :src="it.image_url" class="w-7 h-7 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 truncate flex-1">{{ it.name }}</span>
+                                    <span class="text-[9px] text-gray-500 uppercase tracking-widest">{{ it.grade || '—' }}</span>
+                                    <span class="text-[10px] font-cinzel text-amber-700 dark:text-amber-300 ml-1">x{{ it.available }}</span>
+                                </button>
+                            </div>
+                            <p v-if="showItemDropdown && itemSearch && !itemResults.length" class="text-[10px] text-gray-500 mt-1">{{ t('auction.open.no_match', 'Ningún item del almacén coincide.') }}</p>
                         </div>
                         <p v-if="openForm.errors.item_id" class="text-[10px] text-red-500 mt-1">{{ openForm.errors.item_id }}</p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('auction.open.amount', 'Cantidad') }} *</label>
-                            <input v-model.number="openForm.amount" type="number" min="1"
+                            <input v-model.number="openForm.amount" type="number" min="1" :max="pickedItem?.available || 999999"
                                    class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 h-11 px-4 font-bold dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
+                            <p v-if="pickedItem" class="text-[10px] text-gray-500 mt-1">{{ t('auction.open.max_amount', 'Máximo {n}', { n: pickedItem.available }) }}</p>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('auction.open.currency', 'Moneda') }} *</label>
@@ -310,7 +346,7 @@ const statusBadgeClass = (status) => {
                 </div>
 
                 <div class="p-6 pt-0 flex space-x-4">
-                    <button @click="openModal = false" class="flex-1 py-3.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ t('common.cancel', 'Cancelar') }}</button>
+                    <button @click="closeOpenModal" class="flex-1 py-3.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ t('common.cancel', 'Cancelar') }}</button>
                     <button @click="submitOpen" :disabled="!openForm.item_id || openForm.processing"
                             class="flex-[2] py-3.5 bg-gradient-to-tr from-amber-700 to-orange-600 hover:from-amber-600 hover:to-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-amber-950/50 disabled:opacity-30">
                         {{ t('common.save', 'Guardar') }}
