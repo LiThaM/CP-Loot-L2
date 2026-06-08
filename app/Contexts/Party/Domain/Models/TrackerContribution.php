@@ -21,10 +21,16 @@ class TrackerContribution extends Model
 {
     public const TYPE_MATERIAL = 'material';
     public const TYPE_EVENT = 'event';
+    // Negative-points rows generated when a leader assigns an item to a
+    // member (auto-deduct based on item value / divisor) or when an
+    // auction is fulfilled (winner pays the winning bid).
+    public const TYPE_COST = 'cost';
 
     public const BADGE_SOLO = 'SOLO';
     public const BADGE_EVENT = 'EVENT';
     public const BADGE_PARTY_PREFIX = 'PARTY/';
+    public const BADGE_COST = 'COST';
+    public const BADGE_AUCTION = 'AUCTION';
 
     protected $fillable = [
         'cp_id',

@@ -701,6 +701,7 @@ watch(() => alerts.value.items, (items) => {
                                     { label: $t('nav.warehouse'), hint: $t('nav.cp.warehouse_hint'), route: route('party.warehouse_cp'), active: route().current('party.warehouse_cp') },
                                     { label: $t('nav.cp.stats'), hint: $t('nav.cp.stats_hint'), route: route('party.stats'), active: route().current('party.stats') },
                                     { label: $t('nav.tracker'), hint: $t('nav.cp.tracker_hint'), route: route('party.tracker'), active: route().current('party.tracker'), condition: !!user.cp?.tracker_enabled },
+                                    { label: $t('nav.cp.auctions'), hint: $t('nav.cp.auctions_hint'), route: route('party.auctions.index'), active: route().current('party.auctions.*') },
                                     { label: $t('system.external_payouts.nav'), hint: $t('nav.cp.external_payouts_hint'), route: route('system.external_payouts.index'), active: route().current('system.external_payouts.*'), condition: ['cp_leader','accountant'].includes(user.role?.name) },
                                 ]"
                             />

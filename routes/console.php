@@ -29,3 +29,11 @@ Schedule::command('changelog:notify')
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Close CP auctions whose ends_at has passed. Sets winner_id if there
+// was a leading bidder, otherwise cancels + returns the reserved stock
+// to the warehouse. Leader still has to manually fulfill after closing.
+Schedule::command('auctions:close')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -34,6 +34,81 @@ class TrackerContributionService
         'RETURN',
     ];
 
+    /**
+     * Records a NEGATIVE tracker contribution per LootEntry of an ASSIGN
+     * report. Mirror of `recordFromReport` but for the spend side: the
+     * receiver pays `value / divisor` points for each item received. Same
+     * idempotency guarantees via the `(source_loot_entry_id, user_id)`
+     * unique index. Internal report types like ASSIGN are NOT processed
+     * by recordFromReport (they're in INTERNAL_EVENT_TYPES) — this method
+     * is the explicit hook for the spend side.
+     */
+    public function recordAssignmentCost(LootReport $report): void
+    {
+        if ($report->event_type !== 'ASSIGN') {
+            return;
+        }
+        $cp = $report->cp;
+        if (! $cp || ! $cp->tracker_enabled || ! $cp->tracker_divisor) {
+            return;
+        }
+        if ($cp->tracker_enabled_at && $report->created_at && $report->created_at->lt($cp->tracker_enabled_at)) {
+            return;
+        }
+
+        $entries = LootEntry::with('item')->where('loot_report_id', $report->id)->get();
+        if ($entries->isEmpty()) {
+            return;
+        }
+
+        $divisor = max(1, (int) $cp->tracker_divisor);
+        $now = now();
+        $rows = [];
+
+        foreach ($entries as $entry) {
+            $item = $entry->item;
+            if (! $item || ! $entry->awarded_to) {
+                continue;
+            }
+            $effectivePrice = $item->market_price ?? $item->npc_sell_price;
+            if (! $effectivePrice || $effectivePrice <= 0) {
+                continue;
+            }
+            $totalValue = ((int) $effectivePrice) * max(1, (int) ($entry->amount ?? 1));
+            $costPoints = round($totalValue / $divisor, 2);
+            if ($costPoints <= 0) {
+                continue;
+            }
+
+            $description = trim('Assign · ' . $item->name . ' x' . $entry->amount);
+
+            $rows[] = [
+                'cp_id' => $report->cp_id,
+                'user_id' => $entry->awarded_to,
+                'type' => TrackerContribution::TYPE_COST,
+                'points' => -$costPoints,
+                'description' => $description,
+                'badge' => TrackerContribution::BADGE_COST,
+                'source_loot_entry_id' => $entry->id,
+                'created_by_user_id' => $report->requested_by_id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (empty($rows)) {
+            return;
+        }
+        try {
+            DB::table('tracker_contributions')->insertOrIgnore($rows);
+        } catch (QueryException $e) {
+            Log::warning('TrackerContributionService::recordAssignmentCost failed', [
+                'report_id' => $report->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function recordFromReport(LootReport $report): void
     {
         $cp = $report->cp;

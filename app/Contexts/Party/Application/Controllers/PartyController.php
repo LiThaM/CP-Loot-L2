@@ -615,6 +615,11 @@ class PartyController extends Controller
             'user_id' => 'required|exists:users,id',
             'image_proof' => $this->imageProofRule($request->user()),
             'adena_offset' => 'nullable|integer|min:0',
+            // When checked, the leader explicitly skips the DKP cost
+            // (gift / event reward / etc.). Default behaviour when the
+            // CP has the value-based tracker enabled is to deduct points
+            // from the receiver based on `item value / divisor`.
+            'skip_dkp_cost' => 'nullable|boolean',
         ]);
 
         $current = $request->user();
@@ -761,6 +766,31 @@ class PartyController extends Controller
                 return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
             }
             throw $e;
+        }
+
+        // DKP cost on assign — best-effort, can never roll back the
+        // assignment itself. Only runs when (a) the CP has the value-based
+        // tracker on and (b) the leader didn't explicitly opt out via the
+        // "Gift / don't deduct" checkbox.
+        if (! $request->boolean('skip_dkp_cost', false)) {
+            $cp = ConstParty::find($cpId);
+            if ($cp && $cp->tracker_enabled) {
+                try {
+                    $latestReport = LootReport::where('cp_id', $cpId)
+                        ->where('event_type', 'ASSIGN')
+                        ->where('requested_by_id', $current->id)
+                        ->latest('id')
+                        ->first();
+                    if ($latestReport) {
+                        app(\App\Contexts\Party\Application\Services\TrackerContributionService::class)
+                            ->recordAssignmentCost($latestReport->load('cp', 'entries.item'));
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Assign DKP cost recording failed', [
+                        'cp_id' => $cpId, 'error' => $e->getMessage(),
+                    ]);
+                }
+            }
         }
 
         return back()->with('success', 'Ítem asignado y registrado con la captura.');

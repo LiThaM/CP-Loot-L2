@@ -815,6 +815,19 @@ const assignForm = useForm({
     amount: 1,
     image_proof: null,
     adena_offset: 0,
+    skip_dkp_cost: false,
+});
+
+// Estimated DKP cost shown in the modal. Mirrors the backend formula:
+// (market_price ?? npc_sell_price) × amount / cp.tracker_divisor.
+const assignDkpCost = computed(() => {
+    const item = selectedItem.value;
+    if (!item || !props.cp?.tracker_enabled) return 0;
+    const price = item.market_price ?? item.npc_sell_price ?? 0;
+    const divisor = Math.max(1, Number(props.cp?.tracker_divisor) || 1000);
+    const amount = Math.max(1, Number(assignForm.amount) || 1);
+    if (!price) return 0;
+    return Math.round((Number(price) * amount / divisor) * 100) / 100;
 });
 
 const selectedAssignMember = computed(() => {
@@ -855,6 +868,7 @@ const openAssign = (item) => {
     assignForm.image_proof = null;
     assignUseAdenaOffset.value = false;
     assignForm.adena_offset = 0;
+    assignForm.skip_dkp_cost = false;
     assignModalOpen.value = true;
 };
 
@@ -2463,6 +2477,28 @@ watch(buySearch, throttle(async (val) => {
                             </div>
                             <input type="file" class="hidden" accept="image/*" @input="onFileChange" />
                         </label>
+                    </div>
+
+                    <!-- DKP cost preview — only when the CP has the value-based tracker on. -->
+                    <div v-if="cp?.tracker_enabled" class="pt-3 border-t border-gray-200 dark:border-gray-800">
+                        <div class="rounded-xl p-3 bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+                            <div class="text-2xl">💎</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">{{ $t('warehouse.assign.dkp_cost.title') }}</div>
+                                <div class="text-sm font-cinzel font-bold text-amber-700 dark:text-amber-300 mt-1">
+                                    <template v-if="!assignForm.skip_dkp_cost">
+                                        {{ assignDkpCost.toFixed(2) }} {{ $t('warehouse.assign.dkp_cost.points') }}
+                                        <span v-if="selectedAssignMember" class="text-xs text-gray-500 font-normal">→ {{ selectedAssignMember.name }}</span>
+                                    </template>
+                                    <span v-else class="text-gray-500 italic font-normal">{{ $t('warehouse.assign.dkp_cost.skipped') }}</span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 mt-1">{{ $t('warehouse.assign.dkp_cost.hint') }}</div>
+                                <label class="flex items-center gap-2 mt-3 cursor-pointer">
+                                    <input type="checkbox" v-model="assignForm.skip_dkp_cost" class="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ $t('warehouse.assign.dkp_cost.skip_label') }}</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

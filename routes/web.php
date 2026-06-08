@@ -254,6 +254,19 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/party/tracker', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'index'])
         ->name('party.tracker');
+
+    // CP auctions: leader opens, members bid, cron closes at ends_at,
+    // leader fulfills to charge the winner and hand over the item.
+    Route::get('/party/auctions', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'index'])
+        ->name('party.auctions.index');
+    Route::post('/party/auctions', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'store'])
+        ->name('party.auctions.store');
+    Route::post('/party/auctions/{auction}/bid', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'bid'])
+        ->name('party.auctions.bid');
+    Route::post('/party/auctions/{auction}/fulfill', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'fulfill'])
+        ->name('party.auctions.fulfill');
+    Route::post('/party/auctions/{auction}/cancel', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'cancel'])
+        ->name('party.auctions.cancel');
     Route::post('/party/tracker/contributions', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'storeContribution'])
         ->name('party.tracker.contributions.store');
     Route::delete('/party/tracker/contributions/{contribution}', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'destroyContribution'])
