@@ -672,18 +672,18 @@ watch(() => alerts.value.items, (items) => {
                             <NavDropdown
                                 :label="$t('nav.manage')"
                                 :items="[
-                                    { label: $t('system.cps.nav'), route: route('system.cps.index'), active: route().current('system.cps.*') },
-                                    { label: $t('nav.members'), route: route('system.users.index'), active: route().current('system.users.index') },
-                                    { label: $t('nav.items'), route: route('system.items.index'), active: route().current('system.items.index') },
-                                    { label: $t('nav.translations'), route: route('system.translations.index'), active: route().current('system.translations.index') },
+                                    { label: $t('system.cps.nav'), hint: $t('nav.manage.cps_hint'), route: route('system.cps.index'), active: route().current('system.cps.*') },
+                                    { label: $t('nav.members'), hint: $t('nav.manage.users_hint'), route: route('system.users.index'), active: route().current('system.users.index') },
+                                    { label: $t('nav.items'), hint: $t('nav.manage.items_hint'), route: route('system.items.index'), active: route().current('system.items.index') },
+                                    { label: $t('nav.translations'), hint: $t('nav.manage.translations_hint'), route: route('system.translations.index'), active: route().current('system.translations.index') },
                                 ]"
                             />
                             <NavDropdown
                                 :label="$t('nav.system')"
                                 :items="[
-                                    { label: 'Releases', route: route('system.releases.index'), active: route().current('system.releases.*') },
-                                    { label: 'Crashes', route: route('system.crashes.index'), active: route().current('system.crashes.*') },
-                                    { label: 'Tickets', route: route('tickets.index'), active: route().current('tickets.*') },
+                                    { label: 'Releases', hint: $t('nav.system.releases_hint'), route: route('system.releases.index'), active: route().current('system.releases.*') },
+                                    { label: 'Crashes', hint: $t('nav.system.crashes_hint'), route: route('system.crashes.index'), active: route().current('system.crashes.*') },
+                                    { label: 'Tickets', hint: $t('nav.system.tickets_hint'), route: route('tickets.index'), active: route().current('tickets.*') },
                                 ]"
                             />
                         </template>
@@ -696,18 +696,17 @@ watch(() => alerts.value.items, (items) => {
                             <NavDropdown
                                 :label="$t('nav.cp')"
                                 :items="[
-                                    { label: $t('nav.party'), route: route('party.index'), active: route().current('party.index') },
-                                    { label: $t('nav.cp_vault'), route: route('party.warehouse_cp'), active: route().current('party.warehouse_cp') },
-                                    { label: $t('nav.cp.stats'), route: route('party.stats'), active: route().current('party.stats') },
-                                    { label: $t('nav.tracker'), route: route('party.tracker'), active: route().current('party.tracker'), condition: !!user.cp?.tracker_enabled },
-                                    { label: $t('system.external_payouts.nav'), route: route('system.external_payouts.index'), active: route().current('system.external_payouts.*'), condition: ['cp_leader','accountant'].includes(user.role?.name) },
+                                    { label: $t('nav.party'), hint: $t('nav.cp.members_hint'), route: route('party.index'), active: route().current('party.index') },
+                                    { label: $t('nav.warehouse'), hint: $t('nav.cp.warehouse_hint'), route: route('party.warehouse_cp'), active: route().current('party.warehouse_cp') },
+                                    { label: $t('nav.cp.stats'), hint: $t('nav.cp.stats_hint'), route: route('party.stats'), active: route().current('party.stats') },
+                                    { label: $t('nav.tracker'), hint: $t('nav.cp.tracker_hint'), route: route('party.tracker'), active: route().current('party.tracker'), condition: !!user.cp?.tracker_enabled },
+                                    { label: $t('system.external_payouts.nav'), hint: $t('nav.cp.external_payouts_hint'), route: route('system.external_payouts.index'), active: route().current('system.external_payouts.*'), condition: ['cp_leader','accountant'].includes(user.role?.name) },
                                 ]"
                             />
                             <NavDropdown
                                 :label="$t('nav.loot')"
                                 :items="[
-                                    { label: $t('nav.loot.pending_history'), route: route('loot.index'), active: route().current('loot.index') },
-                                    { label: $t('nav.warehouse'), route: route('warehouse.index'), active: route().current('warehouse.index') },
+                                    { label: $t('nav.loot.pending_history'), hint: $t('nav.loot.pending_history_hint'), route: route('loot.index'), active: route().current('loot.index') },
                                 ]"
                             />
                             <NavDropdown
@@ -719,13 +718,21 @@ watch(() => alerts.value.items, (items) => {
                                 ]"
                             />
                             <NavDropdown
-                                :label="$t('nav.more')"
+                                :label="$t('nav.me')"
                                 :items="[
-                                    { label: $t('nav.items_db'), route: route('itemsdb.index'), active: route().current('itemsdb.index') },
-                                    { label: $t('nav.tutorials'), route: route('tutorials.index'), active: route().current('tutorials.*'), condition: !isAdmin },
-                                    { label: 'Tickets', route: route('tickets.index'), active: route().current('tickets.*') },
+                                    { label: $t('nav.me.profile'), hint: $t('nav.me.profile_hint'), route: route('profile.edit'), active: route().current('profile.edit') },
+                                    { label: $t('nav.me.characters'), hint: $t('nav.me.characters_hint'), route: route('characters.index'), active: route().current('characters.index') },
+                                    { label: $t('nav.warehouse'), hint: $t('nav.me.warehouse_hint'), route: route('warehouse.index'), active: route().current('warehouse.index') },
+                                    { label: $t('nav.me.stats'), hint: $t('nav.me.stats_hint'), route: route('profile.stats'), active: route().current('profile.stats') },
+                                    { label: $t('nav.me.tickets'), hint: $t('nav.me.tickets_hint'), route: route('tickets.index'), active: route().current('tickets.*') },
                                 ]"
                             />
+                            <!-- Items DB as a top-level link: it's a frequent reference, no need to bury in a dropdown. -->
+                            <Link :href="route('itemsdb.index')"
+                                  class="text-sm uppercase font-bold tracking-widest text-gray-700 hover:text-purple-700 dark:text-gray-300 dark:hover:text-purple-300 transition"
+                                  :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">
+                                {{ $t('nav.items_db') }}
+                            </Link>
                         </template>
                     </div>
 
@@ -773,9 +780,11 @@ watch(() => alerts.value.items, (items) => {
                                     {{ user.name.charAt(0) }}
                                 </div>
                             </button>
+                            <!-- Avatar menu is for account-y links that don't fit the
+                                 main nav: tutorials (help), changelog (release notes),
+                                 donations, logout. Profile and Characters moved out to
+                                 `Me ▼` to avoid duplicate entry points. -->
                             <div v-if="userMenuOpen" class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800 rounded-xl shadow-2xl py-2">
-                                <Link :href="route('profile.edit')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.profile') }}</Link>
-                                <Link :href="route('characters.index')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.characters') }}</Link>
                                 <Link v-if="!isAdmin" :href="route('tutorials.index')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.tutorials', 'Tutoriales') }}</Link>
                                 <Link :href="route('changelog.index')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.changelog') }}</Link>
                                 <button type="button" @click="showDonationModal = true; userMenuOpen = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">{{ $t('nav.donations') }}</button>

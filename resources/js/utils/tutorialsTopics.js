@@ -26,8 +26,9 @@ import {
     CalculatorIcon,
 } from '@heroicons/vue/24/outline';
 
-// 8 topics every role gets to see.
+// 9 topics every role gets to see.
 export const memberTopics = [
+    { id: 'me_section',          icon: UserIcon,                       accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 5, tour: null },
     { id: 'profile',             icon: UserIcon,                       accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 6, tour: 'profile-characters' },
     { id: 'dashboard',           icon: ChartBarIcon,                   accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 5, tour: 'dashboard-overview' },
     { id: 'report_loot',         icon: ClipboardDocumentCheckIcon,     accent: 'text-emerald-700 dark:text-emerald-300', bulletCount: 6, tour: null },

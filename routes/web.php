@@ -246,6 +246,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/party/stats', [\App\Contexts\Party\Application\Controllers\PartyStatsController::class, 'index'])
         ->name('party.stats');
 
+    // Personal "Me" stats page — mirrors party.stats but scoped to the
+    // authenticated user. Shows their own KPIs, leaderboard position,
+    // tracker contributions and recent activity.
+    Route::get('/profile/stats', [\App\Http\Controllers\ProfileStatsController::class, 'index'])
+        ->name('profile.stats');
+
     Route::get('/party/tracker', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'index'])
         ->name('party.tracker');
     Route::post('/party/tracker/contributions', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'storeContribution'])
