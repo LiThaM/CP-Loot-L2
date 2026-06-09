@@ -28,27 +28,55 @@ class CharactersController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $user->loadMissing('characters.l2Class', 'mainClass');
+        $user->loadMissing('characters.l2Class', 'mainClass', 'cp');
+
+        $charactersPayload = $user->characters->map(fn ($c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'l2_class_id' => $c->l2_class_id,
+            'class_name' => $c->l2Class?->name,
+            'race' => $c->race,
+            'level' => $c->level,
+        ])->values();
+
+        $mainPayload = [
+            'name' => $user->name,
+            'l2_class_id' => $user->main_class_id,
+            'class_name' => $user->mainClass?->name,
+            'race' => $user->main_race,
+            'level' => $user->main_level,
+        ];
+
+        // Edge case: user without a CP (typically admin). Render with
+        // `noCp: true` so the Vue shows an empty-state banner instead of
+        // an empty-pickers form. Mirrors the pattern from /profile/stats.
+        $cp = $user->cp;
+        if (! $cp) {
+            return Inertia::render('Characters/Index', [
+                'noCp' => true,
+                'characters' => $charactersPayload,
+                'mainCharacter' => $mainPayload,
+                'l2Classes' => [],
+                'l2Races' => [],
+                'cpChronicle' => null,
+            ]);
+        }
+
+        // Filter the catalogue by the CP's chronicle. classesForChronicle
+        // drops codes whose race isn't available in that chronicle
+        // (Kamael isn't in pre-CT1 chronicles or Classic).
+        $chronicle = $cp->chronicle ?: 'LU4';
+        $allowedCodes = array_column(CharacterCatalogService::classesForChronicle($chronicle), 'code');
 
         return Inertia::render('Characters/Index', [
-            'characters' => $user->characters->map(fn ($c) => [
-                'id' => $c->id,
-                'name' => $c->name,
-                'l2_class_id' => $c->l2_class_id,
-                'class_name' => $c->l2Class?->name,
-                'race' => $c->race,
-                'level' => $c->level,
-            ])->values(),
-            'main_character' => [
-                'name' => $user->name,
-                'l2_class_id' => $user->main_class_id,
-                'class_name' => $user->mainClass?->name,
-                'race' => $user->main_race,
-                'level' => $user->main_level,
-            ],
-            'l2_classes' => L2Class::orderBy('race')->orderBy('class_type')->orderBy('name')
-                ->get(['id', 'name', 'race', 'class_type']),
-            'l2_races' => CharacterCatalogService::RACES,
+            'noCp' => false,
+            'characters' => $charactersPayload,
+            'mainCharacter' => $mainPayload,
+            'l2Classes' => L2Class::whereIn('code', $allowedCodes)
+                ->orderBy('race')->orderBy('class_type')->orderBy('name')
+                ->get(['id', 'name', 'race', 'class_type', 'code']),
+            'l2Races' => CharacterCatalogService::racesForChronicle($chronicle),
+            'cpChronicle' => $chronicle,
         ]);
     }
 

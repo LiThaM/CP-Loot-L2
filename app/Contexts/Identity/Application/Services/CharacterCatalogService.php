@@ -104,6 +104,58 @@ class CharacterCatalogService
         ['code' => 'kamael_soul_hound',       'name' => 'Soul Hound',           'race' => 'Kamael', 'class_type' => '3rd', 'parent_code' => null],
     ];
 
+    /**
+     * Per-chronicle class availability. Catalog defaults to Interlude / LU4
+     * (the 69 classes above). For older chronicles or Classic, we exclude
+     * codes that didn't exist at that point in time:
+     *
+     *   - Kamael race (and all its classes) didn't exist before CT1.
+     *   - L2 Classic intentionally drops Kamael and matches the C4/IL job
+     *     tree, so we treat it like IL for class purposes.
+     *
+     * Chronicles not listed (CT1, GF, HB, LU4) get the full 69 classes.
+     */
+    public const CHRONICLE_EXCLUDED_RACES = [
+        'C1'      => ['Kamael'],
+        'C2'      => ['Kamael'],
+        'C3'      => ['Kamael'],
+        'C4'      => ['Kamael'],
+        'C5'      => ['Kamael'],
+        'IL'      => ['Kamael'],
+        'Classic' => ['Kamael'],
+        // CT1+, GF, HB, LU4 include everything → not listed here.
+    ];
+
+    /**
+     * Subset of CLASSES available in a given chronicle. Returns the full
+     * 69 entries when the chronicle isn't restricted (e.g. CT1+).
+     */
+    public static function classesForChronicle(string $chronicle): array
+    {
+        $excludedRaces = self::CHRONICLE_EXCLUDED_RACES[$chronicle] ?? [];
+        if (empty($excludedRaces)) {
+            return self::CLASSES;
+        }
+        return array_values(array_filter(
+            self::CLASSES,
+            fn ($c) => ! in_array($c['race'], $excludedRaces, true),
+        ));
+    }
+
+    /**
+     * Subset of RACES available in a given chronicle. Derived from the
+     * class filter — if all classes of a race are excluded, the race
+     * itself disappears from the picker.
+     */
+    public static function racesForChronicle(string $chronicle): array
+    {
+        $excludedRaces = self::CHRONICLE_EXCLUDED_RACES[$chronicle] ?? [];
+        return array_values(array_filter(
+            self::RACES,
+            fn ($r) => ! in_array($r, $excludedRaces, true),
+        ));
+    }
+
     public function races(): array
     {
         return self::RACES;
