@@ -1,9 +1,14 @@
 <?php
 
+use App\Contexts\ClientApi\Application\Controllers\Admin\AppCrashesAdminController;
+use App\Contexts\ClientApi\Application\Controllers\Admin\GpsMapdataAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\GpsRoutesAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\ReleasesPublishApiController;
+use App\Contexts\ClientApi\Application\Controllers\AppCrashController;
 use App\Contexts\ClientApi\Application\Controllers\ChangelogController;
 use App\Contexts\ClientApi\Application\Controllers\CrashReportController;
+use App\Contexts\ClientApi\Application\Controllers\GameSessionsController;
+use App\Contexts\ClientApi\Application\Controllers\GpsMapdataController;
 use App\Contexts\ClientApi\Application\Controllers\GpsRoutesController;
 use App\Contexts\ClientApi\Application\Controllers\HealthController;
 use App\Contexts\ClientApi\Application\Controllers\Items\Lu4Controller;
@@ -12,6 +17,8 @@ use App\Contexts\ClientApi\Application\Controllers\ReleaseDownloadController;
 use App\Contexts\ClientApi\Application\Controllers\ReleasesListController;
 use App\Contexts\ClientApi\Application\Controllers\TicketsController;
 use App\Contexts\ClientApi\Application\Controllers\VersionController;
+use App\Contexts\Telemetry\Application\Controllers\Admin\CalibrationFailuresAdminController;
+use App\Contexts\Telemetry\Application\Controllers\CalibrationFailuresController;
 use App\Contexts\Telemetry\Application\Controllers\DigitTemplatesController;
 use App\Contexts\Telemetry\Application\Controllers\OcrSamplesController;
 use App\Contexts\Telemetry\Application\Controllers\TelemetrySessionController;
@@ -92,7 +99,20 @@ Route::middleware(['api.log'])->group(function () {
         Route::get('/gps/routes', [GpsRoutesController::class, 'show'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.gps.routes.show');
+
+        // Paquete comunitario del mapa (huellas minimapa + calibraciones
+        // de ciudad) — el cliente lo baja en cada arranque. Bug E.
+        Route::get('/gps/mapdata', [GpsMapdataController::class, 'show'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.gps.mapdata.show');
     });
+
+    // Sesiones por personaje — público para que la web pinte perfiles y
+    // rankings (bug G). Solo lectura, datos ya anonimizados a nivel char.
+    Route::get('/chars/{name}/sessions', [GameSessionsController::class, 'byChar'])
+        ->middleware('throttle:api-v1')
+        ->where('name', '[\w.\- ]{1,100}')
+        ->name('api.v1.chars.sessions.index');
 
     // Tracking público de ticket por token secreto. Sin client_key porque el
     // tracking_token ES el secreto compartido con el bot.
@@ -129,6 +149,30 @@ Route::middleware(['api.log'])->group(function () {
             ->middleware('throttle:api-v1-crashes')
             ->name('api.v1.crashes.store');
 
+        // Crash reports genéricos del cliente AdenaLedgerStats — dedup
+        // por fingerprint+versión con contador de ocurrencias. Bug F.
+        Route::post('/app/crashes', [AppCrashController::class, 'store'])
+            ->middleware('throttle:api-v1-app-crashes')
+            ->name('api.v1.app.crashes.store');
+
+        // Subida del paquete comunitario GPS (multipart `mapdata`).
+        // Last-writer-wins: el cliente funde lo remoto antes de subir. Bug E.
+        Route::post('/gps/mapdata', [GpsMapdataController::class, 'store'])
+            ->middleware('throttle:api-v1-gps-mapdata')
+            ->name('api.v1.gps.mapdata.store');
+
+        // Fallos de calibración + auto-reportes de 0% sostenido
+        // (meta.kind = runtime_zero_readings). Multipart meta+image. Bug D.
+        Route::post('/calibration/failures', [CalibrationFailuresController::class, 'store'])
+            ->middleware('throttle:api-v1-upload')
+            ->name('api.v1.calibration.failures.store');
+
+        // Resumen de sesión al cerrarla — alimenta perfiles/rankings de
+        // la web. Idempotente para el outbox del cliente. Bug G.
+        Route::post('/sessions', [GameSessionsController::class, 'store'])
+            ->middleware('throttle:api-v1-sessions')
+            ->name('api.v1.sessions.store');
+
         Route::delete('/me/data', [MeDataController::class, 'destroy'])
             ->name('api.v1.me.data.destroy');
     });
@@ -153,5 +197,32 @@ Route::middleware(['api.log'])->group(function () {
         Route::post('/admin/gps/routes', [GpsRoutesAdminController::class, 'store'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.admin.gps.routes.store');
+
+        // Historial + revert del paquete comunitario GPS (bug E) — por si
+        // un cliente sube basura al mapdata.
+        Route::get('/admin/gps/mapdata/versions', [GpsMapdataAdminController::class, 'versions'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.admin.gps.mapdata.versions');
+
+        Route::post('/admin/gps/mapdata/revert/{id}', [GpsMapdataAdminController::class, 'revert'])
+            ->middleware('throttle:api-v1')
+            ->whereNumber('id')
+            ->name('api.v1.admin.gps.mapdata.revert');
+
+        // Listado de crashes del cliente (?version=, ?fingerprint=). Bug F.
+        Route::get('/admin/app/crashes', [AppCrashesAdminController::class, 'index'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.admin.app.crashes.index');
+
+        // Reportes de calibración/0% (?kind=runtime_zero_readings) +
+        // frame PNG individual. Bug D.
+        Route::get('/admin/calibration/failures', [CalibrationFailuresAdminController::class, 'index'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.admin.calibration.failures.index');
+
+        Route::get('/admin/calibration/failures/{id}/image', [CalibrationFailuresAdminController::class, 'image'])
+            ->middleware('throttle:api-v1')
+            ->whereNumber('id')
+            ->name('api.v1.admin.calibration.failures.image');
     });
 });
