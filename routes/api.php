@@ -4,6 +4,7 @@ use App\Contexts\ClientApi\Application\Controllers\Admin\AppCrashesAdminControll
 use App\Contexts\ClientApi\Application\Controllers\Admin\GpsMapdataAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\GpsRoutesAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\ReleasesPublishApiController;
+use App\Contexts\ClientApi\Application\Controllers\Admin\VersionAdoptionAdminController;
 use App\Contexts\ClientApi\Application\Controllers\AppCrashController;
 use App\Contexts\ClientApi\Application\Controllers\ChangelogController;
 use App\Contexts\ClientApi\Application\Controllers\CrashReportController;
@@ -17,6 +18,7 @@ use App\Contexts\ClientApi\Application\Controllers\ReleaseDownloadController;
 use App\Contexts\ClientApi\Application\Controllers\ReleasesListController;
 use App\Contexts\ClientApi\Application\Controllers\TicketsController;
 use App\Contexts\ClientApi\Application\Controllers\VersionController;
+use App\Contexts\ClientApi\Application\Controllers\VersionDownloadedController;
 use App\Contexts\Telemetry\Application\Controllers\Admin\CalibrationFailuresAdminController;
 use App\Contexts\Telemetry\Application\Controllers\CalibrationFailuresController;
 use App\Contexts\Telemetry\Application\Controllers\DigitTemplatesController;
@@ -173,6 +175,12 @@ Route::middleware(['api.log'])->group(function () {
             ->middleware('throttle:api-v1-sessions')
             ->name('api.v1.sessions.store');
 
+        // El updater avisa que ESTE install descargó un update (telemetría
+        // de adopción, best-effort). Idempotente por install+to_version. Bug H.
+        Route::post('/version/downloaded', [VersionDownloadedController::class, 'store'])
+            ->middleware('throttle:api-v1-version-downloaded')
+            ->name('api.v1.version.downloaded');
+
         Route::delete('/me/data', [MeDataController::class, 'destroy'])
             ->name('api.v1.me.data.destroy');
     });
@@ -224,5 +232,10 @@ Route::middleware(['api.log'])->group(function () {
             ->middleware('throttle:api-v1')
             ->whereNumber('id')
             ->name('api.v1.admin.calibration.failures.image');
+
+        // Adopción de versiones — installs/downloads por to_version. Bug H.
+        Route::get('/admin/version/adoption', [VersionAdoptionAdminController::class, 'index'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.admin.version.adoption');
     });
 });

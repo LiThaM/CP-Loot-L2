@@ -104,6 +104,15 @@ class AppServiceProvider extends ServiceProvider
                 : Limit::perHour(10)->by($request->ip());
         });
 
+        // POST /version/downloaded — un install descarga cada versión una
+        // vez; 6/hora absorbe retries y updates encadenados (bugsApi bug H).
+        RateLimiter::for('api-v1-version-downloaded', function (Request $request) {
+            $anon = $request->attributes->get('anon_token');
+            return $anon
+                ? Limit::perHour(6)->by('anon:'.$anon->id)
+                : Limit::perHour(6)->by($request->ip());
+        });
+
         // POST /sessions — una sesión de farmeo dura horas; 30/hora cubre
         // de sobra el flush del outbox al arrancar (bugsApi bug G).
         RateLimiter::for('api-v1-sessions', function (Request $request) {
