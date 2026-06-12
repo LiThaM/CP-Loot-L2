@@ -4,6 +4,7 @@ use App\Contexts\ClientApi\Application\Controllers\Admin\AppCrashesAdminControll
 use App\Contexts\ClientApi\Application\Controllers\Admin\GpsMapdataAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\GpsRoutesAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\ReleasesPublishApiController;
+use App\Contexts\ClientApi\Application\Controllers\Admin\SkillTimingsAdminController;
 use App\Contexts\ClientApi\Application\Controllers\Admin\VersionAdoptionAdminController;
 use App\Contexts\ClientApi\Application\Controllers\AppCrashController;
 use App\Contexts\ClientApi\Application\Controllers\ChangelogController;
@@ -16,6 +17,7 @@ use App\Contexts\ClientApi\Application\Controllers\Items\Lu4Controller;
 use App\Contexts\ClientApi\Application\Controllers\MeDataController;
 use App\Contexts\ClientApi\Application\Controllers\ReleaseDownloadController;
 use App\Contexts\ClientApi\Application\Controllers\ReleasesListController;
+use App\Contexts\ClientApi\Application\Controllers\SkillTimingsController;
 use App\Contexts\ClientApi\Application\Controllers\TicketsController;
 use App\Contexts\ClientApi\Application\Controllers\VersionController;
 use App\Contexts\ClientApi\Application\Controllers\VersionDownloadedController;
@@ -107,6 +109,12 @@ Route::middleware(['api.log'])->group(function () {
         Route::get('/gps/mapdata', [GpsMapdataController::class, 'show'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.gps.mapdata.show');
+
+        // Timings comunitarios de buffs/skills — el cliente los baja al
+        // arrancar el overlay (ETag/304) y los prioriza sobre su bundle. Bug I.
+        Route::get('/data/skill_timings', [SkillTimingsController::class, 'show'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.data.skill_timings.show');
     });
 
     // Sesiones por personaje — público para que la web pinte perfiles y
@@ -237,5 +245,11 @@ Route::middleware(['api.log'])->group(function () {
         Route::get('/admin/version/adoption', [VersionAdoptionAdminController::class, 'index'])
             ->middleware('throttle:api-v1')
             ->name('api.v1.admin.version.adoption');
+
+        // Upload del skill_timings.json scrapeado de la wiki — body es el
+        // JSON crudo, mismo patrón que /admin/gps/routes. Bug I.
+        Route::post('/admin/data/skill_timings', [SkillTimingsAdminController::class, 'store'])
+            ->middleware('throttle:api-v1')
+            ->name('api.v1.admin.data.skill_timings.store');
     });
 });
