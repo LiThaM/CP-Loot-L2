@@ -186,6 +186,9 @@ class ConstPartyController extends Controller
             'image_proof_required' => 'nullable|boolean',
             'tracker_enabled' => 'sometimes|boolean',
             'tracker_divisor' => 'sometimes|integer|min:50|max:2000',
+            'tracker_value_by_market' => 'sometimes|boolean',
+            'tracker_round_up_below_1000' => 'sometimes|boolean',
+            'tracker_round_points_up' => 'sometimes|boolean',
         ]);
 
         // Note: `$request->server` is Symfony's ServerBag property, not the
@@ -208,6 +211,15 @@ class ConstPartyController extends Controller
         }
         if ($request->has('tracker_divisor')) {
             $payload['tracker_divisor'] = (int) $request->tracker_divisor;
+        }
+        if ($request->has('tracker_value_by_market')) {
+            $payload['tracker_value_by_market'] = $request->boolean('tracker_value_by_market');
+        }
+        if ($request->has('tracker_round_up_below_1000')) {
+            $payload['tracker_round_up_below_1000'] = $request->boolean('tracker_round_up_below_1000');
+        }
+        if ($request->has('tracker_round_points_up')) {
+            $payload['tracker_round_points_up'] = $request->boolean('tracker_round_points_up');
         }
 
         $cp->update($payload);

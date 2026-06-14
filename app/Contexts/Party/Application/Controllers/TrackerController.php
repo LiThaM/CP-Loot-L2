@@ -119,10 +119,12 @@ class TrackerController extends Controller
 
         // EVENT bonuses are flat per-member. SOLO/PARTY entered manually
         // split the points value across the chosen members (same shape as
-        // the auto-derive path).
-        $pointsPer = $isEvent
-            ? round((float) $data['points'], 2)
-            : round(((float) $data['points']) / max(1, $n), 2);
+        // the auto-derive path). Honour the CP's "whole points" option.
+        $roundUp = (bool) ($cp->tracker_round_points_up ?? false);
+        $raw = $isEvent
+            ? (float) $data['points']
+            : ((float) $data['points']) / max(1, $n);
+        $pointsPer = $roundUp ? (float) ceil($raw) : round($raw, 2);
 
         DB::transaction(function () use ($validIds, $cp, $user, $type, $pointsPer, $data, $badge) {
             $now = now();
@@ -145,6 +147,30 @@ class TrackerController extends Controller
         });
 
         return back()->with('success', 'Contribución registrada.');
+    }
+
+    /**
+     * Leader-triggered rebuild of the CP's auto loot-derived points using the
+     * current divisor / valuation basis / item prices. Manual contributions
+     * are preserved. Lets each CP self-serve after tweaking its settings
+     * instead of needing a console command.
+     */
+    public function recompute(Request $request, \App\Contexts\Party\Application\Services\TrackerContributionService $service): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user && $user->role?->name === 'cp_leader' && $user->cp_id, 403);
+
+        $cp = $user->cp;
+        abort_unless($cp && $cp->tracker_enabled, 404);
+
+        $stats = $service->recomputeCp($cp);
+
+        return back()->with('success', sprintf(
+            'Tracker recalculado: %s puntos en %d entradas (antes %s).',
+            number_format($stats['after_points'], 2, ',', '.'),
+            $stats['after_rows'],
+            number_format($stats['before_points'], 2, ',', '.')
+        ));
     }
 
     public function destroyContribution(Request $request, TrackerContribution $contribution): RedirectResponse

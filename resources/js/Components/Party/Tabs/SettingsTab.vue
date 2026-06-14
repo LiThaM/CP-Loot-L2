@@ -5,7 +5,7 @@ defineProps({
     logoPreview: { type: String, default: null },
 });
 
-const emit = defineEmits(['logo-change', 'submit', 'copy-invite']);
+const emit = defineEmits(['logo-change', 'submit', 'copy-invite', 'recompute']);
 </script>
 
 <template>
@@ -92,6 +92,67 @@ const emit = defineEmits(['logo-change', 'submit', 'copy-invite']);
                                        class="w-40 bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-600 h-11 px-4 font-bold shadow-inner dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
                                 <p class="mt-2 text-[10px] text-gray-500 leading-relaxed">{{ $t('cp.settings.tracker_divisor_hint') }}</p>
                                 <div v-if="form.errors.tracker_divisor" class="mt-2 text-[10px] text-red-500 font-bold uppercase tracking-widest">{{ form.errors.tracker_divisor }}</div>
+
+                                <!-- Valuation basis: market price vs NPC sell price -->
+                                <label class="flex items-start gap-3 cursor-pointer mt-5">
+                                    <input type="checkbox" v-model="form.tracker_value_by_market"
+                                           class="mt-1 w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-600">
+                                    <div class="flex-1">
+                                        <div class="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                                            {{ $page.props.app?.locale === 'es' ? 'Valuar por precio de mercado' : 'Value by market price' }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                                            {{ $page.props.app?.locale === 'es'
+                                                ? 'Marcado: el loot se valora por precio de mercado (precio de venta NPC como respaldo). Desmarcado: por precio de venta NPC (mercado como respaldo).'
+                                                : 'Checked: loot is valued by market price (NPC sell as fallback). Unchecked: by NPC sell price (market as fallback).' }}
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Round up small drops (< 1000 adena) -->
+                                <label class="flex items-start gap-3 cursor-pointer mt-4">
+                                    <input type="checkbox" v-model="form.tracker_round_up_below_1000"
+                                           class="mt-1 w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-600">
+                                    <div class="flex-1">
+                                        <div class="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                                            {{ $page.props.app?.locale === 'es' ? 'Redondear arriba drops < 1000 adena' : 'Round up drops under 1000 adena' }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                                            {{ $page.props.app?.locale === 'es'
+                                                ? 'Si una entrada de loot vale menos de 1000 adena, se cuenta como 1000 al calcular puntos (los drops baratos no valen fracciones).'
+                                                : 'A loot entry worth under 1000 adena counts as 1000 when computing points (cheap drops are not worth fractions).' }}
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Whole points (round up, no decimals) -->
+                                <label class="flex items-start gap-3 cursor-pointer mt-4">
+                                    <input type="checkbox" v-model="form.tracker_round_points_up"
+                                           class="mt-1 w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-600">
+                                    <div class="flex-1">
+                                        <div class="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                                            {{ $page.props.app?.locale === 'es' ? 'Puntos enteros (sin decimales)' : 'Whole points (no decimals)' }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                                            {{ $page.props.app?.locale === 'es'
+                                                ? 'Los puntos se redondean siempre al alza a un número entero.'
+                                                : 'Points are always rounded up to a whole number.' }}
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <!-- Manual recompute trigger -->
+                                <div class="mt-5 pt-4 border-t border-gray-200/70 dark:border-gray-800">
+                                    <button type="button" @click="emit('recompute')" :disabled="form.processing"
+                                            class="px-5 py-3 bg-gradient-to-tr from-amber-700 to-orange-600 hover:from-amber-600 hover:to-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition shadow-lg shadow-amber-950/30 disabled:opacity-40">
+                                        {{ $page.props.app?.locale === 'es' ? 'Recalcular tracker' : 'Recompute tracker' }}
+                                    </button>
+                                    <p class="mt-2 text-[10px] text-gray-500 leading-relaxed">
+                                        {{ $page.props.app?.locale === 'es'
+                                            ? 'Recalcula los puntos de loot con el divisor, la base de precio y los precios actuales. Las contribuciones manuales se conservan. Guarda los cambios antes de recalcular.'
+                                            : 'Recomputes loot points using the current divisor, price basis and prices. Manual contributions are kept. Save changes before recomputing.' }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

@@ -59,6 +59,14 @@ class LootSearchController extends Controller
 
     public function updateMarketPrice(Request $request, Item $item)
     {
+        // Only officers (admin / CP leader / accountant) may set the market
+        // price. Regular members are read-only — the inline editor already
+        // toasts them, this is the server-side guard against direct API calls.
+        $roleName = $request->user()?->role?->name;
+        if (! in_array($roleName, ['admin', 'cp_leader', 'accountant'], true)) {
+            abort(403, 'No tienes el rol necesario para fijar el precio de mercado.');
+        }
+
         $data = $request->validate([
             'price' => 'nullable|integer|min:0|max:9999999999',
         ]);
@@ -84,6 +92,9 @@ class LootSearchController extends Controller
             'market_price_updated_at' => $price !== null ? $now : null,
             'market_price_updated_by' => $price !== null ? $user->id : null,
         ])->save();
+
+        // A manual price changes every craft cost that depends on this item.
+        app(\App\Contexts\Loot\Domain\Services\CraftedPriceService::class)->forget((string) $item->chronicle);
 
         if ($request->wantsJson()) {
             return response()->json([

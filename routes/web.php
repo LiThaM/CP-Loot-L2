@@ -269,6 +269,8 @@ Route::middleware('auth')->group(function () {
         ->name('party.auctions.cancel');
     Route::post('/party/tracker/contributions', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'storeContribution'])
         ->name('party.tracker.contributions.store');
+    Route::post('/party/tracker/recompute', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'recompute'])
+        ->name('party.tracker.recompute');
     Route::delete('/party/tracker/contributions/{contribution}', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'destroyContribution'])
         ->name('party.tracker.contributions.destroy');
     Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog.index');

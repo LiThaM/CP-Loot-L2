@@ -1131,15 +1131,17 @@ watch(() => alerts.value.items, (items) => {
 
                         <!-- Cart -->
                         <div v-if="lootForm.items.length > 0" class="space-y-2 pt-2">
-                             <div 
-                                v-for="(item, idx) in lootForm.items" 
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }} ({{ lootForm.items.length }})</div>
+                            <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                             <div
+                                v-for="(item, idx) in lootForm.items"
                                 :key="item.item_id"
                                 class="flex items-center p-3 bg-purple-950/10 border border-purple-500/15 rounded-xl animate-scale-in"
                             >
-                                <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3">
-                                <div v-else class="h-8 w-8 rounded mr-3 bg-gray-200 dark:bg-gray-800/60"></div>
-                                <div class="flex-1">
-                                    <div class="text-sm font-bold">{{ item.name }}</div>
+                                <img v-if="item.image_url" :src="item.image_url" class="h-8 w-8 rounded mr-3 shrink-0">
+                                <div v-else class="h-8 w-8 rounded mr-3 bg-gray-200 dark:bg-gray-800/60 shrink-0"></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-bold truncate" :title="item.name">{{ item.name }}</div>
                                     <div class="text-[10px] text-gray-500" v-tooltip="isAdenaName(item.name) ? formatNumber(item.amount) : null">
                                         {{ $t('loot.modal.quantity') }}: {{ isAdenaName(item.name) ? formatAdenaShort(item.amount) : item.amount }}
                                     </div>
@@ -1160,6 +1162,7 @@ watch(() => alerts.value.items, (items) => {
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
                                     </button>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>

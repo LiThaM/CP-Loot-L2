@@ -240,6 +240,9 @@ const cpSettingsForm = useForm({
     image_proof_required: props.cp?.image_proof_required ?? true,
     tracker_enabled: Boolean(props.cp?.tracker_enabled ?? false),
     tracker_divisor: Number(props.cp?.tracker_divisor ?? 1000),
+    tracker_value_by_market: Boolean(props.cp?.tracker_value_by_market ?? true),
+    tracker_round_up_below_1000: Boolean(props.cp?.tracker_round_up_below_1000 ?? false),
+    tracker_round_points_up: Boolean(props.cp?.tracker_round_points_up ?? false),
 });
 
 const logoPreview = ref(null);
@@ -259,6 +262,19 @@ const submitCpSettings = () => {
             showToast(t('cp.settings.success'));
         },
     });
+};
+
+const recomputeTracker = async () => {
+    const es = locale.value === 'es';
+    const ok = await confirmAction(
+        es ? 'Recalcular tracker' : 'Recompute tracker',
+        es ? 'Se recalcularán los puntos de loot con el divisor, la base de precio y los precios de mercado actuales. Las contribuciones manuales se conservan. Guarda los cambios antes de recalcular.'
+           : 'Loot points will be recomputed with the current divisor, price basis and market prices. Manual contributions are kept. Save changes before recomputing.',
+        es ? 'Recalcular' : 'Recompute',
+        t('common.cancel'),
+    );
+    if (!ok) return;
+    router.post(route('party.tracker.recompute'), {}, { preserveScroll: true });
 };
 
 // CP rules editor — leader-only. Reads the current rule from shared props
@@ -1674,7 +1690,7 @@ watch(buySearch, throttle(async (val) => {
                                                 <img v-if="item.image_url" :src="item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
                                                 <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
                                                 <div class="min-w-0 flex-1">
-                                                    <div class="text-sm text-gray-900 dark:text-white font-bold truncate">{{ item.name }}</div>
+                                                    <div class="text-sm text-gray-900 dark:text-white font-bold truncate" :title="item.name">{{ item.name }}</div>
                                                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ item.grade || 'N/A' }}</div>
                                                 </div>
                                                 <div class="text-sm font-cinzel text-gray-900 dark:text-white" v-tooltip="String(item.total_amount || 0)">x{{ item.total_amount || 0 }}</div>
@@ -1856,7 +1872,7 @@ watch(buySearch, throttle(async (val) => {
                                 <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">{{ $t('common.na') }}</div>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
+                                <div class="text-sm font-black text-gray-900 dark:text-white truncate" :title="item.name">{{ item.name }}</div>
                                 <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
                             </div>
                             <div v-if="canManageWarehouse" class="shrink-0 flex flex-col gap-2">
@@ -1886,6 +1902,9 @@ watch(buySearch, throttle(async (val) => {
                                     :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
                                     :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
                                     :label-base="tFromProps('market_price.base_label', 'Base price (NPC)')"
+                                    :can-edit="canManageWarehouse"
+                                    :crafted-price="item.crafted_price"
+                                    :label-craft="localeTag.startsWith('es') ? 'Coste de crafteo' : 'Craft cost'"
                                     @update="(p) => onWarehousePriceUpdate(item.id, p)"
                                 />
                             </div>
@@ -1924,7 +1943,7 @@ watch(buySearch, throttle(async (val) => {
                                     <div class="flex items-center gap-3 min-w-0">
                                         <img v-if="item.image_url" :src="item.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
                                         <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
-                                        <span class="font-bold text-gray-900 dark:text-gray-100 truncate">{{ item.name }}</span>
+                                        <span class="font-bold text-gray-900 dark:text-gray-100 truncate" :title="item.name">{{ item.name }}</span>
                                     </div>
                                 </td>
                                 <td class="px-4 py-2 text-center text-xs font-bold text-gray-500">{{ item.grade || '—' }}</td>
@@ -1941,6 +1960,9 @@ watch(buySearch, throttle(async (val) => {
                                         :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
                                         :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
                                         :label-base="tFromProps('market_price.base_label', 'Base price (NPC)')"
+                                        :can-edit="canManageWarehouse"
+                                        :crafted-price="item.crafted_price"
+                                        :label-craft="localeTag.startsWith('es') ? 'Coste de crafteo' : 'Craft cost'"
                                         size="sm"
                                         @update="(p) => onWarehousePriceUpdate(item.id, p)"
                                     />
@@ -2385,6 +2407,7 @@ watch(buySearch, throttle(async (val) => {
                 @logo-change="onLogoChange"
                 @submit="submitCpSettings"
                 @copy-invite="copyInviteLink"
+                @recompute="recomputeTracker"
             />
         </div>
     </MainLayout>
@@ -2741,11 +2764,13 @@ watch(buySearch, throttle(async (val) => {
                 </div>
 
                 <div v-if="stockForm.items.length > 0" class="space-y-2">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }} ({{ stockForm.items.length }})</div>
+                    <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                     <div v-for="(row, idx) in stockForm.items" :key="row.item_id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/30 dark:border-gray-800">
-                        <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700">
-                        <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                        <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                        <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
                         <div class="flex-1 min-w-0">
-                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate">{{ row.name }}</div>
+                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate" :title="row.name">{{ row.name }}</div>
                         </div>
                         <div v-if="isAdenaRow(row)" class="flex items-center gap-2">
                             <input
@@ -2766,6 +2791,7 @@ watch(buySearch, throttle(async (val) => {
                         <button @click="removeStockItem(idx)" class="text-gray-600 hover:text-red-500">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
                         </button>
+                    </div>
                     </div>
                 </div>
 
@@ -2844,16 +2870,19 @@ watch(buySearch, throttle(async (val) => {
                 </div>
 
                 <div v-if="buyForm.items.length > 0" class="space-y-2">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }} ({{ buyForm.items.length }})</div>
+                    <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                     <div v-for="(row, idx) in buyForm.items" :key="row.item_id" class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/30 dark:border-gray-800">
-                        <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700">
-                        <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
+                        <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                        <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
                         <div class="flex-1 min-w-0">
-                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate">{{ row.name }}</div>
+                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate" :title="row.name">{{ row.name }}</div>
                         </div>
-                        <input v-model="row.amount" type="number" min="1" inputmode="numeric" class="w-24 h-9 bg-white/70 border border-gray-200 text-gray-900 rounded-lg text-center font-black focus:ring-amber-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100" @blur="normalizeBuyAmount(row)" @keydown.enter.prevent="normalizeBuyAmount(row)">
-                        <button @click="removeBuyItem(idx)" class="text-gray-600 hover:text-red-500">
+                        <input v-model="row.amount" type="number" min="1" inputmode="numeric" class="w-24 h-9 bg-white/70 border border-gray-200 text-gray-900 rounded-lg text-center font-black focus:ring-amber-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 shrink-0" @blur="normalizeBuyAmount(row)" @keydown.enter.prevent="normalizeBuyAmount(row)">
+                        <button @click="removeBuyItem(idx)" class="text-gray-600 hover:text-red-500 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
                         </button>
+                    </div>
                     </div>
                 </div>
 
@@ -2943,12 +2972,13 @@ watch(buySearch, throttle(async (val) => {
                         <div class="col-span-1 text-right">{{ $t('warehouse.recheck.col_delta') }}</div>
                         <div class="col-span-1"></div>
                     </div>
+                    <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                     <div v-for="(row, idx) in recheckForm.items" :key="row.item_id"
                          class="grid grid-cols-12 items-center gap-2 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-black/30 dark:border-gray-800">
                         <div class="col-span-5 flex items-center gap-2 min-w-0">
-                            <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700">
-                            <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
-                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate">{{ row.name }}</div>
+                            <img v-if="row.image_url" :src="row.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
+                            <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
+                            <div class="text-sm font-black text-gray-900 dark:text-gray-200 truncate" :title="row.name">{{ row.name }}</div>
                         </div>
                         <div class="col-span-2 text-right text-sm font-cinzel text-gray-700 dark:text-gray-400">{{ row.current }}</div>
                         <div class="col-span-3">
@@ -2961,6 +2991,7 @@ watch(buySearch, throttle(async (val) => {
                         <div class="col-span-1 text-right">
                             <button @click="removeRecheckItem(idx)" class="text-red-500 hover:text-red-400 text-lg">×</button>
                         </div>
+                    </div>
                     </div>
                 </div>
 

@@ -25,6 +25,9 @@ const t = (key, fallbackOrParams = undefined, paramsArg = undefined) => {
 };
 const swal = useSwal();
 
+// Points display: no trailing decimals (e.g. 25, 24.75), never "25.00".
+const fmtPts = (n) => String(Math.round((Number(n) || 0) * 100) / 100);
+
 const showAddModal = ref(false);
 const filterMember = ref('');
 const filterBadge = ref('');
@@ -123,7 +126,7 @@ const podiumStyle = (idx) => {
                             <span class="font-bold text-sm text-gray-900 dark:text-gray-100">{{ row.name }}</span>
                             <span class="text-[10px] text-gray-500 uppercase tracking-widest">{{ row.entries }} {{ t('tracker.leaderboard.entries') }}</span>
                         </div>
-                        <span class="font-cinzel font-bold text-base text-amber-700 dark:text-amber-300">{{ Number(row.total_points).toFixed(2) }}</span>
+                        <span class="font-cinzel font-bold text-base text-amber-700 dark:text-amber-300">{{ fmtPts(row.total_points) }}</span>
                     </li>
                 </ol>
             </section>
@@ -164,7 +167,7 @@ const podiumStyle = (idx) => {
                             <td class="py-2 font-bold text-gray-900 dark:text-gray-100">{{ row.user_name }}</td>
                             <td class="py-2"><span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded" :class="badgeStyle(row.badge)">{{ row.badge }}</span></td>
                             <td class="py-2 text-xs text-gray-700 dark:text-gray-300">{{ row.description }}</td>
-                            <td class="py-2 text-right font-cinzel font-bold text-amber-700 dark:text-amber-300">{{ Number(row.points).toFixed(2) }}</td>
+                            <td class="py-2 text-right font-cinzel font-bold text-amber-700 dark:text-amber-300">{{ fmtPts(row.points) }}</td>
                             <td v-if="isLeader" class="py-2 text-right">
                                 <button @click="removeRow(row)" class="text-[10px] text-red-500 hover:underline uppercase tracking-widest font-bold">{{ t('common.delete') }}</button>
                             </td>
@@ -211,7 +214,7 @@ const podiumStyle = (idx) => {
                     </div>
                     <div>
                         <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ t('tracker.add.points') }} *</label>
-                        <input v-model.number="addForm.points" type="number" min="0.01" step="0.01"
+                        <input v-model.number="addForm.points" type="number" :min="cp.tracker_round_points_up ? 1 : 0.01" :step="cp.tracker_round_points_up ? 1 : 0.01"
                                class="w-full bg-white/80 border border-gray-200 text-gray-900 rounded-xl focus:ring-amber-500 h-11 px-4 font-bold dark:bg-black/60 dark:border-gray-700 dark:text-gray-100">
                         <p class="text-[10px] text-gray-500 mt-1">{{ addForm.is_event ? t('tracker.add.points_hint_event') : t('tracker.add.points_hint_split') }}</p>
                         <p v-if="addForm.errors.points" class="text-[10px] text-red-500 mt-1">{{ addForm.errors.points }}</p>

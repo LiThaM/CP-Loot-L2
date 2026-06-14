@@ -2,9 +2,10 @@
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import MarketPriceCell from '@/Components/MarketPriceCell.vue';
-import { computed, ref, watch, reactive } from 'vue';
+import { computed, ref, watch, reactive, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { formatAdenaShort, formatAdenaFull } from '@/utils/adena.js';
+import emitter from '@/event-bus';
 
 const page = usePage();
 const translations = computed(() => page.props.translations || {});
@@ -14,6 +15,21 @@ const t = (key, params = {}) => {
     return raw.replace(/\{(\w+)\}/g, (m, p) => (Object.prototype.hasOwnProperty.call(params, p) ? String(params[p]) : m));
 };
 const appName = computed(() => page.props.app?.name || t('app.name'));
+
+// Lightweight toast. Recipes is a standalone page (no MainLayout), so it
+// listens to the same `emitter` 'toast' channel that MarketPriceCell fires
+// on when a member without the role tries to set a market price.
+const toast = ref({ open: false, tone: 'success', title: '', message: '' });
+let toastTimer = null;
+const showToast = ({ tone = 'success', title = '', message = '' } = {}) => {
+    if (!message) return;
+    toast.value = { open: true, tone, title, message };
+    if (toastTimer) window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => { toast.value = { ...toast.value, open: false }; }, 3200);
+};
+const dismissToast = () => { toast.value = { ...toast.value, open: false }; };
+onMounted(() => emitter.on('toast', showToast));
+onUnmounted(() => { emitter.off('toast', showToast); if (toastTimer) window.clearTimeout(toastTimer); });
 
 // Search state
 const query = ref('');
@@ -175,6 +191,8 @@ const getMissing = (itemId, need) => {
 const fmt = (n) => n?.toLocaleString() ?? '0';
 
 const isAuthenticated = computed(() => !!page.props.auth?.user);
+// Only officers may set market prices; members get a "no role" toast.
+const canEditMarketPrice = computed(() => ['admin', 'cp_leader', 'accountant'].includes(page.props.auth?.user?.role?.name));
 const localeTag = computed(() => (page.props.app?.locale === 'es' ? 'es-ES' : 'en-US'));
 
 const propagatePriceOnTree = (itemId, price) => {
@@ -351,6 +369,9 @@ const totalRecipeCost = computed(() => {
                                                     :value="node.market_price"
                                                     :fallback-price="node.npc_sell_price"
                                                     :editable="isAuthenticated"
+                                                    :can-edit="canEditMarketPrice"
+                                                    :crafted-price="node.crafted_price"
+                                                    :label-craft="localeTag.startsWith('es') ? 'Coste de crafteo' : 'Craft cost'"
                                                     :locale-tag="localeTag"
                                                     :label-edit="t('market_price.edit_cta')"
                                                     :label-empty="t('market_price.empty_cta')"
@@ -461,6 +482,27 @@ const totalRecipeCost = computed(() => {
                 <p class="text-gray-500 text-sm max-w-sm mx-auto">{{ $t('recipes.empty_state') }}</p>
             </div>
         </main>
+    </div>
+
+    <!-- Toast (standalone page, no MainLayout) -->
+    <div v-if="toast.open" class="fixed top-4 right-4 z-[200]">
+        <div
+            class="px-4 py-3 rounded-2xl border shadow-2xl backdrop-blur-md cursor-pointer select-none"
+            :class="toast.tone === 'error'
+                ? 'bg-red-950/70 border-red-500/30 text-red-100 shadow-red-950/40'
+                : 'bg-emerald-950/60 border-emerald-500/25 text-emerald-100 shadow-emerald-950/40'"
+            @click="dismissToast"
+        >
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black uppercase tracking-widest opacity-80">{{ toast.title || (toast.tone === 'error' ? 'Error' : 'OK') }}</div>
+                    <div class="text-sm font-bold mt-0.5 break-words">{{ toast.message }}</div>
+                </div>
+                <button class="text-white/60 hover:text-white transition -mt-0.5" @click.stop="dismissToast" type="button">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
     </div>
 </template>
 

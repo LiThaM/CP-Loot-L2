@@ -2,6 +2,7 @@
 import { ref, computed, nextTick } from 'vue';
 import axios from 'axios';
 import { formatAdenaShort, formatAdenaFull } from '@/utils/adena.js';
+import emitter from '@/event-bus';
 
 const props = defineProps({
     itemId: { type: [Number, String], required: true },
@@ -9,7 +10,18 @@ const props = defineProps({
     // Game-default NPC sell price. Shown when no user-set value exists, and
     // also acts as the server-side floor: the API rejects market_price < this.
     fallbackPrice: { type: [Number, String, null], default: null },
+    // Whether the cell renders as an interactive control at all (e.g. false
+    // for anonymous visitors → plain read-only text, no click feedback).
     editable: { type: Boolean, default: true },
+    // Whether THIS user's role is allowed to set the price. When false the
+    // cell still reacts to clicks but, instead of opening the editor, fires a
+    // "you don't have the role" toast. Backend enforces the same rule (403).
+    canEdit: { type: Boolean, default: true },
+    deniedMessage: { type: String, default: '' },
+    // Computed "craft cost" (Σ material market prices). Shown as a small
+    // secondary value next to the manual price — "another market price".
+    craftedPrice: { type: [Number, String, null], default: null },
+    labelCraft: { type: String, default: 'Craft cost' },
     updatedAt: { type: [String, null], default: null },
     updatedByName: { type: [String, null], default: null },
     localeTag: { type: String, default: 'en-US' },
@@ -29,11 +41,26 @@ const saving = ref(false);
 const errorMsg = ref('');
 const inputEl = ref(null);
 
+const isEs = computed(() => String(props.localeTag || '').toLowerCase().startsWith('es'));
+const deniedMsg = computed(() => props.deniedMessage
+    || (isEs.value
+        ? 'No tienes el rol necesario para fijar el precio de mercado.'
+        : 'You do not have the role required to set the market price.'));
+const deniedTitle = computed(() => isEs.value ? 'Sin permiso' : 'No permission');
+
 const display = computed(() => {
     if (localValue.value === null || localValue.value === undefined || localValue.value === '') return null;
     const n = Number(localValue.value);
     return Number.isFinite(n) ? n : null;
 });
+
+const craftedNum = computed(() => {
+    if (props.craftedPrice === null || props.craftedPrice === undefined || props.craftedPrice === '') return null;
+    const n = Number(props.craftedPrice);
+    return Number.isFinite(n) && n > 0 ? n : null;
+});
+const craftedShort = computed(() => craftedNum.value === null ? null : formatAdenaShort(craftedNum.value, props.localeTag));
+const craftedTooltip = computed(() => craftedNum.value === null ? '' : props.labelCraft + ': ' + formatAdenaFull(craftedNum.value, props.localeTag) + ' a');
 
 const fallback = computed(() => {
     if (props.fallbackPrice === null || props.fallbackPrice === undefined || props.fallbackPrice === '') return null;
@@ -50,10 +77,11 @@ const shortDisplay = computed(() => effective.value === null ? null : formatAden
 const tooltip = computed(() => {
     if (errorMsg.value) return errorMsg.value;
     if (display.value === null) {
+        const canHint = props.editable && props.canEdit;
         if (fallback.value !== null) {
-            return props.labelBase + ' · ' + formatAdenaFull(fallback.value, props.localeTag) + ' a' + (props.editable ? ' · ' + props.labelEdit : '');
+            return props.labelBase + ' · ' + formatAdenaFull(fallback.value, props.localeTag) + ' a' + (canHint ? ' · ' + props.labelEdit : '');
         }
-        return props.editable ? props.labelEdit : '';
+        return canHint ? props.labelEdit : '';
     }
     const parts = [formatAdenaFull(display.value, props.localeTag) + ' a'];
     if (props.updatedByName) {
@@ -71,6 +99,13 @@ const sizeClass = computed(() => props.size === 'sm' ? 'text-xs px-1.5 py-0.5' :
 
 const startEdit = async () => {
     if (!props.editable || saving.value) return;
+    // Allowed to interact, but role can't set prices → toast instead of editor.
+    if (!props.canEdit) {
+        emitter.emit('toast', { tone: 'error', title: deniedTitle.value, message: deniedMsg.value });
+        errorMsg.value = deniedMsg.value;
+        setTimeout(() => { if (errorMsg.value === deniedMsg.value) errorMsg.value = ''; }, 4000);
+        return;
+    }
     draft.value = display.value === null ? '' : String(display.value);
     editing.value = true;
     await nextTick();
@@ -182,8 +217,13 @@ const formatAgo = (iso) => {
         >
             <span v-if="display !== null">{{ shortDisplay }}</span>
             <span v-else-if="showingFallback">{{ shortDisplay }}</span>
-            <span v-else-if="editable">{{ labelEmpty }}</span>
+            <span v-else-if="editable && canEdit">{{ labelEmpty }}</span>
             <span v-else>—</span>
         </button>
+        <span
+            v-if="craftedShort !== null"
+            class="ml-1 align-middle text-[9px] font-bold text-amber-500/70 whitespace-nowrap cursor-help"
+            :title="craftedTooltip"
+        >⚒{{ craftedShort }}</span>
     </span>
 </template>

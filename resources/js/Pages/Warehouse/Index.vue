@@ -160,7 +160,7 @@ const submitReturn = () => {
                         <div v-else class="text-[10px] text-gray-700 dark:text-gray-500 font-black uppercase">{{ $t('common.na') }}</div>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="text-sm font-black text-gray-900 dark:text-white truncate">{{ item.name }}</div>
+                        <div class="text-sm font-black text-gray-900 dark:text-white truncate" :title="item.name">{{ item.name }}</div>
                         <div class="text-[10px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ item.grade || $t('common.unknown') }}</div>
                     </div>
                     <div class="text-right">
@@ -192,7 +192,7 @@ const submitReturn = () => {
                                 <div class="flex items-center gap-3 min-w-0">
                                     <img v-if="item.image_url" :src="item.image_url" class="w-8 h-8 rounded border border-gray-200 dark:border-gray-700 shrink-0">
                                     <div v-else class="w-8 h-8 rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100 truncate">{{ item.name }}</span>
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 truncate" :title="item.name">{{ item.name }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-2 text-center text-xs font-bold text-gray-500">{{ item.grade || '—' }}</td>

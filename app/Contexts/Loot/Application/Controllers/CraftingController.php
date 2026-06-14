@@ -7,6 +7,7 @@ use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Loot\Domain\Models\Recipe;
+use App\Contexts\Loot\Domain\Services\CraftedPriceService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -276,7 +277,10 @@ class CraftingController extends Controller
 
         $amounts = $this->warehouseAmountsByItemId((int) $user->cp_id);
         $craftableRecipeIdByItemId = $this->craftableRecipeIdByItemId($chronicle);
-        $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $amounts, $craftableRecipeIdByItemId) {
+        // Computed "craft cost" per item, surfaced as a second price (⚒) on
+        // every node so a craftable material shows what it costs to make.
+        $craftedPrices = app(CraftedPriceService::class)->mapForChronicle($chronicle);
+        $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $amounts, $craftableRecipeIdByItemId, $craftedPrices) {
             return $this->treeNodeForMaterial(
                 itemId: (int) $mat->item_id,
                 name: $mat->item?->name,
@@ -290,6 +294,7 @@ class CraftingController extends Controller
                 chronicle: $chronicle,
                 amounts: $amounts,
                 ancestors: [],
+                craftedPrices: $craftedPrices,
             );
         })->values();
 
@@ -301,6 +306,7 @@ class CraftingController extends Controller
                 'image_url' => $recipe->recipeItem?->image_url,
                 'market_price' => $recipe->recipeItem?->market_price !== null ? (int) $recipe->recipeItem->market_price : null,
                 'npc_sell_price' => $recipe->recipeItem?->npc_sell_price !== null ? (int) $recipe->recipeItem->npc_sell_price : null,
+                'crafted_price' => $craftedPrices[$recipe->recipe_item_id] ?? null,
                 'need' => 1,
                 'have' => (int) ($amounts[$recipe->recipe_item_id] ?? 0),
                 'missing' => max(0, 1 - (int) ($amounts[$recipe->recipe_item_id] ?? 0)),
@@ -556,6 +562,7 @@ class CraftingController extends Controller
         string $chronicle,
         array $amounts,
         array $ancestors = [],
+        array $craftedPrices = [],
     ): array {
         $missing = max(0, $need - $have);
         $craftRecipeId = $craftableRecipeIdByItemId[$itemId] ?? null;
@@ -570,7 +577,7 @@ class CraftingController extends Controller
 
             if ($craftRecipe) {
                 $branchAncestors = array_merge($ancestors, [$craftRecipeId]);
-                $children = $craftRecipe->materials->map(function ($mat) use ($missing, $depth, $chronicle, $amounts, $craftableRecipeIdByItemId, $branchAncestors) {
+                $children = $craftRecipe->materials->map(function ($mat) use ($missing, $depth, $chronicle, $amounts, $craftableRecipeIdByItemId, $branchAncestors, $craftedPrices) {
                     $childNeed = (int) ($mat->quantity ?? 1) * max(1, $missing);
                     $childHave = (int) ($amounts[$mat->item_id] ?? 0);
 
@@ -587,6 +594,7 @@ class CraftingController extends Controller
                         chronicle: $chronicle,
                         amounts: $amounts,
                         ancestors: $branchAncestors,
+                        craftedPrices: $craftedPrices,
                     );
                 })->values()->all();
             }
@@ -598,6 +606,7 @@ class CraftingController extends Controller
             'image_url' => $imageUrl,
             'market_price' => $marketPrice,
             'npc_sell_price' => $npcSellPrice,
+            'crafted_price' => $craftedPrices[$itemId] ?? null,
             'need' => $need,
             'have' => $have,
             'missing' => $missing,

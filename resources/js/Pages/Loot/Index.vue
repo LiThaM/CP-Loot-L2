@@ -284,9 +284,22 @@ const resolveAdenaSplitPreview = computed(() => {
 });
 
 const submitResolve = () => {
+    if (!selectedReport.value) return;
     resolveForm.post(route('loot.report.resolve', { report: selectedReport.value.id }), {
+        preserveScroll: true,
         onSuccess: () => {
             showResolveModal.value = false;
+        },
+        onError: (errors) => {
+            // The modal previously had no error surface, so a failed
+            // validation/permission POST looked like "nothing happened".
+            // Surface the first server message as a toast.
+            const first = errors && Object.values(errors).find(Boolean);
+            emitter.emit('toast', {
+                tone: 'error',
+                title: t('common.error'),
+                message: first || t('common.error_occurred'),
+            });
         },
     });
 };
@@ -911,46 +924,45 @@ onMounted(async () => {
                 </div>
 
                 <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                    <div class="flex gap-6 p-4 bg-white/70 rounded-2xl border border-gray-200 dark:bg-gray-900/50 dark:border-gray-800">
-                         <img v-if="selectedReport.image_proof" :src="`/storage/${selectedReport.image_proof}`" class="w-32 h-20 object-cover rounded-xl border border-gray-700 cursor-pointer" @click.stop="openImageModal(`/storage/${selectedReport.image_proof}`)">
-                         <div class="flex-1">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.type') }}</div>
-                                    <select v-model="resolveForm.event_type" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-200">
-                                        <option v-for="t in eventTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }}</div>
-                                    <div class="space-y-2">
-                                        <div
-                                            v-for="(item, idx) in resolveForm.items"
-                                            :key="`${item.item_id}-${idx}`"
-                                            class="flex items-center gap-3 bg-black/30 border border-gray-800 rounded-xl p-2"
-                                        >
-                                            <img v-if="item.image_url" :src="item.image_url" class="w-7 h-7 rounded border border-gray-700">
-                                            <div v-else class="w-7 h-7 rounded border border-gray-700 bg-gray-800/60"></div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="text-[11px] font-black text-gray-200 truncate">{{ item.name }}</div>
-                                            </div>
-                                            <input
-                                                v-model="item.amount"
-                                                type="number"
-                                                min="1"
-                                                inputmode="numeric"
-                                                class="w-20 h-9 bg-white/70 border border-gray-200 text-gray-900 rounded-lg text-center font-black focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100"
-                                                @blur="normalizeResolveAmount(item)"
-                                                @keydown.enter.prevent="normalizeResolveAmount(item)"
-                                            >
-                                            <button @click="removeResolveItem(idx)" class="text-gray-600 hover:text-red-500">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="flex gap-4 p-4 bg-white/70 rounded-2xl border border-gray-200 dark:bg-gray-900/50 dark:border-gray-800">
+                         <img v-if="selectedReport.image_proof" :src="`/storage/${selectedReport.image_proof}`" @error="$event.target.style.display='none'" class="w-32 h-20 object-cover rounded-xl border border-gray-700 cursor-pointer shrink-0" @click.stop="openImageModal(`/storage/${selectedReport.image_proof}`)">
+                         <div class="flex-1 space-y-2">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.type') }}</div>
+                            <select v-model="resolveForm.event_type" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-200">
+                                <option v-for="t in eventTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+                            </select>
                          </div>
+                    </div>
+
+                    <!-- Items: full-width with their own bounded scroll so the names
+                         stay readable and a long list never buries the submit button. -->
+                    <div class="space-y-2">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('loot.items') }} ({{ resolveForm.items.length }})</div>
+                        <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                            <div
+                                v-for="(item, idx) in resolveForm.items"
+                                :key="`${item.item_id}-${idx}`"
+                                class="flex items-center gap-3 bg-black/30 border border-gray-800 rounded-xl p-2"
+                            >
+                                <img v-if="item.image_url" :src="item.image_url" @error="$event.target.style.visibility='hidden'" class="w-7 h-7 rounded border border-gray-700 shrink-0">
+                                <div v-else class="w-7 h-7 rounded border border-gray-700 bg-gray-800/60 shrink-0"></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs font-bold text-gray-200 truncate" :title="item.name || `#${item.item_id}`">{{ item.name || `#${item.item_id}` }}</div>
+                                </div>
+                                <input
+                                    v-model="item.amount"
+                                    type="number"
+                                    min="1"
+                                    inputmode="numeric"
+                                    class="w-20 h-9 bg-white/70 border border-gray-200 text-gray-900 rounded-lg text-center font-black focus:ring-purple-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 shrink-0"
+                                    @blur="normalizeResolveAmount(item)"
+                                    @keydown.enter.prevent="normalizeResolveAmount(item)"
+                                >
+                                <button @click="removeResolveItem(idx)" class="text-gray-600 hover:text-red-500 shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m8 4H4"></path></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Points Selection -->
@@ -1044,6 +1056,21 @@ onMounted(async () => {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Server-side validation / permission errors (previously the
+                         submit failed silently with no feedback in the modal). -->
+                    <div v-if="Object.keys(resolveForm.errors).length" class="rounded-xl border border-red-500/40 bg-red-500/10 p-3 space-y-1">
+                        <p v-for="(msg, key) in resolveForm.errors" :key="key" class="text-[11px] text-red-300 font-bold">{{ msg }}</p>
+                    </div>
+
+                    <!-- Hint when confirm is blocked for lack of attendees, so the
+                         disabled button no longer reads as "nothing happens". -->
+                    <p
+                        v-if="resolveForm.items.length > 0 && resolveForm.recipient_ids.length === 0 && externalAttendeesCount === 0"
+                        class="text-[11px] text-amber-400/90 font-bold text-center"
+                    >
+                        {{ locale === 'es' ? 'Selecciona al menos un asistente para poder confirmar.' : 'Select at least one attendee to confirm.' }}
+                    </p>
 
                     <div class="pt-6 flex space-x-4">
                         <button @click="showResolveModal = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>

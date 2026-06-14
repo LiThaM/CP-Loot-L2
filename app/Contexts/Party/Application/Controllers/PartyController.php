@@ -10,6 +10,7 @@ use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Loot\Domain\Models\LootReportAttendee;
 use App\Contexts\Loot\Domain\Models\Recipe;
+use App\Contexts\Loot\Domain\Services\CraftedPriceService;
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Contexts\System\Domain\Models\AuditLog;
@@ -116,15 +117,21 @@ class PartyController extends Controller
         // L2 grade tiers: S > A > B > C > D > NG. Items without a grade go last.
         $gradeRank = ['S' => 6, 'A' => 5, 'B' => 4, 'C' => 3, 'D' => 2, 'NG' => 1];
 
-        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames, $gradeRank) {
+        // Computed "craft cost" per item (Σ material market prices), shown as a
+        // second price next to the manual one and used to value crafted items
+        // that nobody priced by hand yet.
+        $craftedPrices = app(CraftedPriceService::class)->mapForChronicle((string) ($cp->chronicle ?: 'IL'));
+
+        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames, $gradeRank, $craftedPrices) {
             $out = (int) ($warehouseOutgoing[$row->id] ?? 0);
             $in = (int) ($row->incoming_amount ?? 0);
             $row->total_amount = max(0, $in - $out);
             $row->market_price = $row->market_price !== null ? (int) $row->market_price : null;
             $row->npc_sell_price = $row->npc_sell_price !== null ? (int) $row->npc_sell_price : null;
+            $row->crafted_price = $craftedPrices[$row->id] ?? null;
             // Stock value uses the effective price: user-set market_price wins,
-            // npc_sell_price acts as base floor when no one priced it yet.
-            $effectivePrice = $row->market_price ?? $row->npc_sell_price;
+            // then the computed craft cost, with npc_sell_price as the base floor.
+            $effectivePrice = $row->market_price ?? $row->crafted_price ?? $row->npc_sell_price;
             $row->stock_value = $effectivePrice !== null ? $effectivePrice * $row->total_amount : null;
             $row->market_price_updated_by_name = $row->market_price_updated_by ? ($priceEditorNames[$row->market_price_updated_by] ?? null) : null;
             $row->grade_rank = $gradeRank[$row->grade] ?? 0;
