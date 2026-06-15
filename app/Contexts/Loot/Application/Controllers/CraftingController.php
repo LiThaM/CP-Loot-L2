@@ -277,7 +277,7 @@ class CraftingController extends Controller
 
         $amounts = $this->warehouseAmountsByItemId((int) $user->cp_id);
         $craftableRecipeIdByItemId = $this->craftableRecipeIdByItemId($chronicle);
-        // Computed "craft cost" per item, surfaced as a second price (⚒) on
+        // Computed "craft cost" per item, surfaced as a second price on
         // every node so a craftable material shows what it costs to make.
         $craftedPrices = app(CraftedPriceService::class)->mapForChronicle($chronicle);
         $nodes = $recipe->materials->map(function ($mat) use ($depth, $chronicle, $amounts, $craftableRecipeIdByItemId, $craftedPrices) {

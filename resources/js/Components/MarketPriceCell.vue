@@ -3,6 +3,7 @@ import { ref, computed, nextTick } from 'vue';
 import axios from 'axios';
 import { formatAdenaShort, formatAdenaFull } from '@/utils/adena.js';
 import emitter from '@/event-bus';
+import { WrenchScrewdriverIcon } from '@heroicons/vue/20/solid';
 
 const props = defineProps({
     itemId: { type: [Number, String], required: true },
@@ -60,7 +61,13 @@ const craftedNum = computed(() => {
     return Number.isFinite(n) && n > 0 ? n : null;
 });
 const craftedShort = computed(() => craftedNum.value === null ? null : formatAdenaShort(craftedNum.value, props.localeTag));
-const craftedTooltip = computed(() => craftedNum.value === null ? '' : props.labelCraft + ': ' + formatAdenaFull(craftedNum.value, props.localeTag) + ' a');
+const craftedTooltip = computed(() => {
+    if (craftedNum.value === null) return '';
+    const amount = formatAdenaFull(craftedNum.value, props.localeTag) + ' a';
+    return isEs.value
+        ? `${props.labelCraft}: ${amount} — precio de craftear este objeto con sus materiales`
+        : `${props.labelCraft}: ${amount} — cost to craft this item from its materials`;
+});
 
 const fallback = computed(() => {
     if (props.fallbackPrice === null || props.fallbackPrice === undefined || props.fallbackPrice === '') return null;
@@ -222,8 +229,11 @@ const formatAgo = (iso) => {
         </button>
         <span
             v-if="craftedShort !== null"
-            class="ml-1 align-middle text-[9px] font-bold text-amber-500/70 whitespace-nowrap cursor-help"
-            :title="craftedTooltip"
-        >⚒{{ craftedShort }}</span>
+            v-tooltip="craftedTooltip"
+            class="ml-1 inline-flex items-center gap-0.5 align-middle text-[9px] font-bold text-amber-500/80 whitespace-nowrap cursor-help"
+        >
+            <WrenchScrewdriverIcon class="w-2.5 h-2.5 shrink-0" />
+            {{ craftedShort }}
+        </span>
     </span>
 </template>

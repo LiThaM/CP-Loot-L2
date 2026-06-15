@@ -16,14 +16,14 @@ return new class extends Migration
                 'body_es' => <<<'MD'
 **Precios de mercado para LU4.** Cargamos los precios de mercado de los materiales (los podéis seguir ajustando a mano).
 
-**Coste de crafteo automático (⚒).** Cada objeto crafteable muestra un segundo precio calculado a partir del precio de mercado de los materiales que necesita su receta — recursivo, así un Artisan's Frame se calcula desde sus moldes, y estos desde sus minerales. Lo veréis en el almacén y en el explorador de recetas.
+**Coste de crafteo automático.** Cada objeto crafteable muestra, junto a su precio (con un icono de herramienta), un segundo precio calculado a partir del precio de mercado de los materiales que necesita su receta — recursivo, así un Artisan's Frame se calcula desde sus moldes, y estos desde sus minerales. Lo veréis en el almacén y en el explorador de recetas.
 
 **Solo oficiales fijan el precio.** Ahora únicamente admin, líder y contable pueden poner el precio de mercado de un objeto. Si un miembro lo intenta, recibe un aviso de que no tiene el rol.
 MD,
                 'body_en' => <<<'MD'
 **Market prices for LU4.** We loaded market prices for materials (you can keep adjusting them by hand).
 
-**Automatic craft cost (⚒).** Every craftable item shows a second price derived from the market price of the materials its recipe needs — recursive, so an Artisan's Frame is priced from its molds, and those from their ores. You'll see it in the warehouse and in the recipe explorer.
+**Automatic craft cost.** Every craftable item shows, next to its price (with a tool icon), a second price derived from the market price of the materials its recipe needs — recursive, so an Artisan's Frame is priced from its molds, and those from their ores. You'll see it in the warehouse and in the recipe explorer.
 
 **Only officers set prices.** Only admin, leader and accountant can set an item's market price now. If a member tries, they get a notice that they don't have the role.
 MD,
