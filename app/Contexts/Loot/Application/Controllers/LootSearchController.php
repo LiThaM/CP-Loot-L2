@@ -107,4 +107,47 @@ class LootSearchController extends Controller
 
         return back();
     }
+
+    /**
+     * Set the base (NPC sell-back) price of an item. Same officer-only gate
+     * as the market price; members are read-only. Used by the Items DB detail
+     * editor. Keeps the invariant base <= market: the base price is the floor
+     * the market price can't undercut, so it can't exceed an existing market
+     * price either.
+     */
+    public function updateNpcPrice(Request $request, Item $item)
+    {
+        $roleName = $request->user()?->role?->name;
+        if (! in_array($roleName, ['admin', 'cp_leader', 'accountant'], true)) {
+            abort(403, 'No tienes el rol necesario para fijar el precio base.');
+        }
+
+        $data = $request->validate([
+            'price' => 'nullable|integer|min:0|max:9999999999',
+        ]);
+
+        $price = $data['price'] ?? null;
+
+        if ($price !== null && $item->market_price !== null && $price > (int) $item->market_price) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'price' => 'Base price ('.number_format($price, 0, '.', ' ').') cannot be higher than the market price ('.number_format($item->market_price, 0, '.', ' ').').',
+            ]);
+        }
+
+        $item->forceFill(['npc_sell_price' => $price])->save();
+
+        // The base price feeds craft-cost fallbacks, so bust the cache.
+        app(\App\Contexts\Loot\Domain\Services\CraftedPriceService::class)->forget((string) $item->chronicle);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'item_id' => $item->id,
+                'npc_sell_price' => $price,
+                'npc_sell_price_updated_at' => null,
+                'npc_sell_price_updated_by_name' => null,
+            ]);
+        }
+
+        return back();
+    }
 }

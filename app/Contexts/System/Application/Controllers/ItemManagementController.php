@@ -56,6 +56,7 @@ class ItemManagementController extends Controller
             'grades' => ['NG', 'D', 'C', 'B', 'A', 'S'],
             'categories' => ['Weapon', 'Armor', 'Jewelry', 'Material', 'Recipe', 'EtcItem'],
             'canEdit' => true,
+            'canEditPrices' => true,
             'indexRouteName' => 'system.items.index',
             'pageTitle' => 'Base de Datos de Items',
         ]);
@@ -97,6 +98,9 @@ class ItemManagementController extends Controller
             'grades' => ['NG', 'D', 'C', 'B', 'A', 'S'],
             'categories' => ['Weapon', 'Armor', 'Jewelry', 'Material', 'Recipe', 'EtcItem'],
             'canEdit' => false,
+            // Officers (admin / CP leader / accountant) can edit base + market
+            // prices from the Items DB detail view; everyone else is read-only.
+            'canEditPrices' => in_array($request->user()?->role?->name, ['admin', 'cp_leader', 'accountant'], true),
             'indexRouteName' => 'itemsdb.index',
             'pageTitle' => 'ITEMS DB',
         ]);

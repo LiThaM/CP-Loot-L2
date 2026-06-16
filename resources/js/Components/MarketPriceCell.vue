@@ -19,6 +19,11 @@ const props = defineProps({
     // "you don't have the role" toast. Backend enforces the same rule (403).
     canEdit: { type: Boolean, default: true },
     deniedMessage: { type: String, default: '' },
+    // Which named route + JSON field this cell edits. Defaults to the market
+    // price; pass the npc-price route + 'npc_sell_price' to reuse the cell as
+    // a base-price editor (Items DB detail view).
+    endpointName: { type: String, default: 'api.items.market-price.update' },
+    responseField: { type: String, default: 'market_price' },
     // Computed "craft cost" (Σ material market prices). Shown as a small
     // secondary value next to the manual price — "another market price".
     craftedPrice: { type: [Number, String, null], default: null },
@@ -166,15 +171,15 @@ const save = async () => {
 
     try {
         const { data } = await axios.patch(
-            route('api.items.market-price.update', props.itemId),
+            route(props.endpointName, props.itemId),
             { price: parsedPrice },
             { headers: { Accept: 'application/json' } }
         );
         emit('update', {
             itemId: Number(props.itemId),
-            price: data.market_price,
-            updatedAt: data.market_price_updated_at,
-            updatedByName: data.market_price_updated_by_name,
+            price: data[props.responseField],
+            updatedAt: data[`${props.responseField}_updated_at`] ?? null,
+            updatedByName: data[`${props.responseField}_updated_by_name`] ?? null,
         });
     } catch (e) {
         localValue.value = previous;

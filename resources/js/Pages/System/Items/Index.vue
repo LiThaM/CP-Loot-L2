@@ -18,6 +18,18 @@ const onPriceUpdate = (item, payload) => {
     item.market_price_updated_by_name = payload.updatedByName;
 };
 
+// Detail modal price editors (base + market). detailItem is the same object
+// reference as the table row (openDetails sets it), so mutating it keeps the
+// list in sync too.
+const onDetailPriceUpdate = (field, payload) => {
+    if (!detailItem.value) return;
+    detailItem.value[field] = payload.price;
+    if (field === 'market_price') {
+        detailItem.value.market_price_updated_at = payload.updatedAt;
+        detailItem.value.market_price_updated_by_name = payload.updatedByName;
+    }
+};
+
 const props = defineProps({
     items: Object,
     filters: Object,
@@ -25,6 +37,10 @@ const props = defineProps({
     grades: Array,
     categories: Array,
     canEdit: {
+        type: Boolean,
+        default: false,
+    },
+    canEditPrices: {
         type: Boolean,
         default: false,
     },
@@ -210,6 +226,7 @@ const getGradeColor = (itemGrade) => {
                                         :fallback-price="item.npc_sell_price"
                                         :updated-at="item.market_price_updated_at"
                                         :updated-by-name="item.market_price_updated_by_name"
+                                        :can-edit="canEditPrices"
                                         :locale-tag="localeTag"
                                         :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
                                         :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
@@ -340,6 +357,49 @@ const getGradeColor = (itemGrade) => {
                                 <span v-if="detailItem.grade" class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border border-purple-500/20 text-purple-700 dark:text-purple-300 bg-purple-500/10">{{ detailItem.grade }}</span>
                                 <span v-if="detailItem.category" class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white/70 dark:bg-black/30">{{ detailItem.category }}</span>
                                 <span v-if="detailItem.source" class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white/70 dark:bg-black/30">{{ detailItem.source }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prices: base (NPC) + market. Always shown on open; editable inline for officers. -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                        <div class="p-4 rounded-xl border border-orange-200 bg-orange-50/60 dark:border-orange-900/40 dark:bg-orange-950/20">
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ tFromProps('market_price.base_label', 'Base price (NPC)') }}</div>
+                            <div class="mt-1 font-cinzel text-orange-700 dark:text-orange-300">
+                                <MarketPriceCell
+                                    :key="'base-' + detailItem.id"
+                                    :item-id="detailItem.id"
+                                    :value="detailItem.npc_sell_price"
+                                    endpoint-name="api.items.npc-price.update"
+                                    response-field="npc_sell_price"
+                                    :editable="canEditPrices"
+                                    :can-edit="canEditPrices"
+                                    :locale-tag="localeTag"
+                                    :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
+                                    :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
+                                    @update="(p) => onDetailPriceUpdate('npc_sell_price', p)"
+                                />
+                            </div>
+                        </div>
+                        <div class="p-4 rounded-xl border border-orange-200 bg-orange-50/60 dark:border-orange-900/40 dark:bg-orange-950/20">
+                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">{{ tFromProps('market_price.column_label', 'Market price') }}</div>
+                            <div class="mt-1 font-cinzel text-orange-700 dark:text-orange-300">
+                                <MarketPriceCell
+                                    :key="'market-' + detailItem.id"
+                                    :item-id="detailItem.id"
+                                    :value="detailItem.market_price"
+                                    :fallback-price="detailItem.npc_sell_price"
+                                    :updated-at="detailItem.market_price_updated_at"
+                                    :updated-by-name="detailItem.market_price_updated_by_name"
+                                    :editable="canEditPrices"
+                                    :can-edit="canEditPrices"
+                                    :locale-tag="localeTag"
+                                    :label-edit="tFromProps('market_price.edit_cta', 'Click to edit')"
+                                    :label-empty="tFromProps('market_price.empty_cta', '+ Set price')"
+                                    :label-updated="tFromProps('market_price.tooltip_updated', 'Updated by {user} {ago}')"
+                                    :label-base="tFromProps('market_price.base_label', 'Base price (NPC)')"
+                                    @update="(p) => onDetailPriceUpdate('market_price', p)"
+                                />
                             </div>
                         </div>
                     </div>

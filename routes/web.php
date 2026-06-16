@@ -416,6 +416,7 @@ Route::middleware('auth')->group(function () {
     // Phase 7: Loot Registration, Approval & Wishlist
     Route::get('/api/items/search', [LootSearchController::class, 'search'])->name('api.items.search');    // Loot & Session Reports
     Route::patch('/api/items/{item}/market-price', [LootSearchController::class, 'updateMarketPrice'])->name('api.items.market-price.update');
+    Route::patch('/api/items/{item}/npc-price', [LootSearchController::class, 'updateNpcPrice'])->name('api.items.npc-price.update');
     Route::get('/api/members/{user}/warehouse', [PartyController::class, 'memberWarehouse'])->name('api.party.member.warehouse');
     Route::get('/api/recipes/search', [CraftingController::class, 'search'])->name('api.recipes.search');
     Route::post('/api/recipes/{recipe}/craft', [CraftingController::class, 'craft'])->name('api.recipes.craft');
