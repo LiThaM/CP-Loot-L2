@@ -52,10 +52,10 @@ MD,
                 'title_en' => 'Clearer loot approval',
                 'title_es' => 'Aprobar loot más claro',
                 'body_es' => <<<'MD'
-El modal de **resolver sesión de loot** se lee mejor: nombres de objetos completos (con tooltip) y lista con su propio scroll, para que una sesión con muchos objetos no entierre el botón de confirmar. Además, si el envío falla ahora verás el motivo en vez de quedarte sin respuesta.
+El modal de **resolver sesión de loot** se lee mejor: nombres de objetos completos (con tooltip) y lista con su propio scroll, para que una sesión con muchos objetos no entierre el botón de confirmar. Además, si el envío falla ahora verás el motivo (toast) en vez de quedarte sin respuesta. Y **aprobar una sesión con un invitado (asistente externo) ya funciona** — antes se perdían los miembros internos y la sesión se quedaba pendiente.
 MD,
                 'body_en' => <<<'MD'
-The **resolve loot session** modal reads better: full item names (with tooltip) and a scrollable list, so a session with many items no longer buries the confirm button. Also, if submitting fails you now see why instead of nothing happening.
+The **resolve loot session** modal reads better: full item names (with tooltip) and a scrollable list, so a session with many items no longer buries the confirm button. Also, if submitting fails you now see why (toast) instead of nothing happening. And **approving a session that includes a guest (external attendee) now works** — it used to drop the internal members and leave the session pending.
 MD,
             ],
         ];

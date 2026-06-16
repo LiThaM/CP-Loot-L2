@@ -222,6 +222,14 @@ class LootActionController extends Controller
 
         $this->distributionService->distribute($report, $attendeeUserIds, $points);
 
+        // distribute() only flips the report to "confirmed" when there's at
+        // least one internal member to award points to. An all-external session
+        // has none, so confirm it explicitly here — otherwise approving it would
+        // silently leave the report pending.
+        if ($report->fresh()->status !== 'confirmed') {
+            $report->update(['status' => 'confirmed']);
+        }
+
         // Best-effort: if this CP has the value-based DKP tracker turned on,
         // derive parallel tracker_contributions from the confirmed entries.
         // Failures here must not roll back the loot confirmation above.
@@ -270,80 +278,90 @@ class LootActionController extends Controller
      */
     private function normalizeAttendees(Request $request, int $cpId): ?array
     {
-        $rows = [];
-
-        if (is_array($request->attendees) && count($request->attendees) > 0) {
-            $userIdsToCheck = [];
+        // The resolve modal sends externals in `attendees` and internal members
+        // in `recipient_ids` (legacy). Honour BOTH by combining them: otherwise
+        // picking any external made the attendees array non-empty and the
+        // internal members in recipient_ids were silently dropped, leaving the
+        // report unconfirmed.
+        $inputs = [];
+        if (is_array($request->attendees)) {
             foreach ($request->attendees as $att) {
-                $userId = isset($att['user_id']) && $att['user_id'] !== '' ? (int) $att['user_id'] : null;
-                $charId = isset($att['character_id']) && $att['character_id'] !== '' ? (int) $att['character_id'] : null;
-                $name = isset($att['external_name']) && $att['external_name'] !== '' ? (string) $att['external_name'] : null;
-
-                if (($userId === null && $name === null) || ($userId !== null && $name !== null)) {
-                    return null;
-                }
-                $rows[] = ['user_id' => $userId, 'character_id' => $charId, 'external_name' => $name];
-                if ($userId !== null) {
-                    $userIdsToCheck[] = $userId;
+                if (is_array($att)) {
+                    $inputs[] = $att;
                 }
             }
-
-            // Resolve which user_ids actually belong to this CP. Users that
-            // do not belong are treated as externals (kept in the report but
-            // flagged so the leader can pay them outside the system).
-            $cpUserIds = User::whereIn('id', $userIdsToCheck)
-                ->where('cp_id', $cpId)
-                ->where('membership_status', '!=', 'banned')
-                ->pluck('id')
-                ->all();
-            $cpUserSet = array_flip($cpUserIds);
-
-            // character_id must belong to the same user, otherwise drop it.
-            $charOwners = [];
-            $charIds = array_filter(array_column($rows, 'character_id'));
-            if (!empty($charIds)) {
-                $charOwners = \App\Contexts\Identity\Domain\Models\Character::whereIn('id', $charIds)
-                    ->pluck('user_id', 'id')
-                    ->toArray();
+        }
+        if (is_array($request->recipient_ids)) {
+            foreach ($request->recipient_ids as $uid) {
+                if ($uid !== null && $uid !== '') {
+                    $inputs[] = ['user_id' => (int) $uid];
+                }
             }
-
-            return array_map(function ($row) use ($cpUserSet, $charOwners) {
-                if ($row['user_id'] !== null && !isset($cpUserSet[$row['user_id']])) {
-                    // Bot user / member of another CP / banned — record as
-                    // external using the user's display name if we have it.
-                    $name = User::whereKey($row['user_id'])->value('name') ?? '(unknown)';
-                    return ['user_id' => null, 'character_id' => null, 'external_name' => $name, 'is_external' => true];
-                }
-                $charId = $row['character_id'];
-                if ($charId !== null && (!isset($charOwners[$charId]) || $charOwners[$charId] !== $row['user_id'])) {
-                    // Char belongs to another user — drop to default (main).
-                    $charId = null;
-                }
-                return [
-                    'user_id' => $row['user_id'],
-                    'character_id' => $charId,
-                    'external_name' => $row['external_name'],
-                    'is_external' => $row['user_id'] === null,
-                ];
-            }, $rows);
         }
 
-        // Legacy path: only recipient_ids was sent.
-        if (is_array($request->recipient_ids) && count($request->recipient_ids) > 0) {
-            $cpUserIds = User::whereIn('id', $request->recipient_ids)
-                ->where('cp_id', $cpId)
-                ->where('membership_status', '!=', 'banned')
-                ->pluck('id')
-                ->all();
-            return array_map(fn ($uid) => [
-                'user_id' => (int) $uid,
-                'character_id' => null,
-                'external_name' => null,
-                'is_external' => false,
-            ], $cpUserIds);
+        if (empty($inputs)) {
+            return [];
         }
 
-        return [];
+        $rows = [];
+        $seenUserIds = [];
+        $userIdsToCheck = [];
+        foreach ($inputs as $att) {
+            $userId = isset($att['user_id']) && $att['user_id'] !== '' ? (int) $att['user_id'] : null;
+            $charId = isset($att['character_id']) && $att['character_id'] !== '' ? (int) $att['character_id'] : null;
+            $name = isset($att['external_name']) && $att['external_name'] !== '' ? (string) $att['external_name'] : null;
+
+            if (($userId === null && $name === null) || ($userId !== null && $name !== null)) {
+                return null;
+            }
+            if ($userId !== null) {
+                if (isset($seenUserIds[$userId])) {
+                    continue; // same member present in both attendees and recipient_ids
+                }
+                $seenUserIds[$userId] = true;
+                $userIdsToCheck[] = $userId;
+            }
+            $rows[] = ['user_id' => $userId, 'character_id' => $charId, 'external_name' => $name];
+        }
+
+        // Resolve which user_ids actually belong to this CP. Users that
+        // do not belong are treated as externals (kept in the report but
+        // flagged so the leader can pay them outside the system).
+        $cpUserIds = User::whereIn('id', $userIdsToCheck)
+            ->where('cp_id', $cpId)
+            ->where('membership_status', '!=', 'banned')
+            ->pluck('id')
+            ->all();
+        $cpUserSet = array_flip($cpUserIds);
+
+        // character_id must belong to the same user, otherwise drop it.
+        $charOwners = [];
+        $charIds = array_filter(array_column($rows, 'character_id'));
+        if (!empty($charIds)) {
+            $charOwners = \App\Contexts\Identity\Domain\Models\Character::whereIn('id', $charIds)
+                ->pluck('user_id', 'id')
+                ->toArray();
+        }
+
+        return array_map(function ($row) use ($cpUserSet, $charOwners) {
+            if ($row['user_id'] !== null && !isset($cpUserSet[$row['user_id']])) {
+                // Bot user / member of another CP / banned — record as
+                // external using the user's display name if we have it.
+                $name = User::whereKey($row['user_id'])->value('name') ?? '(unknown)';
+                return ['user_id' => null, 'character_id' => null, 'external_name' => $name, 'is_external' => true];
+            }
+            $charId = $row['character_id'];
+            if ($charId !== null && (!isset($charOwners[$charId]) || $charOwners[$charId] !== $row['user_id'])) {
+                // Char belongs to another user — drop to default (main).
+                $charId = null;
+            }
+            return [
+                'user_id' => $row['user_id'],
+                'character_id' => $charId,
+                'external_name' => $row['external_name'],
+                'is_external' => $row['user_id'] === null,
+            ];
+        }, $rows);
     }
 
     /**
