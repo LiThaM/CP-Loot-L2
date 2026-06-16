@@ -101,7 +101,11 @@ class Lu4Scraper
         }
         $iconName = $this->extractIconName($iconSrc);
         $description = '';
-        $npcSellPrice = $this->extractStatNumber($crawler, 'NPC Sell Price');
+        // The reference wiki lists the price the NPC SELLS the item AT; when a
+        // player sells it back to a store they only get ~half. Store that real
+        // sell-back value (÷2, floored) so it matches what players actually get.
+        $npcSellRaw = $this->extractStatNumber($crawler, 'NPC Sell Price');
+        $npcSellPrice = $npcSellRaw !== null ? intdiv((int) $npcSellRaw, 2) : null;
 
         return [
             'external_id' => $id,
