@@ -122,7 +122,17 @@ class PartyController extends Controller
         // that nobody priced by hand yet.
         $craftedPrices = app(CraftedPriceService::class)->mapForChronicle((string) ($cp->chronicle ?: 'IL'));
 
-        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames, $gradeRank, $craftedPrices) {
+        // Per-unit tracker points, shown next to the market price for CPs that
+        // run the value tracker. Mirrors TrackerContributionService valuation:
+        // effective price (market→NPC per the CP's basis) ÷ divisor, rounded the
+        // same way the CP's tracker does (ceil when "whole points" is on, else 2
+        // decimals). No 1000-floor (that's a per-stack rule) and no craft cost.
+        $trackerOn      = (bool) $cp->tracker_enabled;
+        $trackerDivisor = max(1, (int) $cp->tracker_divisor);
+        $valueByMarket  = (bool) ($cp->tracker_value_by_market ?? true);
+        $wholePoints    = (bool) ($cp->tracker_round_points_up ?? false);
+
+        $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames, $gradeRank, $craftedPrices, $trackerOn, $trackerDivisor, $valueByMarket, $wholePoints) {
             $out = (int) ($warehouseOutgoing[$row->id] ?? 0);
             $in = (int) ($row->incoming_amount ?? 0);
             $row->total_amount = max(0, $in - $out);
@@ -133,6 +143,17 @@ class PartyController extends Controller
             // then the computed craft cost, with npc_sell_price as the base floor.
             $effectivePrice = $row->market_price ?? $row->crafted_price ?? $row->npc_sell_price;
             $row->stock_value = $effectivePrice !== null ? $effectivePrice * $row->total_amount : null;
+
+            $row->points_per_unit = null;
+            if ($trackerOn) {
+                $trackerPrice = $valueByMarket
+                    ? ($row->market_price ?? $row->npc_sell_price)
+                    : ($row->npc_sell_price ?? $row->market_price);
+                if ($trackerPrice !== null && $trackerPrice > 0) {
+                    $pts = $trackerPrice / $trackerDivisor;
+                    $row->points_per_unit = $wholePoints ? (float) ceil($pts) : round($pts, 2);
+                }
+            }
             $row->market_price_updated_by_name = $row->market_price_updated_by ? ($priceEditorNames[$row->market_price_updated_by] ?? null) : null;
             $row->grade_rank = $gradeRank[$row->grade] ?? 0;
             unset($row->incoming_amount, $row->market_price_updated_by);

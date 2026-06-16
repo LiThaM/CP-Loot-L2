@@ -1905,6 +1905,8 @@ watch(buySearch, throttle(async (val) => {
                                     :can-edit="canManageWarehouse"
                                     :crafted-price="item.crafted_price"
                                     :label-craft="localeTag.startsWith('es') ? 'Coste de crafteo' : 'Craft cost'"
+                                    :points-value="item.points_per_unit"
+                                    :label-points="localeTag.startsWith('es') ? 'Puntos por unidad' : 'Points per unit'"
                                     @update="(p) => onWarehousePriceUpdate(item.id, p)"
                                 />
                             </div>
@@ -1963,6 +1965,8 @@ watch(buySearch, throttle(async (val) => {
                                         :can-edit="canManageWarehouse"
                                         :crafted-price="item.crafted_price"
                                         :label-craft="localeTag.startsWith('es') ? 'Coste de crafteo' : 'Craft cost'"
+                                        :points-value="item.points_per_unit"
+                                        :label-points="localeTag.startsWith('es') ? 'Puntos por unidad' : 'Points per unit'"
                                         size="sm"
                                         @update="(p) => onWarehousePriceUpdate(item.id, p)"
                                     />

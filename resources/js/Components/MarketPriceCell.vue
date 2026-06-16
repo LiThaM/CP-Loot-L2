@@ -3,7 +3,7 @@ import { ref, computed, nextTick } from 'vue';
 import axios from 'axios';
 import { formatAdenaShort, formatAdenaFull } from '@/utils/adena.js';
 import emitter from '@/event-bus';
-import { WrenchScrewdriverIcon } from '@heroicons/vue/20/solid';
+import { WrenchScrewdriverIcon, StarIcon } from '@heroicons/vue/20/solid';
 
 const props = defineProps({
     itemId: { type: [Number, String], required: true },
@@ -23,6 +23,10 @@ const props = defineProps({
     // secondary value next to the manual price — "another market price".
     craftedPrice: { type: [Number, String, null], default: null },
     labelCraft: { type: String, default: 'Craft cost' },
+    // Per-unit tracker points (effective price ÷ divisor). Shown as a small
+    // secondary value for CPs running the value tracker; null = hidden.
+    pointsValue: { type: [Number, String, null], default: null },
+    labelPoints: { type: String, default: 'Points/unit' },
     updatedAt: { type: [String, null], default: null },
     updatedByName: { type: [String, null], default: null },
     localeTag: { type: String, default: 'en-US' },
@@ -67,6 +71,20 @@ const craftedTooltip = computed(() => {
     return isEs.value
         ? `${props.labelCraft}: ${amount} — precio de craftear este objeto con sus materiales`
         : `${props.labelCraft}: ${amount} — cost to craft this item from its materials`;
+});
+
+const pointsNum = computed(() => {
+    if (props.pointsValue === null || props.pointsValue === undefined || props.pointsValue === '') return null;
+    const n = Number(props.pointsValue);
+    return Number.isFinite(n) && n > 0 ? n : null;
+});
+// Plain number, no adena "k" abbreviation and no trailing zeros (e.g. 0.6, 3, 12.4).
+const pointsShort = computed(() => pointsNum.value === null ? null : String(Math.round(pointsNum.value * 100) / 100));
+const pointsTooltip = computed(() => {
+    if (pointsNum.value === null) return '';
+    return isEs.value
+        ? `${props.labelPoints}: ${pointsShort.value} — puntos del tracker por unidad`
+        : `${props.labelPoints}: ${pointsShort.value} — tracker points per unit`;
 });
 
 const fallback = computed(() => {
@@ -234,6 +252,14 @@ const formatAgo = (iso) => {
         >
             <WrenchScrewdriverIcon class="w-2.5 h-2.5 shrink-0" />
             {{ craftedShort }}
+        </span>
+        <span
+            v-if="pointsShort !== null"
+            v-tooltip="pointsTooltip"
+            class="ml-1 inline-flex items-center gap-0.5 align-middle text-[9px] font-bold text-sky-500/80 whitespace-nowrap cursor-help"
+        >
+            <StarIcon class="w-2.5 h-2.5 shrink-0" />
+            {{ pointsShort }}
         </span>
     </span>
 </template>
