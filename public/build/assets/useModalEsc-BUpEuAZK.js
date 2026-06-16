@@ -1,0 +1,1 @@
+import{B as e,k as t}from"./app-B9D5ZSj0.js";var n=(n,r)=>{let i=e=>{e.key===`Escape`&&n.value&&(e.preventDefault(),r())};e(n,e=>{e?document.addEventListener(`keydown`,i):document.removeEventListener(`keydown`,i)}),t(()=>document.removeEventListener(`keydown`,i))};export{n as t};

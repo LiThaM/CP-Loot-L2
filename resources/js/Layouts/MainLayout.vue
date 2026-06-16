@@ -274,10 +274,30 @@ const openLootModal = () => {
     itemSearchLoadingMore.value = false;
 };
 
+// Global safety net: a request must never fail silently. Any Inertia request
+// that returns validation errors (422), throws, or yields a non-Inertia
+// response (500/419) surfaces a toast — app-wide, on top of any inline error.
+let offInertiaError = null;
+let offInertiaInvalid = null;
+let offInertiaException = null;
+const requestErrorToast = (message) => showToast({
+    tone: 'error',
+    title: t('common.error'),
+    message: message || t('common.error_occurred'),
+});
+
 onMounted(() => {
     emitter.on('open-loot-modal', openLootModal);
     emitter.on('toast', showToast);
-    
+
+    offInertiaError = router.on('error', (e) => {
+        const errs = e?.detail?.errors || {};
+        const first = Object.values(errs).find((v) => typeof v === 'string' && v.trim());
+        requestErrorToast(first);
+    });
+    offInertiaInvalid = router.on('invalid', (e) => { e.preventDefault?.(); requestErrorToast(); });
+    offInertiaException = router.on('exception', () => requestErrorToast());
+
     handleLanguageAutomation();
     handleThemeAutomation();
 });
@@ -285,6 +305,9 @@ onMounted(() => {
 onUnmounted(() => {
     emitter.off('open-loot-modal');
     emitter.off('toast', showToast);
+    offInertiaError?.();
+    offInertiaInvalid?.();
+    offInertiaException?.();
     if (toastTimer) window.clearTimeout(toastTimer);
 });
 

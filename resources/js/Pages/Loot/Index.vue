@@ -290,17 +290,9 @@ const submitResolve = () => {
         onSuccess: () => {
             showResolveModal.value = false;
         },
-        onError: (errors) => {
-            // The modal previously had no error surface, so a failed
-            // validation/permission POST looked like "nothing happened".
-            // Surface the first server message as a toast.
-            const first = errors && Object.values(errors).find(Boolean);
-            emitter.emit('toast', {
-                tone: 'error',
-                title: t('common.error'),
-                message: first || t('common.error_occurred'),
-            });
-        },
+        // Errors are surfaced globally (toast) by MainLayout's Inertia error
+        // handler, and inline in the modal via resolveForm.errors — no need to
+        // toast here too (would double up).
     });
 };
 
