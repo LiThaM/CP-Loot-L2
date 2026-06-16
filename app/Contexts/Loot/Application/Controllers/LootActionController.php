@@ -237,31 +237,38 @@ class LootActionController extends Controller
             $this->trackerService->recordFromReport($report->fresh()->load('cp', 'attendees'));
         }
 
-        // Adena distribution on the FARM report itself (legacy path for
-        // sessions that include adena drops directly, not via SELL). The
-        // proper mixed split lives in PartyController::sell — here we only
-        // honour the simple "all to CP fund" or "split equally among
-        // attendees" semantics that the legacy column supported.
+        // Adena distribution: split the adena drops among ALL attendees the
+        // same way a warehouse SELL does — externals share the adena too (only
+        // points/DKP are internal-only). Internal members are credited with a
+        // PointsLog ADENA_GAIN; external attendees get their cut recorded on
+        // the attendee row (share_adena) as a payout the leader settles outside
+        // the app (/system/external-payouts). The rounding remainder + the CP
+        // share stay in the CP fund.
         if ($report->status !== 'rejected') {
             $entries = LootEntry::where('loot_report_id', $report->id)->with('item')->get();
-            $adenaAmount = $entries->filter(fn ($e) => strtolower($e->item->name) === 'adena')->sum('amount');
+            $adenaAmount = (int) $entries->filter(fn ($e) => strtolower((string) ($e->item->name ?? '')) === 'adena')->sum('amount');
             $cpSharePct = $report->fresh()->cp_share_pct ?? 0;
-            if ($adenaAmount > 0 && $cpSharePct < 100 && count($attendeeUserIds) > 0) {
+            $attendees = LootReportAttendee::where('loot_report_id', $report->id)->get();
+            $count = $attendees->count();
+            if ($adenaAmount > 0 && $cpSharePct < 100 && $count > 0) {
                 $toAttendees = (int) floor($adenaAmount * (100 - $cpSharePct) / 100);
-                $split = intdiv($toAttendees, count($attendeeUserIds));
-                if ($split > 0) {
-                    foreach ($attendeeUserIds as $uid) {
-                        PointsLog::create([
-                            'cp_id' => $report->cp_id,
-                            'user_id' => $uid,
-                            'action_type' => 'ADENA_GAIN',
-                            'points' => 0,
-                            'adena' => $split,
-                            'description' => 'Distribución de Adena del reporte #'.$report->id,
-                        ]);
+                $perAttendee = intdiv($toAttendees, $count);
+                if ($perAttendee > 0) {
+                    foreach ($attendees as $att) {
+                        $att->update(['share_adena' => $perAttendee]);
+                        if (! $att->is_external && $att->user_id) {
+                            PointsLog::create([
+                                'cp_id' => $report->cp_id,
+                                'user_id' => $att->user_id,
+                                'action_type' => 'ADENA_GAIN',
+                                'points' => 0,
+                                'adena' => $perAttendee,
+                                'description' => 'Distribución de Adena del reporte #'.$report->id,
+                            ]);
+                        }
                     }
                 }
-                // El remanente (toAttendees % count + cpShare) se queda en el CP fund.
+                // The rounding remainder (toAttendees % count) + CP share stay in the CP fund.
             }
         }
 
