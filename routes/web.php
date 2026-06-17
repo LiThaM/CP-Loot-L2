@@ -125,7 +125,7 @@ Route::prefix('api/public')->middleware('throttle:30,1')->group(function () {
 
 Route::post('/locale', function (\Illuminate\Http\Request $request) {
     $data = $request->validate([
-        'locale' => 'required|string|in:en,es',
+        'locale' => 'required|string|in:en,es,it,ru',
     ]);
 
     $request->session()->put('locale', $data['locale']);

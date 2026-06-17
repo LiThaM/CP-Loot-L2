@@ -41,22 +41,30 @@ class HandleInertiaRequests extends Middleware
         // in app.blade.php.
         $requestedLocale = $request->query('lang')
             ?: ($request->session()->get('locale') ?: $request->cookie('locale'));
-        if (is_string($requestedLocale) && in_array($requestedLocale, ['en', 'es'], true)) {
+        if (is_string($requestedLocale) && in_array($requestedLocale, ['en', 'es', 'it', 'ru'], true)) {
             app()->setLocale($requestedLocale);
         }
 
-        // Obtener traducciones cacheadas o de bd
+        // Translations: English is the per-key base, overlaid by the active
+        // locale's strings. This way a partially-translated language (e.g. new
+        // it/ru rows still being filled) shows its translated keys and falls
+        // back to English for the rest — never a raw key.
         try {
             $locale = (string) app()->getLocale();
             $fallback = (string) config('app.fallback_locale', 'en');
 
-            $translations = Translation::where('language', $locale)->pluck('value', 'key')->toArray();
-            if (empty($translations) && $fallback && $fallback !== $locale) {
-                $translations = Translation::where('language', $fallback)->pluck('value', 'key')->toArray();
+            $base = Translation::where('language', $fallback)->pluck('value', 'key')->toArray();
+            if (empty($base)) {
+                $base = Translation::where('language', 'es')->pluck('value', 'key')->toArray();
             }
-            if (empty($translations) && $fallback !== 'es' && $locale !== 'es') {
-                $translations = Translation::where('language', 'es')->pluck('value', 'key')->toArray();
+
+            if ($locale === $fallback) {
+                $translations = $base;
+            } else {
+                $localeMap = Translation::where('language', $locale)->pluck('value', 'key')->toArray();
+                $translations = array_merge($base, $localeMap);
             }
+
             if (empty($translations)) {
                 $translations = Translation::pluck('value', 'key')->toArray();
             }

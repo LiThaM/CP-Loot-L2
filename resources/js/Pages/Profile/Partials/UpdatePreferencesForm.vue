@@ -84,6 +84,8 @@ const submit = () => {
                             { value: 'system', label: $t('profile.preferences.lang_system'), icon: '🌐' },
                             { value: 'es',     label: 'Español',                             icon: '🇪🇸' },
                             { value: 'en',     label: 'English',                             icon: '🇬🇧' },
+                            { value: 'it',     label: 'Italiano',                            icon: '🇮🇹' },
+                            { value: 'ru',     label: 'Русский',                             icon: '🇷🇺' },
                         ]"
                         :key="opt.value"
                         type="button"

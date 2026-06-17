@@ -78,7 +78,7 @@ class ProfileController extends Controller
 
         // Sync language preference to session immediately
         $langPref = $request->input('language_preference', 'system');
-        if ($langPref !== 'system' && in_array($langPref, ['en', 'es'], true)) {
+        if ($langPref !== 'system' && in_array($langPref, ['en', 'es', 'it', 'ru'], true)) {
             $request->session()->put('locale', $langPref);
         } else {
             $request->session()->forget('locale');

@@ -92,12 +92,14 @@ const t = (key, params = {}) => {
 const appName = computed(() => page.props.app?.name || t('app.name'));
 const supportEmail = computed(() => page.props.app?.supportEmail || '');
 const donationWallet = computed(() => page.props.app?.donationWallet || '');
+const LOCALE_TAGS = { es: 'es-ES', en: 'en-US', it: 'it-IT', ru: 'ru-RU' };
+const SUPPORTED_LOCALES = ['en', 'es', 'it', 'ru'];
 const locale = computed(() => page.props.app?.locale || 'en');
-const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const localeTag = computed(() => LOCALE_TAGS[locale.value] || 'en-US');
 
 const setLocale = (nextLocale) => {
     const val = String(nextLocale || '').toLowerCase();
-    if (!['en', 'es'].includes(val) || val === locale.value) return;
+    if (!SUPPORTED_LOCALES.includes(val) || val === locale.value) return;
     router.post(route('locale.set'), { locale: val }, { preserveScroll: true });
 };
 
@@ -110,7 +112,7 @@ const handleLanguageAutomation = () => {
     }
     // 'system': detect from browser
     const browserLang = (navigator.language || 'en').split('-')[0];
-    const targetLocale = ['es', 'en'].includes(browserLang) ? browserLang : 'en';
+    const targetLocale = SUPPORTED_LOCALES.includes(browserLang) ? browserLang : 'en';
     if (targetLocale !== locale.value) {
         setLocale(targetLocale);
     }
