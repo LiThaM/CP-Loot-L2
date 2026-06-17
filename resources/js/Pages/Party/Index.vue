@@ -1217,18 +1217,43 @@ const recheckForm = useForm({
     note: '',
     image_proof: null,
 });
+// Optional "amount spent" shorthand: type e.g. "5kk" / "500k" / "5000000" and
+// the real adena is computed as current − spent (saves typing all the zeros).
+const recheckSpentInput = ref('');
 
 const openRecheck = () => {
     recheckForm.reset();
     recheckForm.items = [];
     recheckForm.image_proof = null;
     recheckForm.adena_real = Number(props.warehouseAdena || 0);
+    recheckSpentInput.value = '';
     recheckSearch.value = '';
     recheckSearchResults.value = [];
     recheckModalOpen.value = true;
 };
 
 const recheckCurrentAdena = computed(() => Number(props.warehouseAdena || 0));
+
+// Parse "5kk" → 5_000_000, "500k" → 500_000, "1.5kk" → 1_500_000, "5000000" → 5000000.
+const parseAdenaShorthand = (s) => {
+    const str = String(s ?? '').trim().toLowerCase().replace(/\s+/g, '');
+    if (str === '') return 0;
+    let m;
+    if ((m = str.match(/^([\d.,]+)kk$/))) return Math.round(parseFloat(m[1].replace(',', '.')) * 1_000_000);
+    if ((m = str.match(/^([\d.,]+)k$/)))  return Math.round(parseFloat(m[1].replace(',', '.')) * 1_000);
+    const n = parseInt(str.replace(/[^\d]/g, ''), 10);
+    return Number.isFinite(n) ? n : 0;
+};
+const applyRecheckSpent = () => {
+    const spent = parseAdenaShorthand(recheckSpentInput.value);
+    recheckForm.adena_real = Math.max(0, recheckCurrentAdena.value - spent);
+};
+// Keep the spent box in sync when the real-adena field is edited directly.
+const onRecheckRealEdited = () => {
+    const spent = Math.max(0, recheckCurrentAdena.value - Number(recheckForm.adena_real || 0));
+    recheckSpentInput.value = spent > 0 ? String(spent) : '';
+};
+
 const recheckAdenaDelta = computed(() => {
     const r = recheckForm.adena_real;
     if (r === null || r === '') return 0;
@@ -3020,14 +3045,20 @@ watch(buySearch, throttle(async (val) => {
                 <div class="bg-white/70 border border-amber-300/40 rounded-xl p-3 dark:bg-black/30 dark:border-amber-900/40">
                     <div class="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 mb-1">💰 {{ $t('warehouse.recheck.adena_title') }}</div>
                     <p class="text-[10px] text-gray-500 mb-3 leading-relaxed">{{ $t('warehouse.recheck.adena_hint') }}</p>
-                    <div class="grid grid-cols-3 gap-3 items-end">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                         <div>
                             <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.adena_recorded') }}</div>
                             <div class="text-sm font-cinzel text-gray-700 dark:text-gray-300" v-tooltip="formatAdenaFull(recheckCurrentAdena)">{{ formatAdenaShort(recheckCurrentAdena) }}</div>
                         </div>
                         <div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.adena_spent', 'Gastada') }}</div>
+                            <input type="text" inputmode="decimal" v-model="recheckSpentInput" @input="applyRecheckSpent" placeholder="5kk"
+                                   class="w-full h-9 px-3 rounded-lg border border-gray-300 dark:border-gray-700 text-right font-cinzel text-gray-700 dark:text-gray-300 bg-white dark:bg-black/50 focus:ring-amber-500">
+                        </div>
+                        <div>
                             <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.adena_real') }}</div>
-                            <input type="number" min="0" v-model.number="recheckForm.adena_real" class="w-full h-9 px-3 rounded-lg border border-amber-400 text-right font-cinzel text-amber-700 dark:text-amber-300 bg-white dark:bg-black/50 focus:ring-amber-500">
+                            <input type="number" min="0" v-model.number="recheckForm.adena_real" @input="onRecheckRealEdited"
+                                   class="w-full h-9 px-3 rounded-lg border border-amber-400 text-right font-cinzel text-amber-700 dark:text-amber-300 bg-white dark:bg-black/50 focus:ring-amber-500">
                         </div>
                         <div class="text-right">
                             <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.col_delta') }}</div>
