@@ -5,6 +5,7 @@ import { Line } from 'vue-chartjs';
 import emitter from '../event-bus';
 import { showToast, showAlert } from '@/utils/swal';
 import DonationsPanel from '@/Components/Dashboard/DonationsPanel.vue';
+import DashboardGrid from '@/Components/Dashboard/DashboardGrid.vue';
 import {
   Chart as ChartJS,
   Title,
@@ -74,7 +75,7 @@ const copyInviteLink = () => {
         return;
     }
     const link = `${window.location.origin}/register?invite=${currentCp.value.invite_code}`;
-    
+
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(link).then(() => {
             showToast(t('cp.invite.copied'));
@@ -223,6 +224,21 @@ const ringDash = (percent) => {
         dashoffset: c - (p / 100) * c,
     };
 };
+
+// Reorderable dashboard boxes (drag order saved per-browser). span 2 = full width.
+const widgets = computed(() => {
+    const es = String(localeTag.value).startsWith('es');
+    return [
+        { key: 'live_status',    span: 2, label: es ? 'Estado en vivo' : 'Live status' },
+        { key: 'activity_chart', span: 2, label: es ? 'Actividad' : 'Activity' },
+        { key: 'donations',      span: 1, label: es ? 'Donaciones' : 'Donations' },
+        { key: 'cp_metrics',     span: 1, label: es ? 'Métricas CP' : 'CP metrics' },
+        { key: 'cp_tasks',       span: 1, label: es ? 'Tareas' : 'Tasks' },
+        { key: 'latest_items',   span: 1, label: es ? 'Últimos items' : 'Latest items' },
+        { key: 'week_rankings',  span: 1, label: es ? 'Top semana' : 'Top week' },
+        { key: 'adena_pending',  span: 1, label: es ? 'Adena pendiente' : 'Pending adena' },
+    ];
+});
 </script>
 
 <template>
@@ -287,8 +303,8 @@ const ringDash = (percent) => {
              </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
-            <div class="xl:col-span-8 space-y-6">
+        <DashboardGrid storage-key="dashboard.cp_leader.v1" :widgets="widgets" :locale-tag="localeTag">
+            <template #live_status>
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between gap-4 mb-4">
                         <div>
@@ -331,7 +347,9 @@ const ringDash = (percent) => {
                         {{ $t('common.more', { count: partyMembers.length - 12 }) }}
                     </div>
                 </div>
+            </template>
 
+            <template #activity_chart>
                 <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur h-[320px] flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -349,11 +367,13 @@ const ringDash = (percent) => {
                         <div v-else class="h-full flex items-center justify-center text-gray-600 italic">{{ $t('cp.activity.no_data') }}</div>
                     </div>
                 </div>
-            </div>
+            </template>
 
-            <div class="xl:col-span-4 space-y-6">
+            <template #donations>
                 <DonationsPanel :donation-goal="donationGoal" :top-donations="topDonationsWeek" :locale-tag="localeTag" />
+            </template>
 
+            <template #cp_metrics>
                 <div class="l2-panel p-5 rounded-lg border border-white/10 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-300/80 mb-4">{{ $t('cp.metrics.title') }}</div>
                     <div class="grid grid-cols-2 gap-3">
@@ -371,7 +391,9 @@ const ringDash = (percent) => {
                         </div>
                     </div>
                 </div>
+            </template>
 
+            <template #cp_tasks>
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -445,131 +467,134 @@ const ringDash = (percent) => {
                         </div>
                     </div>
                 </div>
+            </template>
 
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">{{ $t('cp.latest_items.title') }}</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.confirmed') }}</div>
+            <template #latest_items>
+                <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300/80">{{ $t('cp.latest_items.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.confirmed') }}</div>
+                        </div>
+                        <Link :href="route('party.warehouse_cp')" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">{{ $t('cp.latest_items.open_warehouse') }}</Link>
                     </div>
-                    <Link :href="route('party.warehouse_cp')" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">{{ $t('cp.latest_items.open_warehouse') }}</Link>
-                </div>
 
-                <div v-if="latestItems.length === 0" class="text-sm text-gray-600 italic py-6 text-center">
-                    {{ $t('common.no_recent_records') }}
-                </div>
-
-                <div v-else class="space-y-2">
-                    <Link v-for="it in latestItems.slice(0, 5)" :key="`${it.report_id}-${it.name}-${it.amount}`" :href="route('loot.index') + '?report=' + it.report_id" class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white/70 hover:bg-white dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/30 transition">
-                        <div class="h-10 w-10 rounded-lg bg-gray-100 border border-gray-200 dark:bg-gray-900/60 dark:border-gray-800 overflow-hidden flex items-center justify-center shrink-0">
-                            <img v-if="it.image_url" :src="it.image_url" class="w-full h-full object-contain" alt="" />
-                            <div v-else class="h-6 w-6 rounded bg-gray-200 border border-gray-300 dark:bg-gray-800/70 dark:border-gray-700"></div>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ it.name }}</div>
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest truncate">
-                                {{ it.event_type }} • {{ formatDateTimeShort(it.created_at) }}
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">x{{ it.amount }}</div>
-                            <div v-if="it.grade" class="mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-blue-500/20 text-blue-200 bg-blue-500/10">
-                                {{ it.grade }}
-                            </div>
-                        </div>
-                    </Link>
-                </div>
-            </div>
-
-            <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('member.week.title') }}</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.week.points_activity') }}</div>
+                    <div v-if="latestItems.length === 0" class="text-sm text-gray-600 italic py-6 text-center">
+                        {{ $t('common.no_recent_records') }}
                     </div>
-                        <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('member.last_7_days') }}</div>
-                </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('member.week.top_points') }}</div>
-                        <div v-if="topPointsWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
-                            {{ $t('common.no_data') }}
+                    <div v-else class="space-y-2">
+                        <Link v-for="it in latestItems.slice(0, 5)" :key="`${it.report_id}-${it.name}-${it.amount}`" :href="route('loot.index') + '?report=' + it.report_id" class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white/70 hover:bg-white dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/30 transition">
+                            <div class="h-10 w-10 rounded-lg bg-gray-100 border border-gray-200 dark:bg-gray-900/60 dark:border-gray-800 overflow-hidden flex items-center justify-center shrink-0">
+                                <img v-if="it.image_url" :src="it.image_url" class="w-full h-full object-contain" alt="" />
+                                <div v-else class="h-6 w-6 rounded bg-gray-200 border border-gray-300 dark:bg-gray-800/70 dark:border-gray-700"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ it.name }}</div>
+                                <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest truncate">
+                                    {{ it.event_type }} • {{ formatDateTimeShort(it.created_at) }}
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <div class="text-[9px] text-gray-600 dark:text-gray-500 font-black uppercase tracking-widest">x{{ it.amount }}</div>
+                                <div v-if="it.grade" class="mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-blue-500/20 text-blue-200 bg-blue-500/10">
+                                    {{ it.grade }}
+                                </div>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+            </template>
+
+            <template #week_rankings>
+                <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('member.week.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.week.points_activity') }}</div>
                         </div>
-                        <div v-else class="space-y-2">
-                            <div v-for="(m, idx) in topPointsWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600/35 to-blue-600/35 border border-purple-500/20 flex items-center justify-center text-[10px] font-black text-white shrink-0">
-                                        {{ idx + 1 }}
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
-                                        <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                            {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-500">{{ $t('member.last_7_days') }}</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('member.week.top_points') }}</div>
+                            <div v-if="topPointsWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
+                                {{ $t('common.no_data') }}
+                            </div>
+                            <div v-else class="space-y-2">
+                                <div v-for="(m, idx) in topPointsWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600/35 to-blue-600/35 border border-purple-500/20 flex items-center justify-center text-[10px] font-black text-white shrink-0">
+                                            {{ idx + 1 }}
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
+                                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
+                                                {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <div class="text-sm font-black font-cinzel text-emerald-700 dark:text-emerald-300">{{ Number(m.points || 0) }}</div>
+                                    <div class="text-right shrink-0">
+                                        <div class="text-sm font-black font-cinzel text-emerald-700 dark:text-emerald-300">{{ Number(m.points || 0) }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('cp.week.top_activity') }}</div>
-                        <div v-if="topActivityWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
-                            {{ $t('common.no_data') }}
-                        </div>
-                        <div v-else class="space-y-2">
-                            <div v-for="(m, idx) in topActivityWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600/35 to-purple-600/35 border border-blue-500/20 flex items-center justify-center text-[10px] font-black text-white shrink-0">
-                                        {{ idx + 1 }}
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
-                                        <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
-                                            {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
+                        <div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('cp.week.top_activity') }}</div>
+                            <div v-if="topActivityWeek.length === 0" class="text-sm text-gray-600 italic py-4 text-center">
+                                {{ $t('common.no_data') }}
+                            </div>
+                            <div v-else class="space-y-2">
+                                <div v-for="(m, idx) in topActivityWeek.slice(0, 3)" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600/35 to-purple-600/35 border border-blue-500/20 flex items-center justify-center text-[10px] font-black text-white shrink-0">
+                                            {{ idx + 1 }}
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
+                                            <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">
+                                                {{ Number(m.sessions || 0) }} {{ $t('common.sessions') }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <div class="text-sm font-black font-cinzel text-blue-700 dark:text-blue-200">{{ Number(m.sessions || 0) }}</div>
+                                    <div class="text-right shrink-0">
+                                        <div class="text-sm font-black font-cinzel text-blue-700 dark:text-blue-200">{{ Number(m.sessions || 0) }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </template>
 
-            <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('cp.adena_pending.title') }}</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.adena_pending.subtitle') }}</div>
+            <template #adena_pending>
+                <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 dark:text-purple-300/80">{{ $t('cp.adena_pending.title') }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('cp.adena_pending.subtitle') }}</div>
+                        </div>
+                        <Link :href="isAdmin ? route('system.users.index') : route('party.index', { tab: 'members' })" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">{{ $t('cp.adena_pending.audit') }}</Link>
                     </div>
-                    <Link :href="isAdmin ? route('system.users.index') : route('party.index', { tab: 'members' })" class="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white transition">{{ $t('cp.adena_pending.audit') }}</Link>
-                </div>
 
-                <div v-if="topAdenaOwed.length === 0" class="text-sm text-gray-600 italic py-6 text-center">
-                    {{ $t('cp.adena_pending.none') }}
-                </div>
+                    <div v-if="topAdenaOwed.length === 0" class="text-sm text-gray-600 italic py-6 text-center">
+                        {{ $t('cp.adena_pending.none') }}
+                    </div>
 
-                <div v-else class="space-y-2">
-                    <div v-for="m in topAdenaOwed" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
-                        <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
-                        <div class="text-right">
-                            <div class="text-sm font-black font-cinzel text-purple-700 dark:text-purple-200" v-tooltip="formatAdenaFull(m.owed || 0)">{{ formatAdenaShort(m.owed || 0) }}</div>
-                                <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.adena') }}</div>
+                    <div v-else class="space-y-2">
+                        <div v-for="m in topAdenaOwed" :key="m.id" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white/70 dark:border-white/5 dark:bg-black/20">
+                            <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">{{ m.name }}</div>
+                            <div class="text-right">
+                                <div class="text-sm font-black font-cinzel text-purple-700 dark:text-purple-200" v-tooltip="formatAdenaFull(m.owed || 0)">{{ formatAdenaShort(m.owed || 0) }}</div>
+                                    <div class="text-[9px] text-gray-600 dark:text-gray-500 font-bold uppercase tracking-widest">{{ $t('common.adena') }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </template>
+        </DashboardGrid>
     </div>
 </template>

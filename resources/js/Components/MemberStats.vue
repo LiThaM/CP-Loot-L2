@@ -4,6 +4,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { Line } from 'vue-chartjs';
 import emitter from '@/event-bus';
 import DonationsPanel from '@/Components/Dashboard/DonationsPanel.vue';
+import DashboardGrid from '@/Components/Dashboard/DashboardGrid.vue';
 import {
     Chart as ChartJS,
     Title,
@@ -146,6 +147,20 @@ const cpLatestItems = computed(() => insights.value.latestItems || []);
 const personalLatestItems = computed(() => props.stats?.personal_latest_items || []);
 const topPointsWeek = computed(() => insights.value.topPointsWeek || []);
 const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
+
+// Reorderable dashboard boxes (drag order saved per-browser). span 2 = full width.
+const widgets = computed(() => {
+    const es = String(localeTag.value).startsWith('es');
+    return [
+        { key: 'party_status',     span: 2, label: es ? 'Estado de CP' : 'Party status' },
+        { key: 'activity_chart',   span: 2, label: es ? 'Actividad' : 'Activity' },
+        { key: 'donations',        span: 1, label: es ? 'Donaciones' : 'Donations' },
+        { key: 'cp_latest_drops',  span: 1, label: es ? 'Drops de la CP' : 'CP drops' },
+        { key: 'my_latest_items',  span: 1, label: es ? 'Mis items' : 'My items' },
+        { key: 'personal_summary', span: 1, label: es ? 'Resumen personal' : 'Personal summary' },
+        { key: 'week_rankings',    span: 1, label: es ? 'Top semana' : 'Top week' },
+    ];
+});
 </script>
 
 <template>
@@ -201,8 +216,8 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
              </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
-            <div class="xl:col-span-8 space-y-6">
+        <DashboardGrid storage-key="dashboard.member.v1" :widgets="widgets" :locale-tag="localeTag">
+            <template #party_status>
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -220,7 +235,9 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         </div>
                     </div>
                 </div>
+            </template>
 
+            <template #activity_chart>
                 <div class="l2-panel p-5 rounded-lg border border-blue-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur h-[320px] flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -235,7 +252,13 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         <Line v-else :data="chartData" :options="chartOptions" />
                     </div>
                 </div>
+            </template>
 
+            <template #donations>
+                <DonationsPanel :donation-goal="donationGoal" :top-donations="topDonationsWeek" :locale-tag="localeTag" />
+            </template>
+
+            <template #my_latest_items>
                 <div class="l2-panel p-5 rounded-lg border border-emerald-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -266,7 +289,9 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         </div>
                     </div>
                 </div>
+            </template>
 
+            <template #cp_latest_drops>
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -300,11 +325,9 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         </div>
                     </div>
                 </div>
-            </div>
+            </template>
 
-            <div class="xl:col-span-4 space-y-6">
-                <DonationsPanel :donation-goal="donationGoal" :top-donations="topDonationsWeek" :locale-tag="localeTag" />
-
+            <template #personal_summary>
                 <div class="l2-panel p-5 rounded-lg border border-gray-200 dark:border-white/5 bg-white/70 dark:bg-black/20">
                     <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-400">{{ $t('member.summary.title') }}</div>
 
@@ -327,7 +350,9 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         </div>
                     </div>
                 </div>
+            </template>
 
+            <template #week_rankings>
                 <div class="l2-panel p-5 rounded-lg border border-purple-500/15 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -390,7 +415,7 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </template>
+        </DashboardGrid>
     </div>
 </template>
