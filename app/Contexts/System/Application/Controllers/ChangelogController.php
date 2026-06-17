@@ -25,8 +25,12 @@ class ChangelogController extends Controller
                 'audience',
                 'title_es',
                 'title_en',
+                'title_it',
+                'title_ru',
                 'body_es',
                 'body_en',
+                'body_it',
+                'body_ru',
                 'published_at',
             ]);
 

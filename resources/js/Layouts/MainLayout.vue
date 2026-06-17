@@ -70,8 +70,8 @@ const goToChangelog = () => {
     changelogModalOpen.value = false;
     router.visit(route('changelog.index'));
 };
-const localizedChangelogTitle = (entry) => (page.props.app?.locale === 'en' ? entry.title_en : entry.title_es) || entry.title_en || entry.title_es || '';
-const localizedChangelogBody = (entry) => (page.props.app?.locale === 'en' ? entry.body_en : entry.body_es) || entry.body_en || entry.body_es || '';
+const localizedChangelogTitle = (entry) => entry?.[`title_${page.props.app?.locale || 'en'}`] || entry?.title_en || entry?.title_es || '';
+const localizedChangelogBody = (entry) => entry?.[`body_${page.props.app?.locale || 'en'}`] || entry?.body_en || entry?.body_es || '';
 const changelogTypeClass = (type) => ({
     feature: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300',
     fix:     'bg-blue-500/15 text-blue-700 border-blue-500/30 dark:text-blue-300',

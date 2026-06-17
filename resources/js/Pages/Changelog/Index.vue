@@ -13,7 +13,7 @@ defineProps({
 
 const page = usePage();
 const locale = computed(() => page.props.app?.locale || 'es');
-const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
+const localeTag = computed(() => ({ es: 'es-ES', en: 'en-US', it: 'it-IT', ru: 'ru-RU' })[locale.value] || 'en-US');
 
 const t = (key, params = {}) => {
     const raw = page.props.translations?.[key];
@@ -21,8 +21,8 @@ const t = (key, params = {}) => {
     return raw.replace(/\{(\w+)\}/g, (m, p1) => (Object.prototype.hasOwnProperty.call(params, p1) ? String(params[p1]) : m));
 };
 
-const localizedTitle = (entry) => (locale.value === 'en' ? entry.title_en : entry.title_es) || entry.title_es || entry.title_en;
-const localizedBody = (entry) => (locale.value === 'en' ? entry.body_en : entry.body_es) || '';
+const localizedTitle = (entry) => entry[`title_${locale.value}`] || entry.title_en || entry.title_es || '';
+const localizedBody = (entry) => entry[`body_${locale.value}`] || entry.body_en || entry.body_es || '';
 
 const formatDate = (val) => {
     if (!val) return '';

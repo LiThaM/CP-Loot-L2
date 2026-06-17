@@ -36,8 +36,8 @@ const formatChangelogDate = (val) => {
     try { return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(val)); }
     catch (_) { return String(val).slice(0, 10); }
 };
-const localizedChangelogTitle = (entry) => (appLocale.value === 'en' ? entry.title_en : entry.title_es) || entry.title_en || entry.title_es || '';
-const localizedChangelogBody = (entry) => (appLocale.value === 'en' ? entry.body_en : entry.body_es) || entry.body_en || entry.body_es || '';
+const localizedChangelogTitle = (entry) => entry?.[`title_${appLocale.value || 'en'}`] || entry?.title_en || entry?.title_es || '';
+const localizedChangelogBody = (entry) => entry?.[`body_${appLocale.value || 'en'}`] || entry?.body_en || entry?.body_es || '';
 const changelogTypeClass = (type) => ({
     feature: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     fix:     'bg-blue-500/15 text-blue-300 border-blue-500/30',

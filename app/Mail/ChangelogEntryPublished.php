@@ -24,40 +24,52 @@ class ChangelogEntryPublished extends Mailable
 
     public function envelope(): Envelope
     {
-        $lang = $this->resolvedLang();
-        $title = $lang === 'en' ? $this->entry->title_en : $this->entry->title_es;
-
         return new Envelope(
-            subject: '[' . config('app.name') . '] ' . $title,
+            subject: '[' . config('app.name') . '] ' . $this->localized('title'),
         );
     }
 
     public function content(): Content
     {
         $lang = $this->resolvedLang();
-        $title = $lang === 'en' ? $this->entry->title_en : $this->entry->title_es;
-        $rawBody = $lang === 'en' ? $this->entry->body_en : $this->entry->body_es;
+        $rawBody = $this->localized('body');
+
+        $kicker = ['es' => 'Nueva feature', 'en' => 'New feature', 'it' => 'Nuova funzione', 'ru' => 'Новая функция'];
+        $unsub = [
+            'es' => 'Puedes dejar de recibir estos avisos en las preferencias de tu perfil.',
+            'en' => 'You can stop receiving these in your profile preferences.',
+            'it' => 'Puoi smettere di riceverli nelle preferenze del tuo profilo.',
+            'ru' => 'Отключить эти уведомления можно в настройках профиля.',
+        ];
+        $cta = ['es' => 'Leer en /changelog', 'en' => 'Read on /changelog', 'it' => 'Leggi su /changelog', 'ru' => 'Открыть /changelog'];
 
         return new Content(
             view: 'emails.changelog.published',
             with: [
-                'kicker' => $lang === 'en' ? 'New feature' : 'Nueva feature',
-                'title' => $title,
+                'kicker' => $kicker[$lang] ?? $kicker['en'],
+                'title' => $this->localized('title'),
                 'bodyHtml' => $rawBody ? (string) Str::markdown($rawBody) : '',
                 'changelogUrl' => url('/changelog?lang=' . $lang),
                 'profileUrl' => url('/profile?lang=' . $lang),
-                'unsubscribeText' => $lang === 'en'
-                    ? 'You can stop receiving these in your profile preferences.'
-                    : 'Puedes dejar de recibir estos avisos en las preferencias de tu perfil.',
-                'ctaText' => $lang === 'en' ? 'Read on /changelog' : 'Leer en /changelog',
+                'unsubscribeText' => $unsub[$lang] ?? $unsub['en'],
+                'ctaText' => $cta[$lang] ?? $cta['en'],
                 'lang' => $lang,
             ],
         );
     }
 
+    /** Pick `{field}_{lang}` with fallback to English then Spanish. */
+    private function localized(string $field): string
+    {
+        $lang = $this->resolvedLang();
+
+        return (string) ($this->entry->{"{$field}_{$lang}"}
+            ?: ($this->entry->{"{$field}_en"} ?: ($this->entry->{"{$field}_es"} ?? '')));
+    }
+
     private function resolvedLang(): string
     {
         $pref = $this->recipient->language_preference ?? 'system';
-        return $pref === 'en' ? 'en' : 'es';
+        return in_array($pref, ['en', 'es', 'it', 'ru'], true) ? $pref : 'es';
     }
 }

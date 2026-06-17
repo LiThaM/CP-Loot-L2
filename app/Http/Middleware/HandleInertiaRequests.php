@@ -140,14 +140,18 @@ class HandleInertiaRequests extends Middleware
                 ->orderByDesc('published_at')
                 ->orderByDesc('id')
                 ->limit(10)
-                ->get(['id', 'type', 'title_es', 'title_en', 'body_es', 'body_en', 'published_at'])
+                ->get(['id', 'type', 'title_es', 'title_en', 'title_it', 'title_ru', 'body_es', 'body_en', 'body_it', 'body_ru', 'published_at'])
                 ->map(fn ($e) => [
                     'id' => $e->id,
                     'type' => $e->type,
                     'title_es' => $e->title_es,
                     'title_en' => $e->title_en,
+                    'title_it' => $e->title_it,
+                    'title_ru' => $e->title_ru,
                     'body_es' => $e->body_es,
                     'body_en' => $e->body_en,
+                    'body_it' => $e->body_it,
+                    'body_ru' => $e->body_ru,
                     'published_at' => $e->published_at?->toIso8601String(),
                 ])
                 ->all();

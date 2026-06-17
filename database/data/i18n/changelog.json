@@ -1,0 +1,422 @@
+[
+    {
+        "title_en": "New Changelog section",
+        "title_it": "Nuova sezione Changelog",
+        "body_it": "Ora puoi seguire gli aggiornamenti del sito dall'icona della stella nella barra superiore. Ogni modifica importante verrà pubblicata qui in spagnolo e in inglese.",
+        "title_ru": "Новый раздел Changelog",
+        "body_ru": "Теперь вы можете следить за обновлениями сайта через значок звезды в верхней панели. Каждое значимое изменение будет публиковаться здесь на испанском и английском языках."
+    },
+    {
+        "title_en": "Reset CP DKP points",
+        "title_it": "Azzera i punti DKP della CP",
+        "body_it": "I leader della CP possono azzerare i punti DKP di tutti i membri con un solo clic dalla scheda Punti. Lo storico Adena viene preservato.",
+        "title_ru": "Сброс очков DKP в CP",
+        "body_ru": "Лидеры CP могут одним кликом сбросить очки DKP всех участников на вкладке «Очки». История Adena при этом сохраняется."
+    },
+    {
+        "title_en": "Management buttons visible on your own row",
+        "title_it": "Pulsanti di gestione visibili sulla tua riga",
+        "body_it": "I pulsanti di pagamento e modifica sono ora visibili anche sulla tua riga nella scheda dei membri. Il pulsante di ban rimane nascosto quando agisci su te stesso.",
+        "title_ru": "Кнопки управления видны в вашей собственной строке",
+        "body_ru": "Кнопки оплаты и редактирования теперь видны и в вашей собственной строке на вкладке участников. Кнопка бана остаётся скрытой, когда действие направлено на вас самих."
+    },
+    {
+        "title_en": "Email notifications via Mailgun",
+        "title_it": "Notifiche email tramite Mailgun",
+        "body_it": "Quando un utente apre un ticket di supporto inviamo un'email al team e una conferma di ricezione all'autore. Lo stesso vale per le risposte e per le nuove richieste di CP.",
+        "title_ru": "Email-уведомления через Mailgun",
+        "body_ru": "Когда пользователь открывает тикет в поддержку, мы отправляем письмо команде и подтверждение о получении автору. То же самое для ответов и новых заявок на CP."
+    },
+    {
+        "title_en": "English translations on login and register",
+        "title_it": "Traduzioni in inglese su login e registrazione",
+        "body_it": "Le schermate di login e registrazione mostravano testi segnaposto come \"Title\" o \"Subtitle\". Ora mostrano i testi corretti in inglese.",
+        "title_ru": "Английские переводы на страницах входа и регистрации",
+        "body_ru": "На экранах входа и регистрации отображались placeholder-тексты вроде «Title» или «Subtitle». Теперь они показывают правильный английский текст."
+    },
+    {
+        "title_en": "Recursive auto-crafting of sub-materials",
+        "title_it": "Auto-crafting ricorsivo dei sottomateriali",
+        "body_it": "Durante l'esecuzione di una ricetta, il sistema crea automaticamente i materiali intermedi dal warehouse a qualsiasi livello di profondità.",
+        "title_ru": "Рекурсивный авто-крафт подматериалов",
+        "body_ru": "При выполнении рецепта система автоматически крафтит промежуточные материалы со склада на любой глубине вложенности."
+    },
+    {
+        "title_en": "\"Can craft\" badge on materials",
+        "title_it": "Badge \"craftabile\" sui materiali",
+        "body_it": "Quando hai i sottomateriali nel warehouse, i materiali craftabili mostrano un badge con la quantità che potresti produrre.",
+        "title_ru": "Значок «можно скрафтить» на материалах",
+        "body_ru": "Когда у вас есть подматериалы на складе, craftable-материалы показывают значок с количеством, которое вы могли бы произвести."
+    },
+    {
+        "title_en": "New l2hub-style recipe calculator",
+        "title_it": "Nuovo calcolatore di ricette in stile l2hub",
+        "body_it": "Calcolatore ridisegnato con quantità per item e slider per i materiali craftabili. Molto più facile da usare.",
+        "title_ru": "Новый калькулятор рецептов в стиле l2hub",
+        "body_ru": "Переработанный калькулятор с количеством по каждому предмету и ползунками для craftable-материалов. Намного удобнее в использовании."
+    },
+    {
+        "title_en": "Public recipe explorer (\/recipes)",
+        "title_it": "Esploratore pubblico di ricette (\/recipes)",
+        "body_it": "Chiunque può esplorare le ricette e visualizzare l'albero di crafting senza registrarsi.",
+        "title_ru": "Публичный обозреватель рецептов (\/recipes)",
+        "body_ru": "Любой может изучать рецепты и просматривать дерево крафта без регистрации."
+    },
+    {
+        "title_en": "Free-form donations to the CP fund",
+        "title_it": "Donazioni libere al fondo della CP",
+        "body_it": "I membri possono donare qualsiasi importo al fondo della CP, non solo quanto devono.",
+        "title_ru": "Свободные пожертвования в фонд CP",
+        "body_ru": "Участники могут пожертвовать любую сумму в фонд CP, а не только то, что они должны."
+    },
+    {
+        "title_en": "Admin: disable\/delete CPs and improved dashboard",
+        "title_it": "Admin: disabilitare\/eliminare le CP e dashboard migliorata",
+        "body_it": "Gli admin possono disabilitare o eliminare le CP e vedere statistiche della dashboard più complete.",
+        "title_ru": "Админ: отключение\/удаление CP и улучшенная панель",
+        "body_ru": "Администраторы могут отключать или удалять CP и видеть более полную статистику на панели управления."
+    },
+    {
+        "title_en": "Attachments in support tickets",
+        "title_it": "Allegati nei ticket di supporto",
+        "body_it": "I ticket di supporto ora accettano immagini e video come allegati.",
+        "title_ru": "Вложения в тикетах поддержки",
+        "body_ru": "Тикеты поддержки теперь принимают изображения и видео в качестве вложений."
+    },
+    {
+        "title_en": "History type filter and craft success indicator",
+        "title_it": "Filtro per tipo nello storico e indicatore di craft",
+        "body_it": "Lo storico del loot ha filtri per tipo di evento e mostra il risultato (successo\/fallimento) di ogni craft.",
+        "title_ru": "Фильтр по типу в истории и индикатор крафта",
+        "body_ru": "История loot имеет фильтры по типу события и показывает результат (успех\/неудача) каждого крафта."
+    },
+    {
+        "title_en": "Pagination and search in loot history",
+        "title_it": "Paginazione e ricerca nello storico del loot",
+        "body_it": "Lo storico del loot supporta paginazione e ricerca per le CP con grandi volumi.",
+        "title_ru": "Постраничная навигация и поиск в истории loot",
+        "body_ru": "История loot поддерживает постраничную навигацию и поиск для CP с большими объёмами данных."
+    },
+    {
+        "title_en": "Warehouse purchases and description field",
+        "title_it": "Acquisti nel warehouse e campo descrizione",
+        "body_it": "I leader possono registrare gli acquisti del warehouse con una descrizione associata.",
+        "title_ru": "Покупки на складе и поле описания",
+        "body_ru": "Лидеры могут регистрировать покупки на складе с привязанным описанием."
+    },
+    {
+        "title_en": "Per-member Adena inline + search pagination",
+        "title_it": "Adena per membro in linea + paginazione nella ricerca",
+        "body_it": "L'Adena per membro è mostrata direttamente in linea. La ricerca degli item supporta la paginazione e \"carica altro\".",
+        "title_ru": "Adena по участнику в строке + пагинация в поиске",
+        "body_ru": "Adena по каждому участнику отображается прямо в строке. Поиск предметов поддерживает пагинацию и «загрузить ещё»."
+    },
+    {
+        "title_en": "Recipe explorer with chronicle filter",
+        "title_it": "Esploratore di ricette con filtro per chronicle",
+        "body_it": "L'esploratore di ricette supporta più chronicle e ti permette di filtrare il catalogo in base a quella che giochi.",
+        "title_ru": "Обозреватель рецептов с фильтром по chronicle",
+        "body_ru": "Обозреватель рецептов поддерживает несколько chronicle и позволяет фильтровать каталог по той, в которую вы играете."
+    },
+    {
+        "title_en": "Multi-language support",
+        "title_it": "Supporto multilingua",
+        "body_it": "Cambio dinamico tra spagnolo e inglese in tutto il sito.",
+        "title_ru": "Поддержка нескольких языков",
+        "body_ru": "Динамическое переключение между испанским и английским по всему сайту."
+    },
+    {
+        "title_en": "Support ticket system",
+        "title_it": "Sistema di ticket di supporto",
+        "body_it": "Sistema di ticket integrato nell'app con assegnazione ai leader e stati.",
+        "title_ru": "Система тикетов поддержки",
+        "body_ru": "Встроенная в приложение система тикетов с назначением лидерам и статусами."
+    },
+    {
+        "title_en": "Crafting system, audit alerts and dark mode",
+        "title_it": "Sistema di crafting, avvisi di audit e modalità scura",
+        "body_it": "Nuovo sistema di crafting, avvisi di audit per le azioni importanti e modalità scura su tutto il sito.",
+        "title_ru": "Система крафта, оповещения аудита и тёмная тема",
+        "body_ru": "Новая система крафта, оповещения аудита для важных действий и тёмная тема по всему сайту."
+    },
+    {
+        "title_en": "Dashboard charts",
+        "title_it": "Grafici nella dashboard",
+        "body_it": "Grafici nella dashboard per visualizzare l'attività di loot e CP.",
+        "title_ru": "Графики на дашборде",
+        "body_ru": "Графики на дашборде для визуализации активности loot и CP."
+    },
+    {
+        "title_en": "Core loot system and wishlist",
+        "title_it": "Sistema principale di loot e wishlist",
+        "body_it": "Prima versione del core: registrazione del loot, wishlist degli item e strumenti di gestione di base.",
+        "title_ru": "Основная система loot и список желаемого",
+        "body_ru": "Первая версия ядра: регистрация loot, список желаемых предметов и базовые инструменты управления."
+    },
+    {
+        "title_en": "Initial release",
+        "title_it": "Rilascio iniziale",
+        "body_it": "Il progetto parte con il gestore di loot e Adena per le CP di Lineage 2.",
+        "title_ru": "Первый выпуск",
+        "body_ru": "Проект стартует с менеджером loot и Adena для CP в Lineage 2."
+    },
+    {
+        "title_en": "Loot split rework: external attendees & CP-fund percentage",
+        "title_it": "Rework del reparto del loot: presenti esterni e percentuale al fondo della CP",
+        "body_it": "**Novità nel reparto del loot:**\n\n- **Presenti esterni**: ora puoi aggiungere per nick persone che hanno farmato con te ma che NON sono nella tua CP. Compaiono con un badge \"esterno\" e il sistema tiene traccia di quanto devi loro.\n- **Slider della percentuale al fondo della CP**: sia nel modal di report del loot che in quello di vendita scegli la % che resta nel fondo della CP, il resto si divide tra i presenti. Preset 0\/10\/20\/50\/100 o valore libero.\n- **Sessione di farm di origine esplicita alla vendita**: il modal di vendita ora richiede di scegliere quale sessione di farm esatta stai liquidando — niente più euristica \"ultima farm con questo item\" che pagava il gruppo sbagliato.\n- **Pagina dei pagamenti esterni**: nuova schermata `Pagamenti esterni` così i leader della CP possono vedere a chi devono ancora pagare e segnare come pagato. Anche i membri possono consultarla per trasparenza.\n- **Niente più arrotondamenti persi**: il resto della divisione intera ora finisce nel fondo della CP invece di svanire.\n\n**Bug fix:**\n\n- Vendere un item non sceglie più automaticamente la farm sbagliata da addebitare.\n- La percentuale al fondo della CP ora si comporta come ti aspetti — prima era un interruttore binario cp\/presenti.",
+        "title_ru": "Переработка раздела loot: внешние участники и процент в фонд CP",
+        "body_ru": "**Новое в разделе loot:**\n\n- **Внешние участники**: теперь можно по нику добавить людей, которые фармили с вами, но НЕ состоят в вашей CP. Они отмечаются значком «внешний», и система отслеживает, сколько вы им должны.\n- **Ползунок процента в фонд CP**: и в окне отчёта о loot, и в окне продажи вы выбираете, какой % остаётся в фонде CP, остальное делится между участниками. Пресеты 0\/10\/20\/50\/100 или произвольное значение.\n- **Явный выбор исходной сессии фарма при продаже**: окно продажи теперь требует выбрать, какую именно сессию фарма вы ликвидируете — больше никакой эвристики «последний фарм с этим предметом», списывавшей с не той группы.\n- **Страница внешних выплат**: новый экран `Внешние выплаты`, чтобы лидеры CP видели, кому они ещё должны, и отмечали выплаченное. Участники тоже могут просматривать его для прозрачности.\n- **Больше никаких потерянных округлений**: остаток от целочисленного деления теперь попадает в фонд CP, а не исчезает.\n\n**Исправления ошибок:**\n\n- Продажа предмета больше не выбирает автоматически не тот фарм для списания.\n- Процент в фонд CP теперь работает так, как ожидается — раньше это был бинарный переключатель cp\/участники."
+    },
+    {
+        "title_en": "Admin: full CPs roster page",
+        "title_it": "Admin: pagina completa dell'elenco CP",
+        "body_it": "**Nuova pagina admin [\/system\/cps](\/system\/cps):**\n\n- Elenco completo delle CP con ricerca, filtri (chronicle, attive\/inattive\/vuote) e KPI per riga: membri, adena del fondo CP, report confermati, ultima attività.\n- Modifica nome, server e chronicle di qualsiasi CP da un modal.\n- Azioni rapide per riga: vedi dettaglio, impersona il leader, attiva\/disattiva, elimina (se vuota).\n- Pannello delle richieste di CP in attesa integrato in alto, con approva\/rifiuta in linea.\n- Sostituisce il widget della dashboard quando ti serve più di un'occhiata rapida.",
+        "title_ru": "Админ: полная страница списка CP",
+        "body_ru": "**Новая админская страница [\/system\/cps](\/system\/cps):**\n\n- Полный список CP с поиском, фильтрами (chronicle, активные\/неактивные\/пустые) и KPI по строкам: участники, adena в фонде CP, подтверждённые отчёты, последняя активность.\n- Редактирование имени, сервера и chronicle любой CP из модального окна.\n- Быстрые действия по строке: открыть детали, войти под лидером, включить\/выключить, удалить (если пуста).\n- Встроенная сверху панель ожидающих заявок на CP с одобрением\/отклонением прямо в строке.\n- Заменяет виджет дашборда, когда вам нужно больше, чем беглый взгляд."
+    },
+    {
+        "title_en": "Security: privilege-escalation fix in user management",
+        "title_it": "Sicurezza: corretta l'escalation di privilegi nella gestione utenti",
+        "body_it": "**Correzione di sicurezza** nella gestione utenti:\n\n- Solo gli **admin globali** possono ora assegnare il ruolo `admin`. Prima un leader fondatore di CP poteva promuovere se stesso (o un membro) ad admin globale da [\/system\/users](\/system\/users). Corretto.\n- **Nessuno può cambiare il proprio ruolo** — nemmeno un admin. Promuovere o degradare un admin richiede un altro admin.\n- I leader fondatori possono ancora gestire i ruoli all'interno della loro CP (cp_leader \/ accountant \/ member) come prima.\n\nPer degradare un utente che si è scalato i privilegi: `php artisan users:list-orphan-admins` elenca i candidati in sola lettura; `--fix` li riporta a `cp_leader` dopo conferma.",
+        "title_ru": "Безопасность: исправлено повышение привилегий в управлении пользователями",
+        "body_ru": "**Исправление безопасности** в управлении пользователями:\n\n- Теперь только **глобальные администраторы** могут назначать роль `admin`. Раньше лидер-основатель CP мог повысить себя (или участника) до глобального админа из [\/system\/users](\/system\/users). Исправлено.\n- **Никто не может изменить собственную роль** — даже админ. Повышение или понижение админа требует другого админа.\n- Лидеры-основатели по-прежнему могут управлять ролями внутри своей CP (cp_leader \/ accountant \/ member), как и раньше.\n\nЧтобы понизить пользователя, повысившего себе привилегии: `php artisan users:list-orphan-admins` выводит кандидатов только для чтения; `--fix` понижает их до `cp_leader` после подтверждения."
+    },
+    {
+        "title_en": "Party: bulk crafting calculator",
+        "title_it": "Party: calcolatore di crafting in blocco",
+        "body_it": "**Nuova schermata [\/party\/craft-bulk](\/party\/craft-bulk):**\n\n- Aggiungi più ricette con le quantità in una sola volta.\n- Il sistema aggrega i materiali, li confronta con il warehouse della tua CP e ti dice cosa hai e cosa manca.\n- I craftabili intermedi mancanti (es. Crafted Leather) vengono sub-craftati automaticamente: se ne hai 10 e ne servono 12, ti chiede di craftarne solo 2.\n- Per ora in sola lettura: calcola soltanto — non tocca il warehouse né crea report. Utile come strumento di pianificazione.\n- Disponibile per fondatore, co-leader e contabili.",
+        "title_ru": "Party: калькулятор массового крафта",
+        "body_ru": "**Новый экран [\/party\/craft-bulk](\/party\/craft-bulk):**\n\n- Добавляйте сразу несколько рецептов с количествами за один раз.\n- Система суммирует материалы, сверяет их со складом вашей CP и сообщает, что у вас есть и чего не хватает.\n- Недостающие промежуточные крафтовые материалы (например, Crafted Leather) докрафчиваются автоматически: если у вас есть 10, а нужно 12, она попросит скрафтить только 2.\n- Пока только для чтения: лишь рассчитывает — не трогает склад и не создаёт отчёты. Полезен как инструмент планирования.\n- Доступен основателю, со-лидерам и бухгалтерам."
+    },
+    {
+        "title_en": "Profile: L2 characters",
+        "title_it": "Profilo: personaggi L2",
+        "body_it": "**Personaggi L2 nel tuo profilo:**\n\n- Su [\/profile](\/profile) puoi registrare il tuo **personaggio principale** (nick attuale + classe + livello) e tutti i **personaggi secondari** che vuoi.\n- Ogni personaggio ha nick, razza (Human \/ Elf \/ Dark Elf \/ Orc \/ Dwarf \/ Kamael), classe L2 (catalogo completo Interlude) e livello opzionale.\n- Quando si registra un farm, il leader ottiene un piccolo selettore per ogni membro: di default usa il principale, ma se hai dei secondari il leader può scegliere quale personaggio ha farmato in questa sessione. Le vendite propagano automaticamente il personaggio dal farm di origine.\n- Le classi sono vincolate alla razza: scegliere una razza filtra il menu a tendina delle classi sulle opzioni compatibili.",
+        "title_ru": "Профиль: персонажи L2",
+        "body_ru": "**Персонажи L2 в вашем профиле:**\n\n- На [\/profile](\/profile) можно зарегистрировать **основного персонажа** (текущий ник + класс + уровень) и сколько угодно **дополнительных персонажей**.\n- У каждого персонажа есть ник, раса (Human \/ Elf \/ Dark Elf \/ Orc \/ Dwarf \/ Kamael), класс L2 (полный каталог Interlude) и необязательный уровень.\n- При регистрации фарма лидер получает небольшой выбор для каждого участника: по умолчанию используется основной, но если у вас есть дополнительные, лидер может выбрать, какой персонаж фармил в этой сессии. Продажи автоматически наследуют персонажа из исходного фарма.\n- Классы привязаны к расе: выбор расы фильтрует выпадающий список классов до совместимых вариантов."
+    },
+    {
+        "title_en": "Bulk craft: deep stock fix + expandable sub-crafts",
+        "title_it": "Craft in blocco: fix dello stock profondo + sub-craft espandibili",
+        "body_it": "**Miglioramenti a [\/party\/craft-bulk](\/party\/craft-bulk):**\n\n- **Fix:** il planner ora sottrae lo stock del warehouse per **qualsiasi** materiale craftabile intermedio, non solo per quelli elencati come materiali diretti della ricetta ordinata. Prima, ad esempio, avere 500 Cord nel warehouse veniva ignorato quando il Cord compariva solo come sub-craft (depth 2+), gonfiando il totale di Thread.\n- **Novità:** ogni sub-craft nell'elenco in basso è espandibile. Cliccaci sopra per vedere la sua ricetta diretta con quantità per craft e totale (es. `× 25 Thread per craft → 37.200 totali`).",
+        "title_ru": "Массовый крафт: исправление глубокого учёта запасов + раскрываемые суб-крафты",
+        "body_ru": "**Улучшения в [\/party\/craft-bulk](\/party\/craft-bulk):**\n\n- **Исправление:** планировщик теперь вычитает складские запасы для **любого** промежуточного крафтового материала, а не только для тех, что указаны как прямые материалы заказанного рецепта. Раньше, например, наличие 500 Cord на складе игнорировалось, когда Cord появлялся только как суб-крафт (depth 2+), из-за чего итог по Thread завышался.\n- **Новое:** каждый суб-крафт в нижнем списке можно раскрыть. Нажмите на него, чтобы увидеть его прямой рецепт с количеством на крафт и итогом (например, `× 25 Thread за крафт → 37 200 всего`)."
+    },
+    {
+        "title_en": "Items DB: de-duplicated entries",
+        "title_it": "Database item: voci deduplicate",
+        "body_it": "**Fix:** alcuni item comparivano due volte nei selettori (es. *Recipe: Sealed Avadon Gloves (60%)* appariva sia come `Recipe` sia come `EtcItem`). Ora è visibile solo la riga canonica e i riferimenti esistenti nei farm report, nelle ricette e nelle wishlist sono stati migrati ad essa. I duplicati non vengono eliminati — vengono contrassegnati come nascosti così i dati storici restano tracciabili.",
+        "title_ru": "База предметов: устранены дублирующиеся записи",
+        "body_ru": "**Исправление:** некоторые предметы появлялись дважды в списках выбора (например, *Recipe: Sealed Avadon Gloves (60%)* отображался и как `Recipe`, и как `EtcItem`). Теперь видна только каноническая запись, а существующие ссылки в отчётах о фарме, рецептах и списках желаемого перенесены на неё. Дубликаты не удаляются — они помечаются как скрытые, чтобы исторические данные оставались отслеживаемыми."
+    },
+    {
+        "title_en": "Market prices per item (chronicle-scoped)",
+        "title_it": "Prezzi di mercato per item (per cronaca)",
+        "body_it": "**Prezzi di mercato per item.** Ora puoi impostare un prezzo in Adena per ogni item, **per cronaca**. I prezzi sono condivisi tra tutti i CP della stessa cronaca (LU4 con LU4, C5 con C5; mai incrociati).\n\n- **[\/recipes](\/recipes)**: ogni materiale mostra una cella modificabile \"Prezzo di mercato\". Clicca → digita → Invio. Il costo stimato del craft (`materiali + fee`) viene ricalcolato.\n- **[\/party](\/party) warehouse**: nuova colonna \"Prezzo\" (modificabile) e colonna \"Valore\" (qtà × prezzo) per riga, più un banner con il valore totale stimato dello stock del CP.\n- **[\/itemsdb](\/itemsdb)**: nuova colonna nella tabella, modificabile inline.\n\nQualsiasi utente autenticato può aggiornare i prezzi (stile wiki). Passa il cursore sulla cella per vedere chi l'ha modificata per ultimo e quando.",
+        "title_ru": "Рыночные цены по предметам (в рамках хроники)",
+        "body_ru": "**Рыночные цены по предметам.** Теперь можно задать цену в Adena для каждого предмета, **в рамках хроники**. Цены общие для всех CP одной хроники (LU4 с LU4, C5 с C5; никогда не пересекаются).\n\n- **[\/recipes](\/recipes)**: каждый материал показывает редактируемую ячейку «Рыночная цена». Клик → введите → Enter. Расчётная стоимость крафта (`материалы + комиссия`) пересчитывается.\n- **[\/party](\/party) warehouse**: новый столбец «Цена» (редактируемый) и столбец «Стоимость» (кол-во × цена) для каждой строки, плюс баннер с общей расчётной стоимостью склада CP.\n- **[\/itemsdb](\/itemsdb)**: новый столбец в таблице, редактируемый прямо на месте.\n\nЛюбой авторизованный пользователь может обновлять цены (по принципу вики). Наведите курсор на ячейку, чтобы увидеть, кто и когда менял её последним."
+    },
+    {
+        "title_en": "Auto FIFO sale across multiple source farms",
+        "title_it": "Vendita automatica FIFO tra più farm di origine",
+        "body_it": "**Vendita dal CP Vault con allocazione automatica.** Quando lo stesso item si trova in più farm (es. 5 EAB = 1 + 1 + 3), il modale di vendita ora suddivide il totale **automaticamente in ordine FIFO** (farm più vecchio per primo) e crea **una vendita per ogni farm di origine** in una sola azione.\n\n- Ogni vendita paga gli attendees del **suo** farm usando il `cp_share_pct` di **quel** farm — le regole non si mescolano mai tra farm.\n- Il modale mostra la suddivisione prima di confermare (`X unità dal farm #Y · CP Z%` più la lista degli attendees e il payout).\n- Devi liquidare solo un farm specifico? Premi **\"Scegli un farm specifico\"** per tornare al flusso a singola origine.\n- Se un farm coinvolto nell'allocazione non ha attendees e il suo `cp_share_pct < 100`, viene bloccato con un avviso; vendi quello separatamente con CP 100%.",
+        "title_ru": "Автоматическая продажа FIFO между несколькими исходными фармами",
+        "body_ru": "**Продажа из CP Vault с автоматическим распределением.** Когда один и тот же предмет находится в нескольких фармах (например, 5 EAB = 1 + 1 + 3), окно продажи теперь разбивает общее количество **автоматически в порядке FIFO** (сначала самый старый фарм) и создаёт **одну продажу на каждый исходный фарм** одним действием.\n\n- Каждая продажа выплачивает attendees **своего** фарма по `cp_share_pct` **этого** фарма — правила никогда не смешиваются между фармами.\n- Окно показывает разбивку перед подтверждением (`X единиц из фарма #Y · CP Z%`, а также список attendees и выплату).\n- Нужно реализовать только один конкретный фарм? Нажмите **«Выбрать конкретный фарм»**, чтобы вернуться к режиму с одним источником.\n- Если у фарма, участвующего в распределении, нет attendees и его `cp_share_pct < 100`, он блокируется с предупреждением; продайте его отдельно с CP 100%."
+    },
+    {
+        "title_en": "Manual crafting: relaxed permissions, visible auto-craft, scroll-only-for-finals",
+        "title_it": "Crafting manuale: permessi più ampi, auto-craft visibile, scroll solo per item finali",
+        "body_it": "**Miglioramenti al crafting manuale**:\n\n- **Permessi**: admin, leader e contabili ora possono fissare\/riordinare\/rimuovere le ricette pinned (prima solo il leader esatto del CP).\n- **Auto-craft visibile**: quando manca un intermedio craftabile (es. *Crafted Leather*) ma i materiali grezzi sono presenti, il pulsante **Craft** ora si attiva e la riga mostra \"Verrà auto-craftato\". Dopo il craft, il toast elenca quali intermedi sono stati auto-craftati e cosa è stato prodotto.\n- **Recipe scroll solo per item finali**: il warehouse non richiede più \"Recipe: X\" quando crafti un Material intermedio (Crafted Leather, Cord, …). Resta obbligatorio per weapons\/armors\/jewelry\/accessories.\n- **Pin da Craft Bulk**: ogni ricetta pianificata in [\/party\/craft-bulk](\/party\/craft-bulk) ha ora un pulsante 📌 per fissarla come priorità con un clic.\n- **Assegnazione ruoli inline**: la lista dei membri ora ha un dropdown del ruolo per riga, così puoi cambiare i ruoli senza aprire il modale.",
+        "title_ru": "Ручной крафт: расширенные права, видимый авто-крафт, свиток только для финальных предметов",
+        "body_ru": "**Улучшения ручного крафта**:\n\n- **Права**: admin, лидеры и казначеи теперь могут закреплять\/переупорядочивать\/удалять закреплённые рецепты (раньше — только точный лидер CP).\n- **Видимый авто-крафт**: когда не хватает промежуточного крафтового предмета (например, *Crafted Leather*), но сырьё есть, кнопка **Craft** теперь активна, а в строке отображается «Будет авто-скрафчено». После крафта всплывающее уведомление перечисляет, какие промежуточные предметы были авто-скрафчены и что произведено.\n- **Свиток рецепта только для финальных предметов**: склад больше не требует «Recipe: X» при крафте промежуточного Material (Crafted Leather, Cord, …). По-прежнему обязателен для weapons\/armors\/jewelry\/accessories.\n- **Закрепление из Craft Bulk**: у каждого запланированного рецепта в [\/party\/craft-bulk](\/party\/craft-bulk) теперь есть кнопка 📌, чтобы закрепить его как приоритетный одним кликом.\n- **Назначение ролей на месте**: в списке участников теперь есть выпадающий список роли в каждой строке, чтобы менять роли без открытия окна."
+    },
+    {
+        "title_en": "Void reports, warehouse recheck, craft outcome modal",
+        "title_it": "Annullare report, ricontrollo del warehouse, modale di esito del craft",
+        "body_it": "Tre grandi miglioramenti nel flusso loot\/warehouse:\n\n- **Segnare un report come errore (void).** Admin o qualsiasi `cp_leader` può annullare un report confermato da [\/loot](\/loot). La riga resta visibile con un badge **VOIDED** e il suo effetto su stock e Adena dovuta viene revocato all'istante. Reversibile (basta cancellare `voided_at`).\n- **Ricontrollo del warehouse.** Nuovo pulsante \"🔍 Ricontrolla item\" nel CP Vault. Scegli gli item, vedi lo stock attuale, digita quello reale. Il sistema crea aggiustamenti solo dove delta ≠ 0, suddivisi in report di guadagno\/perdita — non serve registrare manualmente N ADD o N CONSUME.\n- **Craft con conferma più chiara.** Quando un craft deve auto-craftare intermedi, un modale di anteprima mostra \"25× Crafted Leather verranno auto-craftati, accetti o salti?\". Quando la ricetta ha più output (Foundation vs normale) o success rate < 100, un secondo modale chiede l'esito reale (positivo\/negativo) e quale output è uscito.\n\nInoltre, miglioramenti di comodità: il badge pulsante dei pending in [\/loot](\/loot) è visibile a ogni leader (non solo al founder); il link \"Pending\" della Dashboard porta direttamente alla scheda giusta; il modale di approvazione consente di confermare quando tutti gli attendees sono esterni; nuova impostazione del CP \"Screenshot obbligatorio\" per rendere opzionale la prova in immagine in ogni form.",
+        "title_ru": "Аннулирование отчётов, перепроверка склада, окно результата крафта",
+        "body_ru": "Три крупных улучшения в потоке loot\/warehouse:\n\n- **Пометить отчёт как ошибку (void).** Admin или любой `cp_leader` может аннулировать подтверждённый отчёт из [\/loot](\/loot). Строка остаётся видимой со значком **VOIDED**, а её влияние на склад и причитающуюся Adena мгновенно отменяется. Обратимо (достаточно очистить `voided_at`).\n- **Перепроверка склада.** Новая кнопка «🔍 Перепроверить предметы» в CP Vault. Выберите предметы, посмотрите текущий запас, введите реальный. Система создаёт корректировки только там, где дельта ≠ 0, разделяя их на отчёты о прибытии\/убыли — не нужно вручную регистрировать N ADD или N CONSUME.\n- **Крафт с более понятным подтверждением.** Когда крафту нужно авто-скрафтить промежуточные предметы, окно предпросмотра показывает «Будут авто-скрафчены 25× Crafted Leather, принять или пропустить?». Когда у рецепта несколько выходов (Foundation или обычный) или success rate < 100, второе окно спрашивает реальный результат (положительный\/отрицательный) и какой выход получился.\n\nКроме того, удобства: пульсирующий значок pending в [\/loot](\/loot) теперь виден каждому лидеру (не только основателю); ссылка «Pending» в Dashboard ведёт прямо на нужную вкладку; окно одобрения позволяет подтвердить, когда все attendees внешние; новая настройка CP «Скриншот обязателен», чтобы сделать подтверждение изображением необязательным во всех формах."
+    },
+    {
+        "title_en": "Global cards \/ list view toggle",
+        "title_it": "Toggle globale vista cards\/lista",
+        "body_it": "**Vista globale cards\/lista.** Ogni elenco grande (item del CP Vault, il mio warehouse personale, wishlist) ha ora un piccolo toggle griglia\/lista accanto alla casella di ricerca. Scegline uno e si applica a **tutte** le sezioni in una volta. La scelta resta nel tuo browser e si sincronizza tra le schede. La modalità lista compatta ogni item in una riga di tabella — più item visibili senza scroll, ideale per CP con molto stock.\n\nLa prima iterazione copre: warehouse del CP Vault, warehouse personale, wishlist. Le altre sezioni (loot history, pinned recipes, CP requests) arriveranno in un passaggio successivo.",
+        "title_ru": "Глобальный переключатель вида карточки\/список",
+        "body_ru": "**Глобальный вид карточки\/список.** Каждый крупный список (предметы CP Vault, мой личный warehouse, wishlist) теперь имеет небольшой переключатель сетка\/список рядом с полем поиска. Выберите один — и он применяется ко **всем** разделам сразу. Выбор хранится в вашем браузере и синхронизируется между вкладками. Режим списка сворачивает каждый предмет в компактную строку таблицы — больше предметов видно без прокрутки, идеально для CP с большим запасом.\n\nПервая итерация охватывает: warehouse CP Vault, личный warehouse, wishlist. Остальные разделы (loot history, pinned recipes, CP requests) появятся в следующем заходе."
+    },
+    {
+        "title_en": "Craft Bulk: dedupe sub-crafts of the same item",
+        "title_it": "Craft Bulk: dedupe dei sub-craft dello stesso item",
+        "body_it": "**Fix in Craft Bulk:** la lista dei sub-craft duplicava lo stesso materiale (es. *Steel × 497* e *Steel × 21.378* come due righe separate) quando più ricette nel piano lo richiedevano da rami diversi. Ora collassa in un'unica riga con il totale combinato. La sezione \"Totali\" era già corretta — solo la lista dei sub-craft era interessata.",
+        "title_ru": "Craft Bulk: дедупликация суб-крафтов одного предмета",
+        "body_ru": "**Исправление в Craft Bulk:** список суб-крафтов дублировал один и тот же материал (например, *Steel × 497* и *Steel × 21 378* как две отдельные строки), когда несколько рецептов в плане требовали его из разных веток. Теперь он сворачивается в одну строку с суммарным итогом. Раздел «Итоги» уже был корректным — затронут был только список суб-крафтов."
+    },
+    {
+        "title_en": "Loot list\/card parity + clickable changelog links",
+        "title_it": "Parità lista\/card nel loot + link cliccabili nel changelog",
+        "body_it": "- **Parità cards\/lista in [\/loot](\/loot):** espandendo una riga in modalità lista ora vedi esattamente gli stessi blocchi della vista card — image proof, lista completa degli item, attendees, punti, adena split e link all'origine per i report derivati. La modalità lista mostrava solo lo screenshot e una piccola griglia di item, perdendo contesto.\n- **Link cliccabili nel changelog:** le menzioni delle rotte (come `\/party`, `\/loot` o `\/itemsdb`) sono ora link diretti alla sezione corrispondente. Lo storico esistente è stato riscritto retroattivamente perché anche le voci più vecchie abbiano i link dove applicabile.",
+        "title_ru": "Паритет список\/карточка в loot + кликабельные ссылки в changelog",
+        "body_ru": "- **Паритет карточки\/список в [\/loot](\/loot):** при разворачивании строки в режиме списка теперь видны точно те же блоки, что и в виде карточки — image proof, полный список предметов, attendees, очки, adena split и ссылка на источник для производных отчётов. Раньше режим списка показывал только скриншот и небольшую сетку предметов, теряя контекст.\n- **Кликабельные ссылки в changelog:** упоминания маршрутов (таких как `\/party`, `\/loot` или `\/itemsdb`) теперь являются прямыми ссылками на соответствующий раздел. Существующая история была переписана задним числом, чтобы и более старые записи имели ссылки, где это применимо."
+    },
+    {
+        "title_en": "CP rules with blocking member acceptance",
+        "title_it": "Regole del CP con accettazione bloccante per i membri",
+        "body_it": "- **Regole del CP:** i leader possono pubblicare le regole interne del proprio CP da [\/party](\/party) → scheda Regole. Supporta `**grassetto**`, *corsivo*, `code` e [link](\/loot).\n- **Accettazione bloccante:** ogni membro deve leggere e accettare prima di continuare. Quando il leader modifica e salva una nuova versione, ogni membro deve riaccettare.\n- Il leader si auto-accetta al salvataggio — nessun modale extra nella sua sessione.",
+        "title_ru": "Правила CP с блокирующим принятием участниками",
+        "body_ru": "- **Правила CP:** лидеры могут публиковать внутренние правила своего CP из [\/party](\/party) → вкладка «Правила». Поддерживаются `**жирный**`, *курсив*, `code` и [ссылки](\/loot).\n- **Блокирующее принятие:** каждый участник должен прочитать и принять их, прежде чем продолжить. Когда лидер редактирует и сохраняет новую версию, каждый участник должен принять заново.\n- Лидер принимает автоматически при сохранении — никакого лишнего окна в его сессии."
+    },
+    {
+        "title_en": "Invisible speed and security improvements",
+        "title_it": "Miglioramenti invisibili di velocità e sicurezza",
+        "body_it": "Un passaggio dietro le quinte senza nuove funzionalità: la scheda Cronologia in [\/loot](\/loot) si carica notevolmente più veloce sui CP con storico profondo, e abbiamo rifinito un paio di dettagli su come vengono memorizzati i dati sensibili del profilo. Niente di nuovo da imparare — se l'app sembra più reattiva, è per questo.",
+        "title_ru": "Незаметные улучшения скорости и безопасности",
+        "body_ru": "Закулисный проход без новых функций: вкладка «История» в [\/loot](\/loot) загружается заметно быстрее на CP с глубокой историей, и мы отшлифовали пару моментов в том, как хранятся чувствительные данные профиля. Учиться ничему новому не нужно — если приложение кажется более отзывчивым, вот почему."
+    },
+    {
+        "title_en": "Tutorials section + smarter item search",
+        "title_it": "Sezione tutorial + ricerca item più intelligente",
+        "body_it": "- **Tutorial:** nuova sezione nel menu utente, [\/tutoriales](\/tutoriales), che spiega cosa può fare ogni ruolo. Ogni sezione ha pulsanti che avviano brevi tour interattivi sulla schermata reale — utili per far emergere funzionalità che potresti esserti perso (i personaggi alternativi nel profilo, le regole del CP, il bulk crafting…).\n- **Ricerca item più intelligente:** quando scegli un item (report di loot, modale di vendita, wishlist…) compaiono prima quelli effettivamente usati nell'app, invece del rumore del catalogo. Meno clic su \"Carica altri\".",
+        "title_ru": "Раздел обучения + более умный поиск предметов",
+        "body_ru": "- **Обучение:** новый раздел в меню пользователя, [\/tutoriales](\/tutoriales), объясняющий, что может делать каждая роль. У каждого раздела есть кнопки, запускающие короткие интерактивные туры по реальному экрану — удобно, чтобы открыть функции, которые вы могли пропустить (альтернативные персонажи в профиле, правила CP, массовый крафт…).\n- **Более умный поиск предметов:** при выборе предмета (отчёт о loot, окно продажи, wishlist…) первыми появляются те, что реально используются в приложении, а не шум каталога. Меньше кликов по «Загрузить ещё»."
+    },
+    {
+        "title_en": "Tutorials expanded: a block per screen",
+        "title_it": "Tutorial ampliati: un blocco per schermata",
+        "body_it": "La sezione [\/tutoriales](\/tutoriales) ora copre **ogni schermata** con spiegazioni dettagliate. Prima c'erano 4 punti per ruolo; ora ogni schermata (profilo, dashboard, report di loot, CP Vault, warehouse personale, crafting, regole, approvazione report, vendita, impostazioni, gestione membri, craft bulk, payout esterni…) ha il proprio blocco espandibile con testo e, quando applicabile, un tour interattivo della schermata reale.",
+        "title_ru": "Расширенное обучение: по блоку на экран",
+        "body_ru": "Раздел [\/tutoriales](\/tutoriales) теперь охватывает **каждый экран** с подробными объяснениями. Раньше было 4 пункта на роль; теперь у каждого экрана (профиль, dashboard, отчёт о loot, CP Vault, личный warehouse, крафт, правила, одобрение отчётов, продажа, настройки, управление участниками, craft bulk, внешние выплаты…) есть свой раскрывающийся блок с текстом и, где применимо, интерактивный тур по реальному экрану."
+    },
+    {
+        "title_en": "Item base price (NPC) as fallback",
+        "title_it": "Prezzo base dell'item (NPC) come fallback",
+        "body_it": "Ogni item ha ora un **prezzo base** estratto dal gioco (quanto paga l'NPC) oltre al **prezzo di mercato** che imposti tu. Nel [CP Vault](\/party) e nell'[esploratore di ricette](\/recipes) vedrai il prezzo base in grigio corsivo quando nessuno ha ancora impostato un prezzo di mercato — così conosci il minimo senza doverlo cercare. Quando imposti il tuo prezzo, il server rifiuta qualsiasi valore sotto il base (non ha senso vendere per meno di quanto paga l'NPC).",
+        "title_ru": "Базовая цена предмета (NPC) как запасной вариант",
+        "body_ru": "У каждого предмета теперь есть **базовая цена**, извлечённая из игры (сколько платит NPC), помимо **рыночной цены**, которую задаёте вы. В [CP Vault](\/party) и [обозревателе рецептов](\/recipes) вы увидите базовую цену серым курсивом, когда никто ещё не задал рыночную цену — так вы знаете минимум, не разыскивая его. Когда вы задаёте свою цену, сервер отклоняет любое значение ниже базового (нет смысла продавать дешевле, чем платит NPC)."
+    },
+    {
+        "title_en": "New feature emails for CP leaders",
+        "title_it": "Email per le nuove funzionalità ai CP leader",
+        "body_it": "D'ora in poi, ogni volta che esce una nuova funzionalità riceverai un'**email** oltre al badge in-app. Solo i CP leader ricevono questo — i membri normali la vedono comunque nell'app quando accedono.\n\nNon vuoi l'email? Disattivala nel [tuo profilo](\/profile) con un clic.",
+        "title_ru": "Письма о новых функциях для CP-лидеров",
+        "body_ru": "Отныне всякий раз, когда выходит новая функция, вы получите **письмо** в дополнение к значку в приложении. Это получают только CP-лидеры — обычные участники по-прежнему видят значок в приложении при входе.\n\nНе хотите письмо? Отключите его в [своём профиле](\/profile) одним кликом."
+    },
+    {
+        "title_en": "One-step CP creation funnel",
+        "title_it": "Creazione del CP in un solo passaggio",
+        "body_it": "Creare un CP è ora un solo passaggio. Il vecchio flusso ti inviava un magic link e ti chiedeva di registrarti in una seconda schermata — lasciando CP orfani ogni volta che qualcuno se ne andava a metà del funnel. Il form ora raccoglie le credenziali del tuo account insieme ai dettagli del CP, e all'invio ti porta dritto nella tua [dashboard](\/dashboard) come leader del nuovissimo CP.",
+        "title_ru": "Создание CP в один шаг",
+        "body_ru": "Создание CP теперь происходит в один шаг. Старый поток отправлял вам magic link и просил зарегистрироваться на втором экране — это оставляло осиротевшие CP всякий раз, когда кто-то уходил на полпути. Форма теперь собирает учётные данные вашей учётной записи вместе с данными CP, и при отправке переносит вас прямо в вашу [dashboard](\/dashboard) как лидера только что созданного CP."
+    },
+    {
+        "title_en": "Optional DKP value tracker per CP",
+        "title_it": "DKP value tracker opzionale per CP",
+        "body_it": "Ogni CP può ora abilitare opzionalmente un **DKP tracker basato sul valore** in `Settings`. Quando è attivo, ogni item lootato assegna punti = `market_price \/ divisore` suddivisi tra gli attendees (SOLO se un singolo membro l'ha ottenuto; PARTY\/N quando N membri se lo dividono). I leader possono anche registrare bonus EVENT manuali (presenza settimanale, ecc.). I punti per evento esistenti (BOSS\/EPIC\/SIEGE\/FARM) continuano a funzionare invariati — i due ledger coesistono e il leader sceglie con quale condividere il loot.\n\nDisponibile in `Settings` → \"DKP Value Tracker\". Una volta attivo, compare il link \"Tracker\" nella nav con leaderboard, filtri e inserimento manuale.",
+        "title_ru": "Опциональный трекер DKP-стоимости для CP",
+        "body_ru": "Каждый CP теперь может опционально включить **трекер DKP на основе стоимости** в `Settings`. Когда он включён, каждый выбитый предмет начисляет очки = `market_price \/ делитель`, распределяемые между attendees (SOLO, если предмет получил один участник; PARTY\/N, когда его делят N участников). Лидеры также могут вручную записывать бонусы EVENT (еженедельное посещение и т. д.). Существующие очки за события (BOSS\/EPIC\/SIEGE\/FARM) продолжают работать без изменений — оба реестра сосуществуют, и лидер выбирает, по которому делить loot.\n\nДоступно в `Settings` → \"DKP Value Tracker\". После включения в навигации появляется ссылка «Tracker» с таблицей лидеров, фильтрами и ручным вводом."
+    },
+    {
+        "title_en": "Mobile layout fixes (overlapping sections + clipped modals)",
+        "title_it": "Correzioni di layout su mobile (sezioni sovrapposte + modali tagliati)",
+        "body_it": "Diversi utenti ci hanno segnalato che **su mobile alcune sezioni rimanevano nascoste** dietro la nav inferiore e che **i modali venivano tagliati lateralmente**. Doppia passata di fix:\n\n- La barra inferiore fissa non nasconde più l'ultima riga delle tabelle (loot, \/party, \/tracker) e rispetta la safe-area di iOS (notch + indicatore home).\n- I modali di tutta l'app (sessione di loot, vendita, assegnazione, regole del CP, changelog, supporto, ecc.) usano ora una larghezza mobile-safe: su telefono occupano quasi tutto lo schermo con un piccolo margine, su sm+ tornano alla dimensione abituale.\n- Le tabelle larghe in Loot e CP Vault ora scorrono orizzontalmente invece di tagliarsi.\n- Lista membri del CP: su mobile passa a una sola colonna e il blocco adena\/azioni va a capo invece di sovrapporsi.\n- Calcolatore di ricette: su mobile smette di comprimersi — torni a vedere l'intera lista dei materiali.\n- Dropdown degli avvisi: non esce più dal bordo destro su schermi stretti e scorre quando ne hai molti.\n\nSe vedi ancora qualcosa che si sovrappone o resta nascosto, scrivi al supporto indicando il modello del tuo telefono.",
+        "title_ru": "Исправления вёрстки на мобильных (наложение секций + обрезанные модальные окна)",
+        "body_ru": "Несколько пользователей сообщили, что **на мобильных некоторые секции были скрыты** под нижней навигацией и что **модальные окна обрезались по бокам**. Исправление в два этапа:\n\n- Фиксированная нижняя навигация больше не закрывает последнюю строку таблиц (loot, \/party, \/tracker) и учитывает safe-area iOS (вырез + индикатор «Домой»).\n- Модальные окна по всему приложению (сессия loot, продажа, назначение, правила CP, changelog, поддержка и т. д.) теперь используют безопасную ширину для мобильных: на телефонах занимают почти весь экран с небольшим отступом, на sm+ возвращаются к обычному размеру.\n- Широкие таблицы в Loot и CP Vault теперь прокручиваются по горизонтали, а не обрезаются.\n- Список участников CP: на мобильных сворачивается в одну колонку, а блок adena\/действий переносится, а не накладывается.\n- Калькулятор рецептов: на мобильных перестаёт сжиматься — снова виден полный список материалов.\n- Выпадающий список оповещений: больше не выходит за правый край на узких экранах и прокручивается, если их много.\n\nЕсли вы всё ещё видите что-то наложенное или скрытое, напишите в поддержку, указав модель вашего телефона."
+    },
+    {
+        "title_en": "Nav restructure + CP stats deep-dive",
+        "title_it": "Riorganizzazione del menu + analisi approfondita delle statistiche del CP",
+        "body_it": "Abbiamo riorganizzato la navigazione principale: i precedenti 11 link sono ora raggruppati in **4 dropdown tematici** (CP \/ Loot \/ Craft \/ Altro). La nav admin passa da 8 a 3 (Manage \/ System). Le rotte non cambiano — i tuoi segnalibri continuano a funzionare, cambia solo il percorso attraverso il menu.\n\n**Nuova pagina**: [\/party\/stats](\/party\/stats) — un'analisi approfondita del tuo CP con KPI, grafici di andamento dei report per tipo di evento, flusso di adena (entrate vs uscite), item più droppati, mappa di calore dell'attività dei membri, distribuzione del vault per grade, classifica finanziaria e top 5 del DKP tracker. Selettore di periodo 7\/30\/90 giorni. Disponibile per ogni membro del CP.\n\nSu mobile la bottom-nav passa da 7-8 icone a 5 (Home \/ CP \/ Report \/ Loot \/ Profile) — i link meno usati (Items DB, Tickets, Tutorials) ora si trovano nel menu dell'avatar.",
+        "title_ru": "Реструктуризация навигации + детальная статистика CP",
+        "body_ru": "Мы реорганизовали основную навигацию: прежние 11 ссылок теперь сгруппированы в **4 тематических выпадающих меню** (CP \/ Loot \/ Craft \/ Ещё). Админ-навигация сократилась с 8 до 3 (Manage \/ System). Маршруты не изменились — ваши закладки по-прежнему работают, меняется только путь через меню.\n\n**Новая страница**: [\/party\/stats](\/party\/stats) — детальный обзор вашего CP с KPI, графиками динамики отчётов по типу события, потоком adena (поступления и расходы), самыми частыми дропами, тепловой картой активности участников, распределением vault по grade, финансовой таблицей и топ-5 DKP tracker. Выбор периода 7\/30\/90 дней. Доступно каждому участнику CP.\n\nНа мобильных нижняя навигация сокращается с 7-8 иконок до 5 (Home \/ CP \/ Report \/ Loot \/ Profile) — менее используемые ссылки (Items DB, Tickets, Tutorials) теперь находятся в меню аватара."
+    },
+    {
+        "title_en": "Personal \"Me\" section + per-user stats",
+        "title_it": "Sezione personale \"Io\" + statistiche per utente",
+        "body_it": "La tua sezione personale \"Io\" è ora nel menu principale. Cerca **`Io ▼`** per trovare:\n\n- **Il mio profilo**: account e preferenze.\n- **I miei personaggi**: registra e modifica i tuoi personaggi di Lineage II.\n- **Il mio magazzino**: le tue adena e i tuoi item personali (prima si trovavano sotto Loot).\n- **Le mie statistiche**: nuovissima schermata in [`\/profile\/stats`](\/profile\/stats) con KPI personali, grafici giornalieri di punti e adena, top item ricevuti, il tuo rank nel CP, la tua posizione nel DKP tracker (se il tuo CP lo ha attivo) e un calendario di attività.\n- **I miei ticket**: le tue richieste di supporto (spostate fuori dal menu \"Altro\").\n\nAnche riorganizzato: il dropdown \"Altro\" è sparito (Items DB è ora un link di primo livello), ogni voce di ogni dropdown mostra un breve suggerimento sotto, e \"CP Vault\" nel dropdown del CP è stato rinominato semplicemente \"Magazzino\" — il contesto del dropdown ti dice già che è quello del CP.",
+        "title_ru": "Личный раздел «Я» + персональная статистика",
+        "body_ru": "Ваш собственный раздел «Я» теперь в главном меню. Найдите **`Я ▼`**, чтобы получить доступ к:\n\n- **Мой профиль**: учётная запись и настройки.\n- **Мои персонажи**: регистрация и редактирование ваших персонажей Lineage II.\n- **Мой склад**: ваши личные adena и items (раньше находились в разделе Loot).\n- **Моя статистика**: совершенно новый экран по адресу [`\/profile\/stats`](\/profile\/stats) с личными KPI, ежедневными графиками очков и adena, топом полученных items, вашим рангом в CP, вашей позицией в DKP tracker (если он включён в вашем CP) и календарём активности.\n- **Мои тикеты**: ваши обращения в поддержку (перенесены из меню «Ещё»).\n\nТакже реорганизовано: выпадающее меню «Ещё» убрано (Items DB теперь ссылка верхнего уровня), каждый пункт в каждом меню показывает короткую подсказку под собой, а «CP Vault» внутри меню CP переименован просто в «Склад» — контекст меню и так подсказывает, что это склад CP."
+    },
+    {
+        "title_en": "User avatars + profile screen redesign",
+        "title_it": "Avatar utente + restyling della schermata profilo",
+        "body_it": "Finalmente puoi caricare il tuo **avatar**. Vai su [\/profile](\/profile), passa il mouse sull'immagine e clicca — accettati PNG\/JPG fino a 3MB. Il server ridimensiona automaticamente a 512×512px e lo salva come JPG ottimizzato.\n\nAbbiamo anche ridisegnato l'intera schermata del profilo:\n- **Nuovo hero** che mostra in primo piano il tuo avatar, nome, ruolo, CP e badge di email verificata.\n- **Link rapidi** a \/profile\/stats, \/characters, \/warehouse e \/tickets — il resto della sezione \"Io\".\n- **Sezioni con icone** e una migliore gerarchia visiva: informazioni personali, password, preferenze e zona pericolosa.\n\nIl tuo avatar appare automaticamente nella navbar, nella lista membri del CP, nel roster admin, nelle tue statistiche personali e ovunque prima compariva la lettera iniziale.",
+        "title_ru": "Аватары пользователей + редизайн экрана профиля",
+        "body_ru": "Наконец-то вы можете загрузить собственный **аватар**. Перейдите на [\/profile](\/profile), наведите курсор на изображение и нажмите — принимаются PNG\/JPG до 3 МБ. Сервер автоматически масштабирует до 512×512px и сохраняет как оптимизированный JPG.\n\nМы также переработали весь экран профиля:\n- **Новый hero**, сразу показывающий ваш аватар, имя, роль, CP и значок подтверждённого email.\n- **Быстрые ссылки** на \/profile\/stats, \/characters, \/warehouse и \/tickets — остальная часть раздела «Я».\n- **Секции с иконками** и улучшенная визуальная иерархия: личная информация, пароль, настройки и опасная зона.\n\nВаш аватар автоматически появляется в навбаре, списке участников CP, админ-ростере, вашей личной статистике и везде, где раньше отображалась начальная буква."
+    },
+    {
+        "title_en": "DKP spend on assign + CP auctions",
+        "title_it": "Spesa DKP all'assegnazione + aste del CP",
+        "body_it": "Due grandi aggiunte che chiudono il ciclo dei punti DKP:\n\n**1. Spesa automatica all'assegnazione di item dal magazzino.** Se il CP ha il DKP tracker attivo, assegnare un item dal magazzino a un membro detrae automaticamente punti = `prezzo × quantità ÷ divisore`. Il modale di assegnazione mostra il costo stimato prima di confermare e include un checkbox \"Regalo — non detrarre punti\" per le eccezioni.\n\n**2. Sistema di aste.** Disponibile su [`\/party\/auctions`](\/party\/auctions). Il leader mette all'asta un item del magazzino scegliendo la valuta (DKP points o adena), l'offerta iniziale, un prezzo buy-now opzionale e la durata (da 15 min a 3 giorni). I membri fanno offerte; ogni nuova offerta libera l'offerente precedente (nessun escrow). Allo scadere del tempo un cron chiude l'asta e imposta il vincitore. Il leader preme **Consegna** per consegnare l'item e addebitare l'offerta vincente.\n\nIl sistema consente un saldo DKP negativo — l'app non blocca se il costo supera il tuo saldo, semplicemente finisci in debito.",
+        "title_ru": "Списание DKP при назначении + аукционы CP",
+        "body_ru": "Два больших дополнения, замыкающих цикл очков DKP:\n\n**1. Автоматическое списание при назначении предметов со склада.** Если в CP включён DKP tracker, при назначении предмета со склада участнику автоматически списываются очки = `цена × количество ÷ делитель`. В модальном окне назначения показана предполагаемая стоимость перед подтверждением, и есть флажок «Подарок — не списывать очки» для исключений.\n\n**2. Система аукционов.** Доступна на [`\/party\/auctions`](\/party\/auctions). Лидер выставляет предмет со склада на аукцион, выбирая валюту (DKP points или adena), начальную ставку, необязательную цену buy-now и длительность (от 15 мин до 3 дней). Участники делают ставки; каждая новая ставка освобождает предыдущего участника (без эскроу). Когда время истекает, cron закрывает аукцион и определяет победителя. Лидер нажимает **Выдать**, чтобы передать предмет и списать выигравшую ставку.\n\nСистема допускает отрицательный баланс DKP — приложение не блокирует, если стоимость превышает ваш баланс, вы просто уходите в минус."
+    },
+    {
+        "title_en": "Characters fix + chronicle-based class catalog",
+        "title_it": "Personaggi corretti + catalogo classi basato sulla cronaca",
+        "body_it": "**Personaggi corretti e migliorati.** Aprendo [\/characters](\/characters) i dropdown di razza e classe risultavano vuoti — un disallineamento interno nei nomi delle proprietà tra backend e frontend. Risolto: le 69 classi canoniche ora si caricano correttamente.\n\n**E come bonus, filtraggio in base alla cronaca.** Il catalogo si adatta ora automaticamente alla cronaca del tuo CP:\n\n- CP su C1, C2, C3, C4, C5, IL o Classic → **niente Kamael** (non esistevano ancora).\n- CP su CT1, GF, HB o LU4 → **catalogo completo** incluso Kamael.\n\nSopra la sezione vedrai un pill informativo: \"Catalogo filtrato in base alla cronaca X del tuo CP\". Se per qualche motivo non appartieni a un CP, un banner lo spiega — ricorda che l'app si aspetta che ogni utente sia in un CP.",
+        "title_ru": "Исправление персонажей + каталог классов по хронике",
+        "body_ru": "**Персонажи исправлены и улучшены.** При открытии [\/characters](\/characters) выпадающие списки расы и класса оказывались пустыми — внутреннее несоответствие имён свойств между бэкендом и фронтендом. Исправлено: 69 канонических классов теперь загружаются корректно.\n\n**И в качестве бонуса — фильтрация по хронике.** Каталог теперь автоматически подстраивается под хронику вашего CP:\n\n- CP на C1, C2, C3, C4, C5, IL или Classic → **без Kamael** (их тогда ещё не было).\n- CP на CT1, GF, HB или LU4 → **полный каталог**, включая Kamael.\n\nНад секцией вы увидите информационную плашку: «Каталог отфильтрован по хронике X вашего CP». Если по какой-то причине вы не состоите в CP, баннер это объяснит — помните, что приложение ожидает, что каждый пользователь состоит в CP."
+    },
+    {
+        "title_en": "Warehouse market prices + craft cost",
+        "title_it": "Prezzi di mercato del magazzino + costo di craft",
+        "body_it": "**Prezzi di mercato per LU4.** Abbiamo caricato i prezzi di mercato dei materiali (potete continuare a regolarli a mano).\n\n**Costo di craft automatico (⚒).** Ogni item craftabile mostra un secondo prezzo derivato dal prezzo di mercato dei materiali richiesti dalla sua ricetta — ricorsivo, quindi un Artisan's Frame viene calcolato dai suoi stampi, e questi dai loro minerali. Lo vedrete nel magazzino e nell'esploratore di ricette.\n\n**Solo gli ufficiali impostano i prezzi.** Ora solo admin, leader e contabile possono impostare il prezzo di mercato di un item. Se un membro ci prova, riceve un avviso che non ha il ruolo.",
+        "title_ru": "Рыночные цены склада + стоимость крафта",
+        "body_ru": "**Рыночные цены для LU4.** Мы загрузили рыночные цены на материалы (вы можете продолжать корректировать их вручную).\n\n**Автоматическая стоимость крафта (⚒).** У каждого крафтового предмета отображается вторая цена, рассчитанная по рыночной цене материалов, нужных по его рецепту — рекурсивно, так что Artisan's Frame оценивается по своим формам, а те — по своим рудам. Вы увидите это на складе и в обозревателе рецептов.\n\n**Только офицеры задают цены.** Теперь только admin, лидер и бухгалтер могут задавать рыночную цену предмета. Если участник попытается, он получит уведомление о том, что у него нет нужной роли."
+    },
+    {
+        "title_en": "Value tracker: new scoring options",
+        "title_it": "Value tracker: nuove opzioni di calcolo",
+        "body_it": "Il value tracker (DKP) ottiene impostazioni per ogni CP, in **Impostazioni → Tracker**:\n\n- **Valuta in base al prezzo di mercato** (oppure in base al prezzo di vendita all'NPC come alternativa).\n- **Arrotonda per eccesso i drop sotto i 1000 adena** (i drop economici non valgono frazioni).\n- **Punti interi** (senza decimali, sempre arrotondando per eccesso).\n- Un pulsante **Ricalcola tracker** per ricostruire i punti con i prezzi e le impostazioni attuali — i contributi manuali vengono mantenuti.",
+        "title_ru": "Value tracker: новые варианты подсчёта",
+        "body_ru": "Value tracker (DKP) получает настройки для каждого CP в разделе **Настройки → Tracker**:\n\n- **Оценка по рыночной цене** (или по цене продажи NPC как альтернатива).\n- **Округление вверх для дропов дешевле 1000 adena** (дешёвые дропы не стоят дробных значений).\n- **Целые очки** (без десятичных, всегда с округлением вверх).\n- Кнопка **Пересчитать tracker** для перестроения очков с текущими ценами и настройками — ручные начисления сохраняются."
+    },
+    {
+        "title_en": "Clearer loot approval",
+        "title_it": "Approvazione del loot più chiara",
+        "body_it": "Il modale di **risoluzione della sessione di loot** si legge meglio: nomi completi degli item (con tooltip) e una lista con scroll, così una sessione con molti item non seppellisce più il pulsante di conferma. Inoltre, se l'invio fallisce ora vedi il motivo invece di non veder succedere nulla.",
+        "title_ru": "Понятнее одобрение loot",
+        "body_ru": "Модальное окно **разрешения сессии loot** читается лучше: полные названия items (с тултипом) и прокручиваемый список, так что сессия с множеством items больше не прячет кнопку подтверждения. Кроме того, если отправка не удалась, теперь вы видите причину, а не просто отсутствие реакции."
+    },
+    {
+        "title_en": "Warehouse: tracker points per item",
+        "title_it": "Magazzino: punti del tracker per item",
+        "body_it": "Nel magazzino, accanto al prezzo di mercato, ora vedi i **punti per unità** che vale ogni item secondo il tuo value tracker: prezzo effettivo (mercato, con la vendita all'NPC come fallback) ÷ divisore, usando lo stesso arrotondamento che hai configurato (numeri interi se \"punti interi\" è attivo, altrimenti decimali). Passa il mouse sopra per i dettagli. Mostrato solo se il tuo CP ha il tracker attivo.",
+        "title_ru": "Склад: очки tracker за предмет",
+        "body_ru": "На складе рядом с рыночной ценой теперь отображаются **очки за единицу**, которых стоит каждый предмет согласно вашему value tracker: эффективная цена (рыночная, с продажей NPC в качестве запасного варианта) ÷ делитель, с тем же округлением, которое вы настроили (целые числа, если включены «целые очки», иначе с десятичными). Наведите курсор для подробностей. Показывается, только если в вашем CP включён tracker."
+    },
+    {
+        "title_en": "Real NPC sell-back prices",
+        "title_it": "Prezzi reali di rivendita all'NPC",
+        "body_it": "Il **prezzo base (NPC)** di un item ora riflette ciò che ottieni realmente vendendolo a un negozio, non il prezzo a cui l'NPC lo vende. La nostra fonte elencava il prezzo di acquisto (≈ il doppio), quindi l'abbiamo dimezzato. Questo riguarda solo gli item **senza un prezzo di mercato** impostato (quelli restano invariati): il loro valore nel magazzino e i punti del tracker sono ora più realistici.",
+        "title_ru": "Реальные цены обратной продажи NPC",
+        "body_ru": "**Базовая (NPC) цена** предмета теперь отражает то, что вы реально получаете при продаже в магазине, а не цену, по которой NPC его продаёт. Наш источник указывал цену покупки (≈ вдвое выше), поэтому мы её уполовинили. Это затрагивает только предметы **без заданной рыночной цены** (они не меняются): их стоимость на складе и очки tracker теперь более реалистичны."
+    },
+    {
+        "title_en": "Items DB: edit prices on open",
+        "title_it": "Items DB: modifica i prezzi all'apertura",
+        "body_it": "Aprendo un item in **Items DB** ora vedi il suo **prezzo base (NPC)** e il suo **prezzo di mercato**. Se sei **admin, leader o contabile** puoi modificarli entrambi lì stesso, senza uscire dalla vista dettaglio. Tutti gli altri li vedono in sola lettura. Il prezzo base non può superare il prezzo di mercato (resta il limite minimo che il mercato non può scendere sotto). Modificare un prezzo ricalcola automaticamente i costi di craft che dipendono da quell'item.",
+        "title_ru": "Items DB: редактирование цен при открытии",
+        "body_ru": "При открытии предмета в **Items DB** теперь отображаются его **базовая (NPC) цена** и **рыночная цена**. Если вы **admin, лидер или бухгалтер**, вы можете отредактировать обе прямо здесь, не покидая экран деталей. Все остальные видят их только для чтения. Базовая цена не может превышать рыночную (она по-прежнему остаётся нижней границей, ниже которой рынок не может опуститься). Изменение цены автоматически пересчитывает стоимость крафта предметов, зависящих от этого предмета."
+    },
+    {
+        "title_en": "Customizable dashboard: drag the boxes",
+        "title_it": "Dashboard personalizzabile: trascina i riquadri",
+        "body_it": "La tua dashboard ora è personalizzabile. Premi **Riorganizza** (in alto a destra del pannello) e trascina i riquadri nell'ordine che preferisci: donazioni, attività, drop, classifiche, riepilogo… L'ordine viene salvato nel tuo browser, così rimane com'è la prossima volta. **Reimposta** ripristina l'ordine predefinito.",
+        "title_ru": "Настраиваемая панель: перетаскивайте блоки",
+        "body_ru": "Ваша панель теперь настраиваемая. Нажмите **Переставить** (в правом верхнем углу панели) и перетащите блоки в любом удобном порядке: пожертвования, активность, дропы, рейтинги, сводка… Порядок сохраняется в вашем браузере, так что в следующий раз он останется на месте. **Сбросить** возвращает порядок по умолчанию."
+    },
+    {
+        "title_en": "CP donations & weekly objectives",
+        "title_it": "Donazioni al CP e obiettivi settimanali",
+        "body_it": "**Donazioni**: ora puoi donare adena o item al CP dalla dashboard. Ogni donazione finisce in **\/loot come in attesa** affinché il leader la riveda e la confermi (con uno screenshot se il tuo CP lo richiede). Sui CP con il **DKP tracker**, una donazione **assegna punti** al donatore (valore ÷ divisore) e il riquadro diventa la classifica del tracker; senza tracker resta come valore donato.\n\n**Obiettivi settimanali**: i leader segnalano **item che il CP sta cacciando**, con una quantità obiettivo e un **moltiplicatore** (es. ×1,5). Mentre un obiettivo è attivo, ottenere quell'item (farmando o tramite donazione) concede **punti moltiplicati**. Completarlo riporta tutto alla normalità; aggiungerne di nuovi cancella quelli completati e mantiene quelli in attesa. Senza tracker gli obiettivi sono informativi.",
+        "title_ru": "Пожертвования CP и еженедельные цели",
+        "body_ru": "**Пожертвования**: теперь вы можете жертвовать adena или items в CP прямо с панели. Каждое пожертвование попадает в **\/loot как ожидающее** проверки и подтверждения лидером (со скриншотом, если ваш CP это требует). В CP с **DKP tracker** пожертвование **начисляет очки** дарителю (стоимость ÷ делитель), и блок становится рейтингом tracker; без tracker остаётся как пожертвованная стоимость.\n\n**Еженедельные цели**: лидеры отмечают **items, на которые охотится CP**, с целевым количеством и **множителем** (например, ×1,5). Пока цель активна, получение этого предмета (фармом или пожертвованием) даёт **умноженные очки**. Выполнение цели возвращает всё к норме; добавление новых целей очищает выполненные и сохраняет ожидающие. Без tracker цели носят информационный характер."
+    },
+    {
+        "title_en": "Dark mode applies instantly",
+        "title_it": "La modalità scura si applica all'istante",
+        "body_it": "Cambiare tema (chiaro\/scuro\/sistema) nel tuo profilo ora si applica immediatamente, senza bisogno di ricaricare la pagina.",
+        "title_ru": "Тёмная тема применяется мгновенно",
+        "body_ru": "Переключение темы (светлая\/тёмная\/системная) в вашем профиле теперь применяется сразу, без необходимости перезагружать страницу."
+    }
+]
