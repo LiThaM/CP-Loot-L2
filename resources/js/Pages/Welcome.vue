@@ -30,7 +30,13 @@ const t = (key, params = {}) => {
 
 const appName = computed(() => page.props.app?.name || t('app.name'));
 const appLocale = computed(() => page.props.app?.locale || 'en');
-const localeTag = computed(() => (appLocale.value === 'es' ? 'es-ES' : 'en-US'));
+const localeTag = computed(() => ({ es: 'es-ES', en: 'en-US', it: 'it-IT', ru: 'ru-RU' })[appLocale.value] || 'en-US');
+const LANGS = [
+    { code: 'es', label: 'ES' },
+    { code: 'en', label: 'EN' },
+    { code: 'it', label: 'IT' },
+    { code: 'ru', label: 'RU' },
+];
 const formatChangelogDate = (val) => {
     if (!val) return '';
     try { return new Intl.DateTimeFormat(localeTag.value, { dateStyle: 'medium' }).format(new Date(val)); }
@@ -97,7 +103,7 @@ onMounted(() => {
     document.documentElement.classList.toggle('dark', darkMode.value);
     mq.addEventListener('change', e => { darkMode.value = e.matches; document.documentElement.classList.toggle('dark', e.matches); });
     const bl = navigator.language.split('-')[0];
-    if (['en', 'es'].includes(bl) && appLocale.value !== bl) setLocale(bl);
+    if (['en', 'es', 'it', 'ru'].includes(bl) && appLocale.value !== bl) setLocale(bl);
 });
 </script>
 
@@ -130,7 +136,10 @@ onMounted(() => {
                         <svg v-if="darkMode" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
                         <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
                     </button>
-                    <button @click="setLocale(appLocale === 'es' ? 'en' : 'es')" class="nav-link text-xs font-bold" :class="darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'">{{ appLocale === 'es' ? 'EN' : 'ES' }}</button>
+                    <div class="flex items-center gap-1.5">
+                        <button v-for="l in LANGS" :key="l.code" @click="setLocale(l.code)" class="text-xs font-bold transition-colors"
+                                :class="appLocale === l.code ? (darkMode ? 'text-white' : 'text-gray-900') : (darkMode ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900')">{{ l.label }}</button>
+                    </div>
                     <div class="w-px h-4 mx-2" :class="darkMode ? 'bg-white/10' : 'bg-gray-200'"></div>
                     <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="btn-primary text-xs px-4 py-2">Dashboard</Link>
                     <template v-else>
@@ -155,7 +164,10 @@ onMounted(() => {
                 <button @click="showCpRequestModal = true; mobileMenuOpen = false" class="mobile-link w-full text-left text-amber-500">{{ $t('welcome.section.cp_cta.btn') }}</button>
                 <div class="flex gap-2 pt-1">
                     <button @click="toggleTheme" class="mobile-link flex-1 text-center" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">{{ darkMode ? 'Light' : 'Dark' }}</button>
-                    <button @click="setLocale(appLocale === 'es' ? 'en' : 'es')" class="mobile-link flex-1 text-center" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">{{ appLocale === 'es' ? 'EN' : 'ES' }}</button>
+                    <div class="flex-1 flex items-center justify-center gap-3">
+                        <button v-for="l in LANGS" :key="l.code" @click="setLocale(l.code)" class="text-xs font-bold transition-colors"
+                                :class="appLocale === l.code ? (darkMode ? 'text-white' : 'text-gray-900') : (darkMode ? 'text-gray-500' : 'text-gray-400')">{{ l.label }}</button>
+                    </div>
                 </div>
                 <div v-if="!$page.props.auth.user" class="flex gap-2 pt-1">
                     <Link :href="route('login')" class="flex-1 py-2.5 text-center text-sm font-semibold rounded-lg border transition" :class="darkMode ? 'border-white/10 text-gray-300' : 'border-gray-200 text-gray-700'">{{ $t('welcome.hero.cta.login') }}</Link>
