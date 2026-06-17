@@ -733,9 +733,6 @@ onMounted(async () => {
                                     <span v-if="report.event_type === 'WAREHOUSE_CRAFT_CONSUME'" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border" :class="report.craft_success ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400' : 'text-red-500 bg-red-500/10 border-red-500/30'">{{ report.craft_success ? $t('loot.craft_success') : $t('loot.craft_failed') }}</span>
                                 </div>
                                 <div class="text-[10px] text-gray-500 uppercase">{{ formatDateTime(report.updated_at) }}</div>
-                                <div v-if="report.event_type === 'DONATION' && report.requested_by" class="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400 font-black">
-                                    🎁 {{ $t('loot.donated_by') }}: {{ report.requested_by.name }}
-                                </div>
                                 <div v-if="report.origin" class="text-[10px] text-gray-500 uppercase min-w-0">
                                     {{ $t('loot.origin') }}:
                                     <span class="inline-block align-middle max-w-full truncate">
@@ -824,7 +821,6 @@ onMounted(async () => {
                                         <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': expandedReports.has(report.id) }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                         {{ $t('loot.event_types.' + report.event_type.toLowerCase()) }}
                                     </span>
-                                    <div v-if="report.event_type === 'DONATION' && report.requested_by" class="text-[9px] normal-case tracking-normal text-amber-600 dark:text-amber-400 mt-0.5">🎁 {{ report.requested_by.name }}</div>
                                 </td>
                                 <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{{ formatDateTime(report.updated_at) }}</td>
                                 <td class="px-4 py-2 text-right text-xs text-gray-700 dark:text-gray-300">{{ (report.entries || []).length }}</td>

@@ -6,6 +6,7 @@ use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
+use App\Contexts\Loot\Domain\Models\LootReportAttendee;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +73,10 @@ class DonationsController extends Controller
                 'event_type' => 'DONATION',
                 'status' => 'pending',
                 'image_proof' => null,
-                'recipient_ids' => null,
+                // The donor is the report's single attendee/recipient, so the
+                // loot UI shows "who donated" everywhere (count, expanded view,
+                // pending review) like any other report.
+                'recipient_ids' => [$user->id],
             ]);
 
             if ($imageFile) {
@@ -86,6 +90,13 @@ class DonationsController extends Controller
                 'loot_report_id' => $report->id,
                 'item_id' => $itemId,
                 'amount' => $amount,
+            ]);
+
+            LootReportAttendee::create([
+                'loot_report_id' => $report->id,
+                'user_id' => $user->id,
+                'external_name' => null,
+                'is_external' => false,
             ]);
         });
     }
