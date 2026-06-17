@@ -1213,6 +1213,7 @@ const recheckSearchResults = ref([]);
 const recheckIsSearching = ref(false);
 const recheckForm = useForm({
     items: [], // [{item_id, name, image_url, current, real_amount}]
+    adena_real: 0, // real adena in the vault (reconcile)
     note: '',
     image_proof: null,
 });
@@ -1221,10 +1222,19 @@ const openRecheck = () => {
     recheckForm.reset();
     recheckForm.items = [];
     recheckForm.image_proof = null;
+    recheckForm.adena_real = Number(props.warehouseAdena || 0);
     recheckSearch.value = '';
     recheckSearchResults.value = [];
     recheckModalOpen.value = true;
 };
+
+const recheckCurrentAdena = computed(() => Number(props.warehouseAdena || 0));
+const recheckAdenaDelta = computed(() => {
+    const r = recheckForm.adena_real;
+    if (r === null || r === '') return 0;
+    return Number(r) - recheckCurrentAdena.value;
+});
+const recheckHasChanges = computed(() => recheckDiff.value.changedCount > 0 || recheckAdenaDelta.value !== 0);
 
 const addRecheckItem = (item) => {
     if (recheckForm.items.some(i => i.item_id === item.id)) return;
@@ -1267,7 +1277,7 @@ const fetchRecheckSearch = async (q) => {
 watch(recheckSearch, throttle((q) => fetchRecheckSearch(q), 300));
 
 const submitRecheck = () => {
-    if (recheckDiff.value.changedCount === 0) {
+    if (!recheckHasChanges.value) {
         showToast(t('warehouse.recheck.no_changes'), 'info');
         return;
     }
@@ -1276,6 +1286,9 @@ const submitRecheck = () => {
         fd.append(`items[${i}][item_id]`, String(row.item_id));
         fd.append(`items[${i}][real_amount]`, String(row.real_amount));
     });
+    if (recheckForm.adena_real !== null && recheckForm.adena_real !== '') {
+        fd.append('adena_real', String(Math.max(0, Math.trunc(Number(recheckForm.adena_real) || 0))));
+    }
     if (recheckForm.note) fd.append('note', recheckForm.note);
     if (recheckForm.image_proof) fd.append('image_proof', recheckForm.image_proof);
     router.post(route('warehouse.recheck'), fd, {
@@ -3003,6 +3016,30 @@ watch(buySearch, throttle(async (val) => {
                     {{ $t('warehouse.recheck.summary', { changed: recheckDiff.changedCount, gains: recheckDiff.gains, losses: recheckDiff.losses }) }}
                 </div>
 
+                <!-- Adena reconciliation -->
+                <div class="bg-white/70 border border-amber-300/40 rounded-xl p-3 dark:bg-black/30 dark:border-amber-900/40">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 mb-1">💰 {{ $t('warehouse.recheck.adena_title') }}</div>
+                    <p class="text-[10px] text-gray-500 mb-3 leading-relaxed">{{ $t('warehouse.recheck.adena_hint') }}</p>
+                    <div class="grid grid-cols-3 gap-3 items-end">
+                        <div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.adena_recorded') }}</div>
+                            <div class="text-sm font-cinzel text-gray-700 dark:text-gray-300" v-tooltip="formatAdenaFull(recheckCurrentAdena)">{{ formatAdenaShort(recheckCurrentAdena) }}</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.adena_real') }}</div>
+                            <input type="number" min="0" v-model.number="recheckForm.adena_real" class="w-full h-9 px-3 rounded-lg border border-amber-400 text-right font-cinzel text-amber-700 dark:text-amber-300 bg-white dark:bg-black/50 focus:ring-amber-500">
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{{ $t('warehouse.recheck.col_delta') }}</div>
+                            <div class="text-sm font-cinzel"
+                                 :class="recheckAdenaDelta > 0 ? 'text-emerald-600 dark:text-emerald-400' : recheckAdenaDelta < 0 ? 'text-red-500' : 'text-gray-400'"
+                                 v-tooltip="formatAdenaFull(Math.abs(recheckAdenaDelta))">
+                                {{ recheckAdenaDelta > 0 ? '+' : '' }}{{ formatAdenaShort(recheckAdenaDelta) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('warehouse.recheck.note_label') }}</label>
                     <input v-model="recheckForm.note" type="text" :placeholder="$t('warehouse.recheck.note_placeholder')" maxlength="255" class="w-full bg-white/70 border-gray-200 text-gray-900 rounded-xl h-10 px-3 focus:ring-cyan-600 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100">
@@ -3031,7 +3068,7 @@ watch(buySearch, throttle(async (val) => {
             <div class="p-6 pt-0 flex space-x-4">
                 <button @click="recheckModalOpen = false" class="flex-1 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-xl font-bold uppercase tracking-widest text-xs transition">{{ $t('common.cancel') }}</button>
                 <button @click="submitRecheck"
-                        :disabled="recheckForm.items.length === 0 || recheckDiff.changedCount === 0 || (imageProofRequired && !recheckForm.image_proof)"
+                        :disabled="!recheckHasChanges || (imageProofRequired && !recheckForm.image_proof)"
                         class="flex-[2] py-4 bg-gradient-to-tr from-cyan-700 to-sky-600 hover:from-cyan-600 hover:to-sky-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition shadow-lg shadow-cyan-950/50 disabled:opacity-30 disabled:grayscale">
                     {{ $t('warehouse.recheck.submit') }}
                 </button>

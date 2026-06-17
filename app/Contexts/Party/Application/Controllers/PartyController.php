@@ -1571,9 +1571,10 @@ class PartyController extends Controller
     public function recheck(Request $request)
     {
         $request->validate([
-            'items' => 'required|array|min:1',
+            'items' => 'nullable|array',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.real_amount' => 'required|integer|min:0',
+            'adena_real' => 'nullable|integer|min:0',
             'note' => 'nullable|string|max:255',
             'image_proof' => $this->imageProofRule($request->user()),
         ]);
@@ -1588,7 +1589,7 @@ class PartyController extends Controller
         $losses = []; // item_id => positive delta (representing units to subtract)
         $diff = []; // for audit log: [{item_id, before, after, delta}]
 
-        foreach ($request->items as $row) {
+        foreach (($request->input('items') ?? []) as $row) {
             $itemId = (int) $row['item_id'];
             $real = (int) $row['real_amount'];
             $current_stock = $this->currentStock($cpId, $itemId);
@@ -1602,13 +1603,34 @@ class PartyController extends Controller
             }
         }
 
-        if (empty($diff)) {
+        // Adena reconciliation — books the signed delta vs the real vault adena
+        // (e.g. items were bought without registering the spend, leaving the
+        // recorded adena too high). The signed entry is summed into warehouse
+        // adena exactly like any other adena loot entry.
+        $adenaDelta = 0;
+        $adenaItemId = null;
+        if ($request->filled('adena_real')) {
+            $adenaDelta = (int) $request->input('adena_real') - $this->currentWarehouseAdena($cpId);
+            if ($adenaDelta !== 0) {
+                $cp = $current->cp;
+                $adenaItem = Item::whereRaw('LOWER(name) = ?', ['adena'])
+                    ->when($cp?->chronicle, fn ($q) => $q->where('chronicle', $cp->chronicle))
+                    ->first()
+                    ?? Item::whereRaw('LOWER(name) = ?', ['adena'])->first();
+                if (! $adenaItem) {
+                    return back()->withErrors(['adena_real' => 'No hay un item "Adena" configurado para tu crónica.']);
+                }
+                $adenaItemId = (int) $adenaItem->id;
+            }
+        }
+
+        if (empty($diff) && $adenaDelta === 0) {
             return back()->with('info', 'Sin cambios — los totales coinciden con el stock actual.');
         }
 
-        $imagePath = $this->storeRecheckImage($request->file('image_proof'), $cpId);
+        $imagePath = $request->hasFile('image_proof') ? $this->storeRecheckImage($request->file('image_proof'), $cpId) : null;
 
-        DB::transaction(function () use ($current, $cpId, $gains, $losses, $imagePath, $diff, $request) {
+        DB::transaction(function () use ($current, $cpId, $gains, $losses, $imagePath, $diff, $request, $adenaDelta, $adenaItemId) {
             $createReport = function (string $eventType, array $bucket) use ($current, $cpId, $imagePath) {
                 $report = LootReport::create([
                     'cp_id' => $cpId,
@@ -1630,22 +1652,63 @@ class PartyController extends Controller
             $gainReport = ! empty($gains) ? $createReport('WAREHOUSE_RECHECK_GAIN', $gains) : null;
             $lossReport = ! empty($losses) ? $createReport('WAREHOUSE_RECHECK_LOSS', $losses) : null;
 
+            $adenaReport = null;
+            if ($adenaDelta !== 0 && $adenaItemId) {
+                $adenaReport = LootReport::create([
+                    'cp_id' => $cpId,
+                    'requested_by_id' => $current->id,
+                    'event_type' => $adenaDelta > 0 ? 'WAREHOUSE_RECHECK_GAIN' : 'WAREHOUSE_RECHECK_LOSS',
+                    'status' => 'confirmed',
+                    'image_proof' => $imagePath,
+                ]);
+                LootEntry::create([
+                    'loot_report_id' => $adenaReport->id,
+                    'item_id' => $adenaItemId,
+                    'amount' => $adenaDelta, // signed: + adds adena, - removes
+                ]);
+            }
+
             AuditLog::create([
                 'entity_type' => 'LootReport',
-                'entity_id' => ($gainReport?->id ?? $lossReport?->id),
+                'entity_id' => ($gainReport?->id ?? $lossReport?->id ?? $adenaReport?->id),
                 'user_id' => $current->id,
                 'action' => 'WAREHOUSE_RECHECK',
                 'old_values' => null,
                 'new_values' => [
                     'note' => $request->input('note'),
                     'diff' => $diff,
+                    'adena_delta' => $adenaDelta,
                     'gain_report_id' => $gainReport?->id,
                     'loss_report_id' => $lossReport?->id,
+                    'adena_report_id' => $adenaReport?->id,
                 ],
             ]);
         });
 
         return back()->with('success', 'Recheck registrado. Stock ajustado.');
+    }
+
+    /**
+     * Warehouse adena currently recorded for a CP — same formula as index():
+     * confirmed, non-voided adena loot entries (minus payouts/grants) plus the
+     * ADENA_PAYOUT ledger. Used by the recheck adena reconciliation.
+     */
+    private function currentWarehouseAdena(int $cpId): int
+    {
+        $adenaIn = LootEntry::query()
+            ->join('items', 'items.id', '=', 'loot_entries.item_id')
+            ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+            ->where('loot_reports.cp_id', $cpId)
+            ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
+            ->whereNotIn('loot_reports.event_type', ['ADENA_PAYOUT', 'ADENA_GRANT'])
+            ->whereRaw('LOWER(items.name) = ?', ['adena'])
+            ->sum('loot_entries.amount');
+        $adenaPaidSum = PointsLog::where('cp_id', $cpId)
+            ->where('action_type', 'ADENA_PAYOUT')
+            ->sum('adena');
+
+        return max(0, (int) $adenaIn + (int) $adenaPaidSum);
     }
 
     private function storeRecheckImage($file, int $cpId): string
