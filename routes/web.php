@@ -391,6 +391,8 @@ Route::middleware('auth')->group(function () {
     // Adena Ledger
     Route::post('/adena/transaction', [AdenaActionController::class, 'store'])->name('adena.transaction.store');
     Route::post('/adena/donate', [AdenaActionController::class, 'donate'])->name('adena.donate');
+    Route::post('/donations/item', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'donateItem'])->name('donations.item');
+    Route::patch('/donations/weekly-goal', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'setWeeklyGoal'])->name('donations.weekly_goal');
 
     Route::post('/alerts/{alert}/read', function (Request $request, $alert) {
         $user = $request->user();

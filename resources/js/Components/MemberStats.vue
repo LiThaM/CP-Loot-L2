@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { Line } from 'vue-chartjs';
 import emitter from '@/event-bus';
+import DonationsPanel from '@/Components/Dashboard/DonationsPanel.vue';
 import {
     Chart as ChartJS,
     Title,
@@ -42,11 +43,16 @@ const props = defineProps({
     cpInsights: {
         type: Object,
         default: null
+    },
+    donationGoal: {
+        type: Object,
+        default: null
     }
 });
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
+const topDonationsWeek = computed(() => (props.cpInsights || {}).topDonationsWeek || []);
 const currentCp = computed(() => currentUser.value?.cp || null);
 const isPending = computed(() => (currentUser.value?.membership_status ?? 'approved') === 'pending');
 const locale = computed(() => page.props.app?.locale || 'en');
@@ -297,6 +303,8 @@ const topAdenaWeek = computed(() => insights.value.topAdenaWeek || []);
             </div>
 
             <div class="xl:col-span-4 space-y-6">
+                <DonationsPanel :donation-goal="donationGoal" :top-donations="topDonationsWeek" :locale-tag="localeTag" />
+
                 <div class="l2-panel p-5 rounded-lg border border-gray-200 dark:border-white/5 bg-white/70 dark:bg-black/20">
                     <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-400">{{ $t('member.summary.title') }}</div>
 

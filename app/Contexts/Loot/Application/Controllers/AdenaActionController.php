@@ -144,6 +144,16 @@ class AdenaActionController extends Controller
                 'description' => 'Donación voluntaria al fondo de la CP',
             ]);
 
+            // Recognition ledger (donations ranking + weekly goal KPI). Kept
+            // separate from the balance-affecting PointsLog above.
+            \App\Contexts\Party\Domain\Models\CpDonation::create([
+                'cp_id' => $user->cp_id,
+                'user_id' => $user->id,
+                'type' => 'adena',
+                'adena_value' => $amount,
+                'note' => 'Donación de adena',
+            ]);
+
             AuditLog::create([
                 'entity_type' => 'User',
                 'entity_id' => $user->id,

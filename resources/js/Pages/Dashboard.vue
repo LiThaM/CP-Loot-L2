@@ -48,6 +48,10 @@ const props = defineProps({
     supportTickets: {
         type: Array,
         default: () => []
+    },
+    donationGoal: {
+        type: Object,
+        default: null
     }
 });
 </script>
@@ -73,8 +77,8 @@ const props = defineProps({
                 <CpStats v-if="selectedCp" :stats="stats" :selectedCp="selectedCp" :chartData="chartData" :cpInsights="cpInsights" />
                 <AdminStats v-else :stats="stats" :cps="cps" :chartData="chartData" :cpRequests="cpRequests" :supportTickets="supportTickets" />
             </template>
-            <CpStats v-else-if="roleName === 'cp_leader'" :stats="stats" :chartData="chartData" :members="members" :cpInsights="cpInsights" />
-            <MemberStats v-else :stats="stats" :chartData="chartData" :members="members" :cpInsights="cpInsights" />
+            <CpStats v-else-if="roleName === 'cp_leader'" :stats="stats" :chartData="chartData" :members="members" :cpInsights="cpInsights" :donationGoal="donationGoal" />
+            <MemberStats v-else :stats="stats" :chartData="chartData" :members="members" :cpInsights="cpInsights" :donationGoal="donationGoal" />
         </div>
     </MainLayout>
 </template>

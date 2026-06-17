@@ -4,6 +4,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Line } from 'vue-chartjs';
 import emitter from '../event-bus';
 import { showToast, showAlert } from '@/utils/swal';
+import DonationsPanel from '@/Components/Dashboard/DonationsPanel.vue';
 import {
   Chart as ChartJS,
   Title,
@@ -41,8 +42,14 @@ const props = defineProps({
     cpInsights: {
         type: Object,
         default: null
+    },
+    donationGoal: {
+        type: Object,
+        default: null
     }
 });
+
+const topDonationsWeek = computed(() => (props.cpInsights || {}).topDonationsWeek || []);
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
@@ -345,6 +352,8 @@ const ringDash = (percent) => {
             </div>
 
             <div class="xl:col-span-4 space-y-6">
+                <DonationsPanel :donation-goal="donationGoal" :top-donations="topDonationsWeek" :locale-tag="localeTag" />
+
                 <div class="l2-panel p-5 rounded-lg border border-white/10 bg-gradient-to-b from-white/5 to-transparent backdrop-blur">
                     <div class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-300/80 mb-4">{{ $t('cp.metrics.title') }}</div>
                     <div class="grid grid-cols-2 gap-3">

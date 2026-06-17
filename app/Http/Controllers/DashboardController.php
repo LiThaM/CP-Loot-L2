@@ -7,6 +7,7 @@ use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Contexts\Party\Domain\Models\CpDonation;
 use App\Contexts\Party\Domain\Models\CpRequest;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ class DashboardController extends Controller
         $cpInsights = null;
         $cpRequests = [];
         $supportTickets = [];
+        $donationGoal = null;
 
         if ($role === 'admin') {
             $stats['total_cps'] = ConstParty::where('is_active', true)->count();
@@ -401,6 +403,32 @@ class DashboardController extends Controller
                 ->limit(8)
                 ->get();
 
+            // Donations (recognition ledger): rolling-7-day ranking + the
+            // weekly-goal KPI fed by adena + item donations to the CP fund.
+            $topDonationsWeek = CpDonation::query()
+                ->select([
+                    'users.id',
+                    'users.name',
+                    DB::raw('SUM(cp_donations.adena_value) as donated'),
+                    DB::raw('COUNT(cp_donations.id) as donations'),
+                ])
+                ->join('users', 'users.id', '=', 'cp_donations.user_id')
+                ->where('cp_donations.cp_id', $user->cp_id)
+                ->where('cp_donations.created_at', '>=', $since)
+                ->groupBy('users.id', 'users.name')
+                ->orderByDesc('donated')
+                ->limit(5)
+                ->get();
+
+            $donated7dAdena = (int) CpDonation::where('cp_id', $user->cp_id)
+                ->where('type', 'adena')
+                ->where('created_at', '>=', $since)
+                ->sum('adena_value');
+            $donated7dItems = (int) CpDonation::where('cp_id', $user->cp_id)
+                ->where('type', 'item')
+                ->where('created_at', '>=', $since)
+                ->sum('adena_value');
+
             $cpInsights = [
                 'cpAdenaOwed' => $cpAdenaOwed,
                 'cpAdenaPaid' => $cpAdenaPaid,
@@ -409,7 +437,16 @@ class DashboardController extends Controller
                 'topActivityWeek' => $topActivityWeek,
                 'topAdenaWeek' => $topAdenaWeek,
                 'topAdenaOwed' => $topAdenaOwed,
+                'topDonationsWeek' => $topDonationsWeek,
                 'latestItems' => $latestItems,
+            ];
+
+            $donationGoal = [
+                'target' => optional(ConstParty::find($user->cp_id))->weekly_donation_goal,
+                'donated_7d' => $donated7dAdena + $donated7dItems,
+                'adena_7d' => $donated7dAdena,
+                'items_7d' => $donated7dItems,
+                'can_set' => in_array($role, ['admin', 'cp_leader'], true),
             ];
         }
 
@@ -421,6 +458,7 @@ class DashboardController extends Controller
             'cpInsights' => $cpInsights,
             'cpRequests' => $cpRequests,
             'supportTickets' => $supportTickets,
+            'donationGoal' => $donationGoal,
         ]);
     }
 }
