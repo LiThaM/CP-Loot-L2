@@ -1843,8 +1843,8 @@ watch(buySearch, throttle(async (val) => {
                         </div>
                     </div>
 
-                    <div class="mt-5 grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3">
-                        <div class="relative">
+                    <div class="mt-5 flex flex-col md:flex-row md:items-center gap-3">
+                        <div class="relative md:flex-1">
                             <input v-model="warehouseFilter" type="text" :placeholder="$t('party.vault.filter_placeholder')" class="w-full bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-xl focus:ring-purple-600 pl-10 h-11 dark:bg-black/50 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500">
                             <svg class="w-5 h-5 text-gray-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
