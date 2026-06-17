@@ -116,11 +116,14 @@ class LootActionController extends Controller
     {
         $user = $request->user();
         $isAdmin = $user->role->name === 'admin';
-        $isLeader = $user->role->name === 'cp_leader';
-        $isFounder = $user->cp_id && $user->cp && $user->id === $user->cp->leader_id;
+        // Officers who may approve/resolve pending reports — matches the
+        // `canApprovePending` gate the loot page is rendered with (admin +
+        // CP leader + accountant). Previously this excluded the accountant,
+        // so approving a donation/report 403'd despite the button showing.
+        $canResolve = in_array($user->role?->name, ['cp_leader', 'accountant'], true);
 
         if (! $isAdmin) {
-            if (! $isLeader || $user->cp_id !== $report->cp_id) {
+            if (! $canResolve || $user->cp_id !== $report->cp_id) {
                 abort(403, 'No tienes permiso para resolver este reporte de loot.');
             }
         }

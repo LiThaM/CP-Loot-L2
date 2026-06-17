@@ -28,6 +28,11 @@ const swal = useSwal();
 // Points display: no trailing decimals (e.g. 25, 24.75), never "25.00".
 const fmtPts = (n) => String(Math.round((Number(n) || 0) * 100) / 100);
 
+// Highlight the viewer's own row in the leaderboard.
+const currentUserId = computed(() => page.props.auth?.user?.id ?? null);
+const isMe = (id) => currentUserId.value != null && Number(id) === Number(currentUserId.value);
+const meLabel = computed(() => (page.props.app?.locale === 'es' ? 'tú' : 'you'));
+
 const showAddModal = ref(false);
 const filterMember = ref('');
 const filterBadge = ref('');
@@ -117,13 +122,17 @@ const podiumStyle = (idx) => {
                 <div v-if="leaderboard.length === 0" class="text-center py-8 text-sm text-gray-500">{{ t('tracker.leaderboard.empty') }}</div>
                 <ol v-else class="space-y-2">
                     <li v-for="(row, idx) in leaderboard" :key="row.user_id"
-                        class="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800"
-                        :class="podiumStyle(idx)">
+                        class="flex items-center justify-between p-3 rounded-xl border"
+                        :class="isMe(row.user_id)
+                            ? 'border-amber-400/70 ring-1 ring-amber-400/50 bg-amber-50/80 dark:border-amber-400/40 dark:bg-amber-900/20'
+                            : ['border-gray-200 dark:border-gray-800', podiumStyle(idx)]">
                         <div class="flex items-center gap-3">
                             <span class="font-black text-lg w-8 text-center" :class="idx < 3 ? 'text-amber-600 dark:text-amber-300' : 'text-gray-400'">
                                 {{ idx + 1 }}
                             </span>
-                            <span class="font-bold text-sm text-gray-900 dark:text-gray-100">{{ row.name }}</span>
+                            <span class="font-bold text-sm text-gray-900 dark:text-gray-100">
+                                {{ row.name }}<span v-if="isMe(row.user_id)" class="ml-1 text-[10px] font-black uppercase text-amber-600 dark:text-amber-300">· {{ meLabel }}</span>
+                            </span>
                             <span class="text-[10px] text-gray-500 uppercase tracking-widest">{{ row.entries }} {{ t('tracker.leaderboard.entries') }}</span>
                         </div>
                         <span class="font-cinzel font-bold text-base text-amber-700 dark:text-amber-300">{{ fmtPts(row.total_points) }}</span>

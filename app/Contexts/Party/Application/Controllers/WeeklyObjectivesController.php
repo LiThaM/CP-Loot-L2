@@ -18,7 +18,7 @@ class WeeklyObjectivesController extends Controller
     public function store(Request $request, TrackerContributionService $tracker)
     {
         $user = $request->user();
-        if (! in_array($user->role?->name, ['admin', 'cp_leader'], true)) {
+        if (! in_array($user->role?->name, ['admin', 'cp_leader', 'accountant'], true)) {
             abort(403, 'Solo el líder de la CP puede gestionar objetivos.');
         }
         if (! $user->cp_id) {
@@ -60,7 +60,7 @@ class WeeklyObjectivesController extends Controller
     public function destroy(Request $request, CpWeeklyObjective $objective)
     {
         $user = $request->user();
-        if (! in_array($user->role?->name, ['admin', 'cp_leader'], true)) {
+        if (! in_array($user->role?->name, ['admin', 'cp_leader', 'accountant'], true)) {
             abort(403);
         }
         if ($user->role?->name !== 'admin' && $objective->cp_id !== $user->cp_id) {

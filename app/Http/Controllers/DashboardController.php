@@ -481,7 +481,7 @@ class DashboardController extends Controller
                 'trackerRanking' => $trackerRanking,
                 'trackerEnabled' => $trackerEnabled,
                 'weeklyObjectives' => $weeklyObjectives,
-                'canManageObjectives' => in_array($role, ['admin', 'cp_leader'], true),
+                'canManageObjectives' => in_array($role, ['admin', 'cp_leader', 'accountant'], true),
                 'latestItems' => $latestItems,
             ];
         }
