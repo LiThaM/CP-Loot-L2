@@ -2,8 +2,10 @@
 
 namespace App\Contexts\Party\Application\Controllers;
 
+use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Loot\Domain\Models\Item;
-use App\Contexts\Party\Domain\Models\CpDonation;
+use App\Contexts\Loot\Domain\Models\LootEntry;
+use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,11 +13,11 @@ use Illuminate\Support\Facades\DB;
 class DonationsController extends Controller
 {
     /**
-     * A member donates an item to the CP common fund. This is a recognition
-     * record (it feeds the donations ranking + weekly goal KPI); it does NOT
-     * touch the loot/warehouse balance pipeline. The item is valued at its
-     * effective price (market price, NPC sell-back as fallback) so adena and
-     * item donations are comparable in the KPI.
+     * A member donates an item to the CP. Recorded as a PENDING LootReport
+     * (event_type=DONATION) so it shows in /loot and the leader reviews it.
+     * On confirm: tracker CPs award the donor DKP points (value ÷ divisor ×
+     * objective multiplier); non-tracker CPs just bank the item. See
+     * LootActionController@resolve + TrackerContributionService.
      */
     public function donateItem(Request $request)
     {
@@ -27,48 +29,77 @@ class DonationsController extends Controller
         $data = $request->validate([
             'item_id' => ['required', 'integer', 'exists:items,id'],
             'quantity' => ['required', 'integer', 'min:1', 'max:9999999999'],
-            'note' => ['nullable', 'string', 'max:255'],
+            'image_proof' => ['nullable', 'image', 'max:3072'],
         ]);
 
-        $item = Item::find($data['item_id']);
-        $unit = (int) ($item->market_price ?? $item->npc_sell_price ?? 0);
-        $value = $unit * (int) $data['quantity'];
+        $this->createDonationReport($user, (int) $data['item_id'], (int) $data['quantity'], $request->file('image_proof'));
 
-        CpDonation::create([
-            'cp_id' => $user->cp_id,
-            'user_id' => $user->id,
-            'type' => 'item',
-            'item_id' => $item->id,
-            'quantity' => (int) $data['quantity'],
-            'adena_value' => $value,
-            'note' => $data['note'] ?? $item->name,
-        ]);
-
-        return back()->with('success', '¡Gracias por tu donación de items al fondo de la CP!');
+        return back()->with('success', 'Donación registrada. Pendiente de aprobación del líder.');
     }
 
     /**
-     * Leader/admin sets (or clears) their CP's rolling-7-day donation goal.
-     * Passing null or 0 clears it (KPI hidden).
+     * A member donates adena to the CP — modelled as a DONATION LootReport
+     * whose single entry is the "Adena" item of the CP's chronicle.
      */
-    public function setWeeklyGoal(Request $request)
+    public function donateAdena(Request $request)
     {
         $user = $request->user();
-        $role = $user->role?->name;
-        if (! in_array($role, ['admin', 'cp_leader'], true)) {
-            abort(403, 'Solo el líder de la CP puede fijar el objetivo semanal.');
-        }
-        if (! $user->cp) {
+        if (! $user->cp_id) {
             abort(403, 'No perteneces a ninguna CP.');
         }
 
         $data = $request->validate([
-            'goal' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'amount' => ['required', 'integer', 'min:1', 'max:9999999999'],
+            'image_proof' => ['nullable', 'image', 'max:3072'],
         ]);
 
-        $goal = (int) ($data['goal'] ?? 0);
-        $user->cp->forceFill(['weekly_donation_goal' => $goal > 0 ? $goal : null])->save();
+        $adenaItem = $this->adenaItemFor($user->cp);
+        if (! $adenaItem) {
+            return back()->withErrors(['amount' => 'No hay un item "Adena" configurado para tu crónica.']);
+        }
 
-        return back()->with('success', 'Objetivo semanal actualizado.');
+        $this->createDonationReport($user, $adenaItem->id, (int) $data['amount'], $request->file('image_proof'));
+
+        return back()->with('success', 'Donación de adena registrada. Pendiente de aprobación del líder.');
+    }
+
+    private function createDonationReport(User $user, int $itemId, int $amount, $imageFile = null): void
+    {
+        DB::transaction(function () use ($user, $itemId, $amount, $imageFile) {
+            $report = LootReport::create([
+                'cp_id' => $user->cp_id,
+                'requested_by_id' => $user->id,
+                'event_type' => 'DONATION',
+                'status' => 'pending',
+                'image_proof' => null,
+                'recipient_ids' => null,
+            ]);
+
+            if ($imageFile) {
+                $ext = $imageFile->extension() ?: ($imageFile->guessExtension() ?: 'jpg');
+                $path = $imageFile->storeAs("loot/{$user->cp_id}", "{$report->id}.{$ext}", 'public');
+                $report->image_proof = $path;
+                $report->save();
+            }
+
+            LootEntry::create([
+                'loot_report_id' => $report->id,
+                'item_id' => $itemId,
+                'amount' => $amount,
+            ]);
+        });
+    }
+
+    private function adenaItemFor($cp): ?Item
+    {
+        $base = Item::whereRaw('LOWER(name) = ?', ['adena']);
+        if ($cp && $cp->chronicle) {
+            $byChronicle = (clone $base)->where('chronicle', $cp->chronicle)->first();
+            if ($byChronicle) {
+                return $byChronicle;
+            }
+        }
+
+        return $base->first();
     }
 }

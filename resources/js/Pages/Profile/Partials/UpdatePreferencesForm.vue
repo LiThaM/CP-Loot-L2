@@ -11,6 +11,21 @@ const form = useForm({
     changelog_emails_enabled: user.changelog_emails_enabled ?? true,
 });
 
+// Apply the theme immediately on click for instant feedback (mirrors the
+// navbar toggle); the save persists it and MainLayout re-applies on the prop
+// change too.
+const selectTheme = (value) => {
+    form.theme_preference = value;
+    const isDark = value === 'dark'
+        ? true
+        : value === 'light'
+            ? false
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', isDark);
+    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (_) {}
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { dark: isDark } }));
+};
+
 const submit = () => {
     form.patch(route('profile.update'), {
         preserveScroll: true,
@@ -44,7 +59,7 @@ const submit = () => {
                         ]"
                         :key="opt.value"
                         type="button"
-                        @click="form.theme_preference = opt.value"
+                        @click="selectTheme(opt.value)"
                         :class="[
                             'flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border-2 transition-all font-bold text-xs uppercase tracking-widest',
                             form.theme_preference === opt.value

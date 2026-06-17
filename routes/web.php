@@ -390,9 +390,14 @@ Route::middleware('auth')->group(function () {
 
     // Adena Ledger
     Route::post('/adena/transaction', [AdenaActionController::class, 'store'])->name('adena.transaction.store');
-    Route::post('/adena/donate', [AdenaActionController::class, 'donate'])->name('adena.donate');
+    // Donations to the CP fund — recorded as pending DONATION loot reports
+    // (reviewable in /loot). Tracker CPs award the donor DKP on confirm.
+    Route::post('/donations/adena', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'donateAdena'])->name('donations.adena');
     Route::post('/donations/item', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'donateItem'])->name('donations.item');
-    Route::patch('/donations/weekly-goal', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'setWeeklyGoal'])->name('donations.weekly_goal');
+
+    // Weekly objectives (items the CP hunts; multiplier boosts tracker points).
+    Route::post('/objectives', [\App\Contexts\Party\Application\Controllers\WeeklyObjectivesController::class, 'store'])->name('objectives.store');
+    Route::delete('/objectives/{objective}', [\App\Contexts\Party\Application\Controllers\WeeklyObjectivesController::class, 'destroy'])->name('objectives.destroy');
 
     Route::post('/alerts/{alert}/read', function (Request $request, $alert) {
         $user = $request->user();

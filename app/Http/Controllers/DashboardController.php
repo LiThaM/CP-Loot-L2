@@ -7,7 +7,6 @@ use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Party\Domain\Models\ConstParty;
-use App\Contexts\Party\Domain\Models\CpDonation;
 use App\Contexts\Party\Domain\Models\CpRequest;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use Illuminate\Http\Request;
@@ -35,7 +34,6 @@ class DashboardController extends Controller
         $cpInsights = null;
         $cpRequests = [];
         $supportTickets = [];
-        $donationGoal = null;
 
         if ($role === 'admin') {
             $stats['total_cps'] = ConstParty::where('is_active', true)->count();
@@ -403,31 +401,73 @@ class DashboardController extends Controller
                 ->limit(8)
                 ->get();
 
-            // Donations (recognition ledger): rolling-7-day ranking + the
-            // weekly-goal KPI fed by adena + item donations to the CP fund.
-            $topDonationsWeek = CpDonation::query()
-                ->select([
+            // Donations now live as DONATION loot reports (reviewable in /loot).
+            // Non-tracker CPs rank donors by donated value (last 7 days): adena
+            // entries count raw, item entries at market (NPC fallback) price.
+            $donationValueExpr = "SUM(CASE WHEN LOWER(items.name) = 'adena' THEN loot_entries.amount ELSE loot_entries.amount * COALESCE(items.market_price, items.npc_sell_price, 0) END)";
+            $topDonationsWeek = DB::table('loot_reports')
+                ->join('loot_entries', 'loot_entries.loot_report_id', '=', 'loot_reports.id')
+                ->join('items', 'items.id', '=', 'loot_entries.item_id')
+                ->join('users', 'users.id', '=', 'loot_reports.requested_by_id')
+                ->where('loot_reports.cp_id', $user->cp_id)
+                ->where('loot_reports.event_type', 'DONATION')
+                ->where('loot_reports.status', 'confirmed')
+                ->whereNull('loot_reports.voided_at')
+                ->where('loot_reports.created_at', '>=', $since)
+                ->groupBy('users.id', 'users.name')
+                ->orderByDesc(DB::raw($donationValueExpr))
+                ->limit(5)
+                ->get([
                     'users.id',
                     'users.name',
-                    DB::raw('SUM(cp_donations.adena_value) as donated'),
-                    DB::raw('COUNT(cp_donations.id) as donations'),
-                ])
-                ->join('users', 'users.id', '=', 'cp_donations.user_id')
-                ->where('cp_donations.cp_id', $user->cp_id)
-                ->where('cp_donations.created_at', '>=', $since)
-                ->groupBy('users.id', 'users.name')
-                ->orderByDesc('donated')
-                ->limit(5)
-                ->get();
+                    DB::raw($donationValueExpr.' as donated'),
+                    DB::raw('COUNT(DISTINCT loot_reports.id) as donations'),
+                ]);
 
-            $donated7dAdena = (int) CpDonation::where('cp_id', $user->cp_id)
-                ->where('type', 'adena')
-                ->where('created_at', '>=', $since)
-                ->sum('adena_value');
-            $donated7dItems = (int) CpDonation::where('cp_id', $user->cp_id)
-                ->where('type', 'item')
-                ->where('created_at', '>=', $since)
-                ->sum('adena_value');
+            // Tracker (DKP) standings — only for CPs running the value tracker.
+            $cpModel = ConstParty::find($user->cp_id);
+            $trackerEnabled = (bool) optional($cpModel)->tracker_enabled;
+            $trackerRanking = [];
+            if ($trackerEnabled) {
+                $trackerRanking = DB::table('tracker_contributions')
+                    ->join('users', 'users.id', '=', 'tracker_contributions.user_id')
+                    ->where('tracker_contributions.cp_id', $user->cp_id)
+                    ->groupBy('tracker_contributions.user_id', 'users.name')
+                    ->orderByDesc(DB::raw('SUM(tracker_contributions.points)'))
+                    ->limit(5)
+                    ->get([
+                        'tracker_contributions.user_id as id',
+                        'users.name',
+                        DB::raw('SUM(tracker_contributions.points) as points'),
+                        DB::raw('COUNT(tracker_contributions.id) as entries'),
+                    ]);
+            }
+
+            // Weekly objectives (items the CP hunts) with computed progress.
+            $trackerService = app(\App\Contexts\Party\Application\Services\TrackerContributionService::class);
+            $weeklyObjectives = \App\Contexts\Party\Domain\Models\CpWeeklyObjective::with('item:id,name,grade,image_url')
+                ->where('cp_id', $user->cp_id)
+                ->orderBy('completed_at') // active (null) first
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($o) use ($trackerService) {
+                    $progress = $trackerService->objectiveProgress($o->cp_id, $o->item_id, $o->created_at);
+
+                    return [
+                        'id' => $o->id,
+                        'item' => $o->item ? [
+                            'id' => $o->item->id,
+                            'name' => $o->item->name,
+                            'grade' => $o->item->grade,
+                            'image_url' => $o->item->image_url,
+                        ] : null,
+                        'target_quantity' => (int) $o->target_quantity,
+                        'multiplier' => (float) $o->multiplier,
+                        'progress' => $progress,
+                        'completed' => $o->completed_at !== null || $progress >= (int) $o->target_quantity,
+                    ];
+                })
+                ->values();
 
             $cpInsights = [
                 'cpAdenaOwed' => $cpAdenaOwed,
@@ -438,15 +478,11 @@ class DashboardController extends Controller
                 'topAdenaWeek' => $topAdenaWeek,
                 'topAdenaOwed' => $topAdenaOwed,
                 'topDonationsWeek' => $topDonationsWeek,
+                'trackerRanking' => $trackerRanking,
+                'trackerEnabled' => $trackerEnabled,
+                'weeklyObjectives' => $weeklyObjectives,
+                'canManageObjectives' => in_array($role, ['admin', 'cp_leader'], true),
                 'latestItems' => $latestItems,
-            ];
-
-            $donationGoal = [
-                'target' => optional(ConstParty::find($user->cp_id))->weekly_donation_goal,
-                'donated_7d' => $donated7dAdena + $donated7dItems,
-                'adena_7d' => $donated7dAdena,
-                'items_7d' => $donated7dItems,
-                'can_set' => in_array($role, ['admin', 'cp_leader'], true),
             ];
         }
 
@@ -458,7 +494,6 @@ class DashboardController extends Controller
             'cpInsights' => $cpInsights,
             'cpRequests' => $cpRequests,
             'supportTickets' => $supportTickets,
-            'donationGoal' => $donationGoal,
         ]);
     }
 }

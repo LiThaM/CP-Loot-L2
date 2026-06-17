@@ -44,7 +44,7 @@ class LootSearchController extends Controller
         $paginator = $query
             ->orderByDesc('usage_count')
             ->orderBy('name')
-            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle', 'market_price', 'usage_count'], 'page', $page);
+            ->paginate($perPage, ['id', 'name', 'grade', 'icon_name', 'image_url', 'category', 'chronicle', 'market_price', 'npc_sell_price', 'usage_count'], 'page', $page);
 
         return response()->json([
             'items' => $paginator->items(),

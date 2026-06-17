@@ -6,7 +6,7 @@
 
 import { formatAdenaShort, formatAdenaFull, formatQty } from './adena';
 
-const EVENT_ICONS = { FARM: '🧺', BOSS: '⚔️', EPIC: '👑', SIEGE: '🏰' };
+const EVENT_ICONS = { FARM: '🧺', BOSS: '⚔️', EPIC: '👑', SIEGE: '🏰', DONATION: '🎁' };
 export const getEventIcon = (type) => EVENT_ICONS[type] || '✨';
 
 const STATUS_COLORS = {
@@ -16,7 +16,7 @@ const STATUS_COLORS = {
 };
 export const getStatusColor = (status) => STATUS_COLORS[status] || 'text-gray-500';
 
-const ADENA_GAINS = new Set(['FARM', 'BOSS', 'EPIC', 'SIEGE', 'ADENA_GRANT', 'SELL', 'VENTA', 'RETURN', 'ADMIN_ADJUST_IN', 'ADENA_GAIN']);
+const ADENA_GAINS = new Set(['FARM', 'BOSS', 'EPIC', 'SIEGE', 'ADENA_GRANT', 'SELL', 'VENTA', 'RETURN', 'ADMIN_ADJUST_IN', 'ADENA_GAIN', 'DONATION']);
 const ADENA_LOSSES = new Set(['ADENA_PAYOUT', 'WAREHOUSE_CRAFT_CONSUME', 'ADMIN_ADJUST_OUT', 'CRAFT', 'ADENA_OFFSET', 'BUY', 'COMPRA']);
 
 const isAdenaEntry = (entry) => String(entry?.item?.name || '').toLowerCase() === 'adena';

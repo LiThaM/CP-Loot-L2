@@ -4,6 +4,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { Line } from 'vue-chartjs';
 import emitter from '@/event-bus';
 import DonationsPanel from '@/Components/Dashboard/DonationsPanel.vue';
+import WeeklyObjectivesCard from '@/Components/Dashboard/WeeklyObjectivesCard.vue';
 import DashboardGrid from '@/Components/Dashboard/DashboardGrid.vue';
 import {
     Chart as ChartJS,
@@ -44,17 +45,18 @@ const props = defineProps({
     cpInsights: {
         type: Object,
         default: null
-    },
-    donationGoal: {
-        type: Object,
-        default: null
     }
 });
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
 const topDonationsWeek = computed(() => (props.cpInsights || {}).topDonationsWeek || []);
+const trackerEnabled = computed(() => !!(props.cpInsights || {}).trackerEnabled);
+const trackerRanking = computed(() => (props.cpInsights || {}).trackerRanking || []);
+const weeklyObjectives = computed(() => (props.cpInsights || {}).weeklyObjectives || []);
+const canManageObjectives = computed(() => !!(props.cpInsights || {}).canManageObjectives);
 const currentCp = computed(() => currentUser.value?.cp || null);
+const imageProofRequired = computed(() => !!(currentUser.value?.cp?.image_proof_required));
 const isPending = computed(() => (currentUser.value?.membership_status ?? 'approved') === 'pending');
 const locale = computed(() => page.props.app?.locale || 'en');
 const localeTag = computed(() => (locale.value === 'es' ? 'es-ES' : 'en-US'));
@@ -155,6 +157,7 @@ const widgets = computed(() => {
         { key: 'party_status',     span: 2, label: es ? 'Estado de CP' : 'Party status' },
         { key: 'activity_chart',   span: 2, label: es ? 'Actividad' : 'Activity' },
         { key: 'donations',        span: 1, label: es ? 'Donaciones' : 'Donations' },
+        { key: 'weekly_objectives', span: 1, label: es ? 'Objetivos' : 'Objectives' },
         { key: 'cp_latest_drops',  span: 1, label: es ? 'Drops de la CP' : 'CP drops' },
         { key: 'my_latest_items',  span: 1, label: es ? 'Mis items' : 'My items' },
         { key: 'personal_summary', span: 1, label: es ? 'Resumen personal' : 'Personal summary' },
@@ -255,7 +258,20 @@ const widgets = computed(() => {
             </template>
 
             <template #donations>
-                <DonationsPanel :donation-goal="donationGoal" :top-donations="topDonationsWeek" :locale-tag="localeTag" />
+                <DonationsPanel
+                    :tracker-enabled="trackerEnabled"
+                    :tracker-ranking="trackerRanking"
+                    :top-donations="topDonationsWeek"
+                    :image-proof-required="imageProofRequired"
+                    :locale-tag="localeTag" />
+            </template>
+
+            <template #weekly_objectives>
+                <WeeklyObjectivesCard
+                    :objectives="weeklyObjectives"
+                    :can-manage="canManageObjectives"
+                    :tracker-enabled="trackerEnabled"
+                    :locale-tag="localeTag" />
             </template>
 
             <template #my_latest_items>

@@ -147,6 +147,41 @@ class LootActionController extends Controller
             return back()->with('success', $request->status === 'confirmed' ? 'Devolución aceptada.' : 'Devolución rechazada.');
         }
 
+        // Donations: confirm awards the DONOR. With tracker → DKP points (no
+        // balance change, it's a gift). Without tracker → donated adena raises
+        // what the CP owes the donor; donated items count as CP warehouse gains
+        // via the confirmed report itself. No attendee split / distribution.
+        if ($report->event_type === 'DONATION') {
+            if ($request->status === 'rejected') {
+                $report->update(['status' => 'rejected']);
+
+                return back()->with('success', 'Donación rechazada.');
+            }
+            $report->update(['status' => 'confirmed']);
+            $fresh = $report->fresh()->load('cp');
+            $cp = $fresh->cp;
+            if ($cp && $cp->tracker_enabled) {
+                $this->trackerService->recordDonationFromReport($fresh);
+            } else {
+                $entries = LootEntry::where('loot_report_id', $report->id)->with('item')->get();
+                $adena = (int) $entries
+                    ->filter(fn ($e) => strtolower((string) ($e->item->name ?? '')) === 'adena')
+                    ->sum('amount');
+                if ($adena > 0) {
+                    PointsLog::create([
+                        'cp_id' => $report->cp_id,
+                        'user_id' => $report->requested_by_id,
+                        'action_type' => 'ADENA_GAIN',
+                        'points' => 0,
+                        'adena' => $adena,
+                        'description' => 'Donación de adena al fondo (reporte #'.$report->id.')',
+                    ]);
+                }
+            }
+
+            return back()->with('success', 'Donación confirmada.');
+        }
+
         if ($request->status === 'rejected') {
             $report->update(['status' => 'rejected']);
 

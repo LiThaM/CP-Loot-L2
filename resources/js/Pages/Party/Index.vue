@@ -343,7 +343,7 @@ const donateAdena = async () => {
     });
 
     if (amount) {
-        router.post(route('adena.donate'), { amount: parseInt(amount) }, {
+        router.post(route('donations.adena'), { amount: parseInt(amount) }, {
             preserveScroll: true,
             onSuccess: () => showToast(t('party.donation.success')),
         });

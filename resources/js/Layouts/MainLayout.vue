@@ -116,30 +116,38 @@ const handleLanguageAutomation = () => {
     }
 };
 
+let themeMedia = null;
+let themeMediaHandler = null;
 const handleThemeAutomation = () => {
     const pref = user.value?.theme_preference ?? 'system';
 
-    if (pref === 'light') {
-        darkMode.value = false;
-        document.documentElement.classList.remove('dark');
-        return;
+    // Detach any previous 'system' listener — the preference may have changed.
+    if (themeMedia && themeMediaHandler) {
+        themeMedia.removeEventListener('change', themeMediaHandler);
+        themeMedia = null;
+        themeMediaHandler = null;
     }
-    if (pref === 'dark') {
-        darkMode.value = true;
-        document.documentElement.classList.add('dark');
-        return;
-    }
-    // 'system': follow OS
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const updateTheme = (isDark) => {
+
+    const applyDark = (isDark) => {
         darkMode.value = isDark;
         document.documentElement.classList.toggle('dark', isDark);
+        try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (_) {}
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { dark: isDark } }));
     };
-    
-    updateTheme(mediaQuery.matches);
-    mediaQuery.addEventListener('change', (e) => updateTheme(e.matches));
+
+    if (pref === 'light') { applyDark(false); return; }
+    if (pref === 'dark') { applyDark(true); return; }
+
+    // 'system': follow the OS and keep following changes.
+    themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    themeMediaHandler = (e) => applyDark(e.matches);
+    applyDark(themeMedia.matches);
+    themeMedia.addEventListener('change', themeMediaHandler);
 };
+
+// Re-apply when the saved preference changes (Inertia partial updates don't
+// remount the layout, so onMounted alone never re-runs after a save).
+watch(() => user.value?.theme_preference, () => handleThemeAutomation());
 
 const showingNavigationDropdown = ref(false);
 const darkMode = ref(false);
