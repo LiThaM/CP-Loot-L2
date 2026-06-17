@@ -16,9 +16,16 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        // `name`/`email` are `sometimes` because this same endpoint also
+        // receives the standalone *Preferences* form (theme/language/email
+        // opt-in), which doesn't carry the identity fields. Without
+        // `sometimes` a member saving e.g. dark mode got "the name field is
+        // required". When the fields ARE present (profile-info form) they're
+        // still required and validated.
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => [
+                'sometimes',
                 'required',
                 'string',
                 'lowercase',
