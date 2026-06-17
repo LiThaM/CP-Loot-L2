@@ -157,7 +157,9 @@ const submit = () => {
             </button>
         </div>
 
-        <!-- Donate modal (adena | item) -->
+        <!-- Donate modal (adena | item) — teleported so the card's backdrop-blur
+             doesn't trap the fixed overlay inside the widget (it'd clip the KPIs). -->
+        <Teleport to="body">
         <div v-if="mode" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="close">
             <div class="l2-panel w-full max-w-md rounded-2xl border-gray-700 overflow-hidden shadow-2xl flex flex-col scale-in">
                 <div class="bg-gradient-to-r from-amber-700 to-orange-600 p-4 flex justify-between items-center">
@@ -248,5 +250,6 @@ const submit = () => {
                 </div>
             </div>
         </div>
+        </Teleport>
     </div>
 </template>
