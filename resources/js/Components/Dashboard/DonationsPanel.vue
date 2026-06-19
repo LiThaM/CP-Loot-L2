@@ -32,8 +32,6 @@ const formatAdenaFull = (val) => {
     return new Intl.NumberFormat(props.localeTag).format(Number.isFinite(n) ? Math.trunc(n) : 0);
 };
 
-const reloadDonations = () => router.reload({ only: ['cpInsights'] });
-
 // ---- shared modal state ----
 const mode = ref(null); // 'adena' | 'item' | null
 const submitting = ref(false);
@@ -49,9 +47,17 @@ const selectedItem = ref(null);
 const itemQty = ref(1);
 let searchTimer = null;
 
-const openAdena = () => { mode.value = 'adena'; adenaAmount.value = ''; proof.value = null; };
-const openItem = () => { mode.value = 'item'; itemQuery.value = ''; itemResults.value = []; selectedItem.value = null; itemQty.value = 1; proof.value = null; };
-const close = () => { mode.value = null; };
+const resetForm = () => {
+    adenaAmount.value = '';
+    itemQuery.value = '';
+    itemResults.value = [];
+    selectedItem.value = null;
+    itemQty.value = 1;
+    proof.value = null;
+};
+const openAdena = () => { resetForm(); mode.value = 'adena'; };
+const openItem = () => { resetForm(); mode.value = 'item'; };
+const close = () => { mode.value = null; resetForm(); };
 
 const onProof = (e) => { proof.value = e.target.files?.[0] || null; };
 
@@ -85,7 +91,6 @@ const submit = () => {
     const onSuccess = () => {
         showToast(tr('Donación enviada. Pendiente de aprobación del líder.', 'Donation sent. Pending leader approval.'));
         close();
-        reloadDonations();
     };
     const opts = { preserveScroll: true, forceFormData: true, onSuccess, onFinish: () => { submitting.value = false; } };
 
