@@ -274,15 +274,20 @@ const eventTypes = [
     { value: 'SIEGE', labelKey: 'loot.event_types.siege', icon: '🏰' },
 ];
 
-const openLootModal = () => {
-    if (isAdmin.value) return; // SuperAdmin doesn't register loot
-    showLootModal.value = true;
+const resetLootForm = () => {
     lootForm.reset();
     itemSearch.value = '';
     searchResults.value = [];
     itemSearchPage.value = 1;
     itemSearchHasMore.value = false;
     itemSearchLoadingMore.value = false;
+    newExternalName.value = '';
+};
+
+const openLootModal = () => {
+    if (isAdmin.value) return; // SuperAdmin doesn't register loot
+    resetLootForm();
+    showLootModal.value = true;
 };
 
 // Global safety net: a request must never fail silently. Any Inertia request
@@ -431,6 +436,7 @@ const submitLoot = () => {
     lootForm.post(route('loot.report.store'), {
         onSuccess: () => {
             showLootModal.value = false;
+            resetLootForm();
         },
     });
 };
