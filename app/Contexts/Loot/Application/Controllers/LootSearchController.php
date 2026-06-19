@@ -57,6 +57,35 @@ class LootSearchController extends Controller
         ]);
     }
 
+    /**
+     * Full detail for a single item — powers the global item-detail modal
+     * (opened by clicking an item icon anywhere). Includes whether the
+     * current user may edit prices (admin / CP leader / accountant).
+     */
+    public function show(Request $request, Item $item)
+    {
+        $role = $request->user()?->role?->name;
+
+        return response()->json([
+            'id' => $item->id,
+            'name' => $item->name,
+            'grade' => $item->grade,
+            'category' => $item->category,
+            'chronicle' => $item->chronicle,
+            'icon_name' => $item->icon_name,
+            'image_url' => $item->image_url,
+            'source' => $item->source,
+            'base_points' => $item->base_points,
+            'external_id' => $item->external_id,
+            'description' => $item->description,
+            'market_price' => $item->market_price,
+            'npc_sell_price' => $item->npc_sell_price,
+            'market_price_updated_at' => $item->market_price_updated_at?->toIso8601String(),
+            'market_price_updated_by_name' => $item->market_price_updated_by_name,
+            'can_edit_prices' => in_array($role, ['admin', 'cp_leader', 'accountant'], true),
+        ]);
+    }
+
     public function updateMarketPrice(Request $request, Item $item)
     {
         // Only officers (admin / CP leader / accountant) may set the market

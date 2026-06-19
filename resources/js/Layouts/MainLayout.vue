@@ -11,6 +11,7 @@ import CpRulesModal from '@/Components/Layout/CpRulesModal.vue';
 import ChangelogModal from '@/Components/Layout/ChangelogModal.vue';
 import NavDropdown from '@/Components/Layout/NavDropdown.vue';
 import UserAvatar from '@/Components/UserAvatar.vue';
+import ItemDetailModal from '@/Components/ItemDetailModal.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -885,6 +886,9 @@ watch(() => alerts.value.items, (items) => {
             @accept="acknowledgeChangelog"
             @see-all="goToChangelog"
         />
+
+        <!-- Global item-detail modal (opened from any item icon via the event bus). -->
+        <ItemDetailModal />
 
         <div v-if="showSupportModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 dark:bg-black/90 backdrop-blur-sm transition-all duration-300">
             <div class="l2-panel w-[calc(100%-1rem)] sm:w-full max-w-lg max-h-[90vh] rounded-2xl border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl flex flex-col transition-all">

@@ -318,6 +318,13 @@ const rejectReport = async (report) => {
     }
 };
 
+// Open the global item-detail modal (view + inline price edit for officers)
+// from any item chip — no need to navigate to Items DB.
+const openItemDetail = (it) => {
+    if (!it?.id) return;
+    emitter.emit('open-item-detail', { id: it.id, name: it.name, image_url: it.image_url, grade: it.grade });
+};
+
 const resolveQuick = (report, status) => {
     if (isReportInflight(report.id)) return;
     markInflight(report.id, true);
@@ -614,8 +621,9 @@ onMounted(async () => {
                                 <div
                                     v-for="entry in getReportFilteredEntries(report).slice(0, getVisibleLimit(report.id, 12))"
                                     :key="entry.id"
-                                    class="flex items-center gap-2 bg-gray-100/50 dark:bg-black/20 border rounded-xl px-2 py-2 min-w-0"
+                                    class="flex items-center gap-2 bg-gray-100/50 dark:bg-black/20 border rounded-xl px-2 py-2 min-w-0 cursor-pointer hover:ring-1 hover:ring-purple-400/40 transition"
                                     :class="getItemToneClass(entry.item)"
+                                    @click.stop="openItemDetail(entry.item)"
                                 >
                                     <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-gray-100 dark:bg-black/40">
                                     <div v-else class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-gray-200 dark:bg-gray-900/60"></div>
@@ -753,8 +761,9 @@ onMounted(async () => {
                                 <div
                                     v-for="entry in getReportFilteredEntries(report).slice(0, getVisibleLimit(report.id, 9))"
                                     :key="entry.id"
-                                    class="flex items-center gap-2 bg-gray-100/50 dark:bg-black/20 border rounded-xl px-2 py-2 min-w-0"
+                                    class="flex items-center gap-2 bg-gray-100/50 dark:bg-black/20 border rounded-xl px-2 py-2 min-w-0 cursor-pointer hover:ring-1 hover:ring-purple-400/40 transition"
                                     :class="getItemToneClass(entry.item)"
+                                    @click.stop="openItemDetail(entry.item)"
                                 >
                                     <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-gray-100 dark:bg-black/40">
                                     <div v-else class="w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-gray-200 dark:bg-gray-900/60"></div>

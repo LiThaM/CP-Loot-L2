@@ -9,6 +9,7 @@ import {
     getItemToneClass,
     reportHasPoints as reportHasPointsRaw,
 } from '@/utils/loot';
+import emitter from '@/event-bus';
 
 const props = defineProps({
     report: { type: Object, required: true },
@@ -28,6 +29,11 @@ const entryAmountClass = (entry) => entryAmountClassRaw(props.report, entry);
 const reportHasPoints = computed(() => reportHasPointsRaw(props.report));
 
 const isAdenaEntry = (entry) => String(entry?.item?.name || '').toLowerCase() === 'adena';
+
+// Open the global item-detail modal (view + inline price edit for officers).
+const openItemDetail = (it) => {
+    if (it?.id) emitter.emit('open-item-detail', { id: it.id, name: it.name, image_url: it.image_url, grade: it.grade });
+};
 
 const entries = computed(() => (Array.isArray(props.report?.entries) ? props.report.entries : []));
 
@@ -116,8 +122,9 @@ const t = (key, fallback) => {
                 <div
                     v-for="entry in entries"
                     :key="entry.id"
-                    class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800"
+                    class="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800 cursor-pointer hover:ring-1 hover:ring-purple-400/40 transition"
                     :class="getItemToneClass(entry.item)"
+                    @click.stop="openItemDetail(entry.item)"
                 >
                     <img v-if="entry.item?.image_url" :src="entry.item.image_url" class="w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div v-else class="w-9 h-9 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60"></div>
