@@ -141,6 +141,63 @@ const formatDate = (val) => {
             </div>
         </section>
 
+        <!-- Clan System section -->
+        <section class="max-w-6xl mx-auto px-6 py-16">
+            <div class="rounded-3xl border border-amber-600/30 bg-amber-500/5 p-8 md:p-12">
+                <div class="flex items-start gap-4 mb-6">
+                    <span class="text-4xl">⚔️</span>
+                    <div>
+                        <h2 class="text-2xl font-bold text-amber-400">Sistema de Clanes</h2>
+                        <p class="text-slate-400 text-sm mt-1">Federación de CPs para organizaciones de alto nivel</p>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">👥</span>
+                            <h3 class="font-bold text-white">Federación de CPs</h3>
+                        </div>
+                        <p class="text-sm text-slate-400">Agrupa múltiples CPs con roles owner/admin/miembro. Cada CP mantiene privacidad de su loot y DKP interno.</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">📅</span>
+                            <h3 class="font-bold text-white">Eventos &amp; Asistencia</h3>
+                        </div>
+                        <p class="text-sm text-slate-400">Organiza raids, epics, sieges y Call to Arms. RSVP previo, confirmación de asistencia y aprobación por líderes de CP con DKP al finalizar.</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">🏆</span>
+                            <h3 class="font-bold text-white">DKP Global de Clan</h3>
+                        </div>
+                        <p class="text-sm text-slate-400">Ganado por asistencia a eventos aprobados. Gastado en subastas del vault. El owner puede ajustar puntos manualmente con historial completo.</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">💀</span>
+                            <h3 class="font-bold text-white">Raid Boss Tracker</h3>
+                        </div>
+                        <p class="text-sm text-slate-400">Seguimiento de raid bosses con estado (killed/alive/unknown). Countdown en tiempo real hasta la ventana de respawn (4h por defecto, configurable por boss).</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">🏦</span>
+                            <h3 class="font-bold text-white">Vault Compartido</h3>
+                        </div>
+                        <p class="text-sm text-slate-400">Almacén de ítems del clan. Asigna a una CP, sortea aleatoriamente o subasta con DKP. Countdown en tiempo real para las pujas.</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">🛒</span>
+                            <h3 class="font-bold text-white">Mercado Interno</h3>
+                        </div>
+                        <p class="text-sm text-slate-400">Tablón WTS/WTB de ítems y cuentas entre miembros del clan. Precio fijo o negociable con información de contacto.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Software changelog: each entry is a published release. Fully
              independent from the AdenaLedger web app changelog. -->
         <section id="changelog" v-if="releases.length" class="max-w-4xl mx-auto px-6 py-16">

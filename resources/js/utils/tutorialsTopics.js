@@ -24,6 +24,7 @@ import {
     Cog6ToothIcon,
     UserGroupIcon,
     CalculatorIcon,
+    ShieldCheckIcon,
 } from '@heroicons/vue/24/outline';
 
 // Topics every role gets to see.
@@ -52,4 +53,5 @@ export const leaderTopics = [
     { id: 'cp_settings',         icon: Cog6ToothIcon,                  accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 5, tour: 'party-settings' },
     { id: 'members_mgmt',        icon: UserGroupIcon,                  accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 6, tour: null },
     { id: 'craft_bulk_external', icon: CalculatorIcon,                 accent: 'text-indigo-700 dark:text-indigo-300',   bulletCount: 6, tour: 'craft-bulk' },
+    { id: 'clan_system',         icon: ShieldCheckIcon,                accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 7, tour: null },
 ];

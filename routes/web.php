@@ -2,6 +2,15 @@
 
 use App\Contexts\ClientApi\Domain\Models\Release;
 use App\Contexts\Loot\Application\Controllers\PublicCraftingController;
+use App\Contexts\Party\Application\Controllers\ClanController;
+use App\Contexts\Party\Application\Controllers\ClanDkpAdjustmentController;
+use App\Contexts\Party\Application\Controllers\ClanEventAttendeeController;
+use App\Contexts\Party\Application\Controllers\ClanEventController;
+use App\Contexts\Party\Application\Controllers\ClanEventRsvpController;
+use App\Contexts\Party\Application\Controllers\ClanMarketController;
+use App\Contexts\Party\Application\Controllers\ClanRaidBossController;
+use App\Contexts\Party\Application\Controllers\ClanVaultAuctionController;
+use App\Contexts\Party\Application\Controllers\ClanVaultController;
 use App\Contexts\System\Domain\Models\ChangelogEntry;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -465,6 +474,74 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/reply', [TicketController::class, 'reply'])->name('tickets.reply');
     Route::post('/tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen'])->name('tickets.reopen');
+
+    // ── Clan System ──────────────────────────────────────────────────────────
+
+    // Clan overview & create/join
+    Route::get('/clan', [ClanController::class, 'index'])->name('clan.index');
+    Route::post('/clan', [ClanController::class, 'store'])->name('clan.store');
+    Route::post('/clan/join', [ClanController::class, 'join'])->name('clan.join');
+    Route::get('/clan/members', [ClanController::class, 'members'])->name('clan.members');
+
+    // Clan settings
+    Route::get('/clan/settings', [ClanController::class, 'settings'])->name('clan.settings');
+    Route::patch('/clan/settings', [ClanController::class, 'update'])->name('clan.settings.update');
+    Route::post('/clan/settings/invite-code', [ClanController::class, 'regenerateInviteCode'])->name('clan.settings.invite-code');
+    Route::patch('/clan/cps/{cp}/role', [ClanController::class, 'updateCpRole'])->name('clan.cps.role');
+    Route::patch('/clan/cps/{cp}/approver', [ClanController::class, 'toggleApprover'])->name('clan.cps.approver');
+    Route::delete('/clan/cps/{cp}', [ClanController::class, 'removeCp'])->name('clan.cps.remove');
+    Route::delete('/clan/leave', [ClanController::class, 'leave'])->name('clan.leave');
+    Route::delete('/clan', [ClanController::class, 'destroy'])->name('clan.destroy');
+
+    // Clan events
+    Route::get('/clan/events', [ClanEventController::class, 'index'])->name('clan.events.index');
+    Route::post('/clan/events', [ClanEventController::class, 'store'])->name('clan.events.store');
+    Route::get('/clan/events/{event}', [ClanEventController::class, 'show'])->name('clan.events.show');
+    Route::patch('/clan/events/{event}', [ClanEventController::class, 'update'])->name('clan.events.update');
+    Route::post('/clan/events/{event}/open', [ClanEventController::class, 'open'])->name('clan.events.open');
+    Route::post('/clan/events/{event}/finalize', [ClanEventController::class, 'finalize'])->name('clan.events.finalize');
+    Route::delete('/clan/events/{event}', [ClanEventController::class, 'destroy'])->name('clan.events.destroy');
+
+    // Event RSVPs
+    Route::post('/clan/events/{event}/rsvp', [ClanEventRsvpController::class, 'store'])->name('clan.events.rsvp');
+    Route::delete('/clan/events/{event}/rsvp', [ClanEventRsvpController::class, 'destroy'])->name('clan.events.rsvp.destroy');
+
+    // Event attendees
+    Route::post('/clan/events/{event}/attendees', [ClanEventAttendeeController::class, 'store'])->name('clan.events.attendees.store');
+    Route::post('/clan/events/{event}/attendees/external', [ClanEventAttendeeController::class, 'storeExternal'])->name('clan.events.attendees.external');
+    Route::patch('/clan/events/{event}/attendees/{attendee}', [ClanEventAttendeeController::class, 'approve'])->name('clan.events.attendees.approve');
+    Route::delete('/clan/events/{event}/attendees/{attendee}', [ClanEventAttendeeController::class, 'destroy'])->name('clan.events.attendees.destroy');
+
+    // Raid boss tracking
+    Route::get('/clan/raid-bosses', [ClanRaidBossController::class, 'index'])->name('clan.raid-bosses.index');
+    Route::post('/clan/raid-bosses', [ClanRaidBossController::class, 'store'])->name('clan.raid-bosses.store');
+    Route::patch('/clan/raid-bosses/{boss}', [ClanRaidBossController::class, 'update'])->name('clan.raid-bosses.update');
+    Route::patch('/clan/raid-bosses/{boss}/config', [ClanRaidBossController::class, 'updateConfig'])->name('clan.raid-bosses.config');
+    Route::delete('/clan/raid-bosses/{boss}', [ClanRaidBossController::class, 'destroy'])->name('clan.raid-bosses.destroy');
+
+    // Clan vault
+    Route::get('/clan/vault', [ClanVaultController::class, 'index'])->name('clan.vault.index');
+    Route::post('/clan/vault', [ClanVaultController::class, 'store'])->name('clan.vault.store');
+    Route::post('/clan/vault/{item}/assign', [ClanVaultController::class, 'assign'])->name('clan.vault.assign');
+    Route::post('/clan/vault/{item}/raffle', [ClanVaultController::class, 'raffle'])->name('clan.vault.raffle');
+    Route::post('/clan/vault/{item}/auction', [ClanVaultController::class, 'createAuction'])->name('clan.vault.auction');
+    Route::delete('/clan/vault/{item}', [ClanVaultController::class, 'destroy'])->name('clan.vault.destroy');
+
+    // Vault auctions
+    Route::post('/clan/vault/auctions/{auction}/bid', [ClanVaultAuctionController::class, 'bid'])->name('clan.vault.auctions.bid');
+    Route::post('/clan/vault/auctions/{auction}/close', [ClanVaultAuctionController::class, 'close'])->name('clan.vault.auctions.close');
+    Route::delete('/clan/vault/auctions/{auction}', [ClanVaultAuctionController::class, 'cancel'])->name('clan.vault.auctions.cancel');
+
+    // Clan market
+    Route::get('/clan/market', [ClanMarketController::class, 'index'])->name('clan.market.index');
+    Route::post('/clan/market', [ClanMarketController::class, 'store'])->name('clan.market.store');
+    Route::patch('/clan/market/{listing}', [ClanMarketController::class, 'update'])->name('clan.market.update');
+    Route::delete('/clan/market/{listing}', [ClanMarketController::class, 'destroy'])->name('clan.market.destroy');
+
+    // Clan DKP adjustments
+    Route::get('/clan/members/{user}/dkp', [ClanDkpAdjustmentController::class, 'history'])->name('clan.dkp.history');
+    Route::post('/clan/members/{user}/dkp', [ClanDkpAdjustmentController::class, 'store'])->name('clan.dkp.store');
+    Route::delete('/clan/dkp/{adjustment}', [ClanDkpAdjustmentController::class, 'destroy'])->name('clan.dkp.destroy');
 });
 
 require __DIR__.'/auth.php';

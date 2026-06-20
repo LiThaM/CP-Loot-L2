@@ -74,4 +74,14 @@ class ConstParty extends Model
     {
         return $this->hasOne(CpRule::class, 'cp_id');
     }
+
+    public function clanMembership()
+    {
+        return $this->hasOne(ClanCpMembership::class, 'cp_id');
+    }
+
+    public function clan()
+    {
+        return $this->hasOneThrough(Clan::class, ClanCpMembership::class, 'cp_id', 'id', 'id', 'clan_id');
+    }
 }

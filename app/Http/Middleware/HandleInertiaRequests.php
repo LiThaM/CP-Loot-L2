@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\Party\Domain\Models\ClanCpMembership;
 use App\Contexts\Party\Domain\Models\CpRule;
 use App\Contexts\System\Domain\Models\ChangelogEntry;
 use App\Contexts\System\Domain\Models\Translation;
@@ -110,6 +111,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'changelog' => fn () => $this->changelogSummary($authUser, $isBanned),
             'cpRules' => fn () => $this->cpRulesSummary($authUser, $isBanned),
+            'clan' => fn () => $this->clanSummary($authUser, $isBanned),
             'translations' => $translations,
         ];
     }
@@ -197,6 +199,32 @@ class HandleInertiaRequests extends Middleware
             ];
         } catch (\Throwable $e) {
             return $empty;
+        }
+    }
+
+    private function clanSummary(?User $user, bool $isBanned): ?array
+    {
+        if (! $user || $isBanned || ! $user->cp_id) {
+            return null;
+        }
+
+        try {
+            $membership = ClanCpMembership::with('clan:id,name')
+                ->where('cp_id', $user->cp_id)
+                ->first();
+
+            if (! $membership || ! $membership->clan) {
+                return null;
+            }
+
+            return [
+                'id' => $membership->clan->id,
+                'name' => $membership->clan->name,
+                'role' => $membership->role,
+                'can_approve_attendance' => (bool) $membership->can_approve_attendance,
+            ];
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

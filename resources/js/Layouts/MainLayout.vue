@@ -775,6 +775,29 @@ watch(() => alerts.value.items, (items) => {
                                   :class="{'text-purple-700 dark:text-purple-300': route().current('itemsdb.index')}">
                                 {{ $t('nav.items_db') }}
                             </Link>
+                            <!-- Clan section: only visible when the user's CP belongs to a clan -->
+                            <NavDropdown
+                                v-if="page.props.clan"
+                                label="Clan"
+                                accent="amber"
+                                :items="[
+                                    { label: 'Resumen', hint: 'Overview del clan', route: route('clan.index'), active: route().current('clan.index') },
+                                    { label: 'Miembros', hint: 'Directorio cross-CP con DKP', route: route('clan.members'), active: route().current('clan.members') },
+                                    { label: 'Eventos', hint: 'Raids, epics, sieges y asistencia', route: route('clan.events.index'), active: route().current('clan.events.*') },
+                                    { label: 'Raid Bosses', hint: 'Seguimiento de respawn', route: route('clan.raid-bosses.index'), active: route().current('clan.raid-bosses.*') },
+                                    { label: 'Vault', hint: 'Almacén y subastas compartidos', route: route('clan.vault.index'), active: route().current('clan.vault.*') },
+                                    { label: 'Mercado', hint: 'WTS/WTB entre miembros', route: route('clan.market.index'), active: route().current('clan.market.*') },
+                                    { label: 'Ajustes', hint: 'Gestión del clan', route: route('clan.settings'), active: route().current('clan.settings') || route().current('clan.settings.*'), condition: ['owner','admin'].includes(page.props.clan?.role) },
+                                ]"
+                            />
+                            <!-- Invite to create/join clan: only for cp_leader without a clan -->
+                            <Link
+                                v-else-if="isLeader && !page.props.clan"
+                                :href="route('clan.index')"
+                                class="text-sm uppercase font-bold tracking-widest text-amber-700 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 transition"
+                            >
+                                Clan
+                            </Link>
                         </template>
                     </div>
 
