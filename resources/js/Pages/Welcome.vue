@@ -363,6 +363,42 @@ onMounted(() => {
                 </div>
             </section>
 
+            <!-- Clan System -->
+            <section class="py-16 sm:py-20 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6">
+                    <div class="rounded-2xl border-2 overflow-hidden" :class="darkMode ? 'border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50'">
+                        <div class="p-6 sm:p-10">
+                            <div class="flex items-center gap-4 mb-8">
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" :class="darkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-100 text-amber-700'">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-widest mb-1" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">{{ $t('welcome.clan.kicker') }}</p>
+                                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.clan.title') }}</h2>
+                                    <p class="text-sm mt-1 leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('welcome.clan.subtitle') }}</p>
+                                </div>
+                            </div>
+                            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div v-for="(card, i) in [
+                                    { emoji: '👥', titleKey: 'welcome.clan.card.federation.title', textKey: 'welcome.clan.card.federation.text' },
+                                    { emoji: '⚔️', titleKey: 'welcome.clan.card.events.title', textKey: 'welcome.clan.card.events.text' },
+                                    { emoji: '🏆', titleKey: 'welcome.clan.card.dkp.title', textKey: 'welcome.clan.card.dkp.text' },
+                                    { emoji: '💀', titleKey: 'welcome.clan.card.bosses.title', textKey: 'welcome.clan.card.bosses.text' },
+                                    { emoji: '🏦', titleKey: 'welcome.clan.card.vault.title', textKey: 'welcome.clan.card.vault.text' },
+                                    { emoji: '🛒', titleKey: 'welcome.clan.card.market.title', textKey: 'welcome.clan.card.market.text' },
+                                ]" :key="i" class="card-base rounded-xl p-4">
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span class="text-xl">{{ card.emoji }}</span>
+                                        <h3 class="font-bold text-sm" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t(card.titleKey) }}</h3>
+                                    </div>
+                                    <p class="text-xs leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t(card.textKey) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Desktop companion app (separate product) -->
             <section id="desktop" class="py-16 sm:py-20 border-t scroll-mt-16" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
                 <div class="max-w-4xl mx-auto px-4 sm:px-6">
