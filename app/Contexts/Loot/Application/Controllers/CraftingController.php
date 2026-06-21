@@ -60,7 +60,10 @@ class CraftingController extends Controller
         $request->validate([
             'lucky' => 'nullable|boolean',
             'output_item_id' => 'nullable|integer|exists:items,id',
+            'quantity' => 'nullable|integer|min:1|max:999',
         ]);
+
+        $qty = max(1, (int) ($request->input('quantity', 1)));
 
         $user = $request->user();
         $roleName = $user->role?->name;
@@ -101,7 +104,7 @@ class CraftingController extends Controller
         $toConsume = []; // item_id => amount (filled inside the transaction)
         $autoCrafted = []; // item_id => amount of intermediates auto-crafted
         try {
-            DB::transaction(function () use ($user, $cp, $recipe, $shouldProduce, $outputItemId, &$toConsume, &$autoCrafted) {
+            DB::transaction(function () use ($user, $cp, $recipe, $shouldProduce, $outputItemId, $qty, &$toConsume, &$autoCrafted) {
                 $warehouseAmountsByItemId = $this->warehouseAmountsByItemId((int) $cp->id);
                 $chronicle = $cp->chronicle ?: 'IL';
                 $craftableMap = $this->craftableRecipeIdByItemId($chronicle);
@@ -147,7 +150,7 @@ class CraftingController extends Controller
                 };
 
                 foreach ($recipe->materials as $mat) {
-                    $resolveMaterial((int) $mat->item_id, (int) ($mat->quantity ?? 1));
+                    $resolveMaterial((int) $mat->item_id, (int) ($mat->quantity ?? 1) * $qty);
                 }
 
                 // Check Recipe Item — only when the FINAL output is a non-Material
@@ -156,8 +159,8 @@ class CraftingController extends Controller
                 $requiresScroll = $recipe->recipe_item_id && $this->requiresRecipeScroll($recipe, (int) $outputItemId);
                 if ($requiresScroll) {
                     $haveRecipe = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
-                    if ($haveRecipe < 1) {
-                        throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$recipe->recipe_item_id.':1:'.$haveRecipe);
+                    if ($haveRecipe < $qty) {
+                        throw new \RuntimeException('NOT_ENOUGH_MATERIALS:'.$recipe->recipe_item_id.':'.$qty.':'.$haveRecipe);
                     }
                 }
 
@@ -187,7 +190,7 @@ class CraftingController extends Controller
                     LootEntry::create([
                         'loot_report_id' => $consumeReport->id,
                         'item_id' => $recipe->recipe_item_id,
-                        'amount' => 1,
+                        'amount' => $qty,
                     ]);
                 }
 
@@ -207,7 +210,7 @@ class CraftingController extends Controller
                 LootEntry::create([
                     'loot_report_id' => $produceReport->id,
                     'item_id' => $outputItemId,
-                    'amount' => max(1, (int) ($recipe->output_quantity ?? 1)),
+                    'amount' => max(1, (int) ($recipe->output_quantity ?? 1)) * $qty,
                 ]);
             });
         } catch (\RuntimeException $e) {
@@ -244,7 +247,7 @@ class CraftingController extends Controller
         };
 
         $produced = $shouldProduce && $outputItemId
-            ? $hydrate([$outputItemId => max(1, (int) ($recipe->output_quantity ?? 1))])
+            ? $hydrate([$outputItemId => max(1, (int) ($recipe->output_quantity ?? 1)) * $qty])
             : [];
 
         return response()->json([

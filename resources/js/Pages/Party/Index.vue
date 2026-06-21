@@ -579,7 +579,7 @@ const getSelectedOutputItemId = (recipe) => {
     return null;
 };
 
-const performCraft = async (entry, lucky, outputItemIdArg = null) => {
+const performCraft = async (entry, lucky, outputItemIdArg = null, qty = 1) => {
     const recipe = entry?.recipe;
     if (!recipe?.id) return;
     if (!canCraftRecipe(recipe)) return;
@@ -595,6 +595,7 @@ const performCraft = async (entry, lucky, outputItemIdArg = null) => {
         const { data } = await axios.post(route('api.recipes.craft', { recipe: recipe.id }), {
             lucky,
             output_item_id: outputItemId,
+            quantity: qty,
         });
 
         const summarize = (rows) => (rows || []).map((r) => `${r.amount}x ${r.name}`).join(', ');
@@ -620,6 +621,7 @@ const performCraft = async (entry, lucky, outputItemIdArg = null) => {
 const craftingConfirmStep = ref('idle'); // 'idle' | 'preview' | 'outcome'
 const craftingConfirmLucky = ref(null);   // null until user picks
 const craftingConfirmOutputId = ref(null);
+const craftingConfirmQty = ref(1);
 
 const openCraftConfirm = (entry) => {
     const recipe = entry?.recipe;
@@ -627,16 +629,10 @@ const openCraftConfirm = (entry) => {
     const sr = Number(recipe.success_rate ?? 0);
     const outputs = Array.isArray(recipe.outputs) ? recipe.outputs : [];
     const hasAutoCraft = !!recipe.auto_craft_plan?.auto_crafted?.length;
-    const needsOutcome = sr < 100 || outputs.length > 1;
 
-    // Nothing to ask → craft directly.
-    if (!hasAutoCraft && !needsOutcome) {
-        performCraft(entry, true);
-        return;
-    }
-
+    craftingConfirmQty.value = 1;
     craftingConfirmEntry.value = entry;
-    craftingConfirmLucky.value = sr >= 100 ? true : null; // pre-pick lucky=true when 100% rate
+    craftingConfirmLucky.value = sr >= 100 ? true : null;
     craftingConfirmOutputId.value = outputs.length === 1 ? outputs[0].item_id : null;
     craftingConfirmStep.value = hasAutoCraft ? 'preview' : 'outcome';
     craftingConfirmOpen.value = true;
@@ -648,21 +644,10 @@ const closeCraftConfirm = () => {
     craftingConfirmStep.value = 'idle';
     craftingConfirmLucky.value = null;
     craftingConfirmOutputId.value = null;
+    craftingConfirmQty.value = 1;
 };
 
 const advanceCraftConfirm = () => {
-    // From preview → outcome (if needed), or directly craft if nothing to ask.
-    const entry = craftingConfirmEntry.value;
-    const recipe = entry?.recipe;
-    const outputs = Array.isArray(recipe?.outputs) ? recipe.outputs : [];
-    const sr = Number(recipe?.success_rate ?? 0);
-    const needsOutcome = sr < 100 || outputs.length > 1;
-    if (!needsOutcome) {
-        const oid = outputs.length === 1 ? outputs[0].item_id : null;
-        closeCraftConfirm();
-        performCraft(entry, true, oid);
-        return;
-    }
     craftingConfirmStep.value = 'outcome';
 };
 
@@ -670,8 +655,9 @@ const confirmCraftFinal = () => {
     const entry = craftingConfirmEntry.value;
     const lucky = craftingConfirmLucky.value === true;
     const outputId = lucky ? craftingConfirmOutputId.value : null;
+    const qty = Math.max(1, Math.min(999, craftingConfirmQty.value || 1));
     closeCraftConfirm();
-    performCraft(entry, lucky, outputId);
+    performCraft(entry, lucky, outputId, qty);
 };
 
 const toggleRecipeTree = async (entry) => {
@@ -2344,6 +2330,22 @@ watch(buySearch, throttle(async (val) => {
                     <template v-else-if="craftingConfirmStep === 'outcome'">
                         <div>
                             <div class="text-lg font-black text-gray-900 dark:text-gray-100">{{ $t('craft.outcome.title') }}</div>
+                        </div>
+
+                        <!-- Quantity picker -->
+                        <div class="space-y-2">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.qty.label') }}</div>
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        @click="craftingConfirmQty = Math.max(1, craftingConfirmQty - 1)"
+                                        class="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-black hover:bg-gray-300 dark:hover:bg-gray-700 transition text-xl leading-none flex items-center justify-center">−</button>
+                                <input type="number" v-model.number="craftingConfirmQty" min="1" max="999"
+                                       @blur="craftingConfirmQty = Math.max(1, Math.min(999, craftingConfirmQty || 1))"
+                                       class="w-20 text-center font-black text-base border border-gray-200 dark:border-gray-700 rounded-xl bg-white/70 dark:bg-black/30 text-gray-900 dark:text-gray-100 py-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                <button type="button"
+                                        @click="craftingConfirmQty = Math.min(999, craftingConfirmQty + 1)"
+                                        class="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-black hover:bg-gray-300 dark:hover:bg-gray-700 transition text-xl leading-none flex items-center justify-center">+</button>
+                            </div>
                         </div>
 
                         <!-- Lucky picker (success_rate < 100) -->
