@@ -283,6 +283,7 @@ class PartyController extends Controller
                     is_array($craftableRecipeIdByItemId) ? $craftableRecipeIdByItemId : (array) $craftableRecipeIdByItemId,
                 ) : null;
                 $hydratedAuto = null;
+                $maxCraftable = 0;
                 if ($autoPlan) {
                     $itemIds = array_unique(array_merge(array_keys($autoPlan['auto_crafted']), array_keys($autoPlan['consumed'])));
                     $byId = ! empty($itemIds)
@@ -298,6 +299,23 @@ class PartyController extends Controller
                         'auto_crafted' => $hydrate($autoPlan['auto_crafted']),
                         'consumed' => $hydrate($autoPlan['consumed']),
                     ];
+
+                    // max_craftable = min(floor(have / consumed_per_craft)) for each consumed item
+                    $warehouseAll = $warehouseAmountsByItemId instanceof \Illuminate\Support\Collection
+                        ? $warehouseAmountsByItemId->all()
+                        : (array) $warehouseAmountsByItemId;
+                    $maxCraftable = PHP_INT_MAX;
+                    foreach ($autoPlan['consumed'] as $itemId => $amountPerCraft) {
+                        if ($amountPerCraft <= 0) continue;
+                        $have = (int) ($warehouseAll[$itemId] ?? 0);
+                        $maxCraftable = min($maxCraftable, intdiv($have, $amountPerCraft));
+                    }
+                    // Also cap by recipe scroll availability (simulate() doesn't consume it)
+                    if ($requiresScroll && $recipe->recipe_item_id) {
+                        $haveScroll = (int) ($warehouseAll[$recipe->recipe_item_id] ?? 0);
+                        $maxCraftable = min($maxCraftable, $haveScroll);
+                    }
+                    $maxCraftable = $maxCraftable === PHP_INT_MAX ? 0 : max(0, $maxCraftable);
                 }
 
                 return [
@@ -324,6 +342,7 @@ class PartyController extends Controller
                         })->values(),
                         'materials' => $materialsList,
                         'auto_craft_plan' => $hydratedAuto,
+                        'max_craftable' => $maxCraftable,
                     ] : null,
                 ];
             })

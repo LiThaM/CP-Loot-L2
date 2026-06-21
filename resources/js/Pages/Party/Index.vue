@@ -630,7 +630,7 @@ const openCraftConfirm = (entry) => {
     const outputs = Array.isArray(recipe.outputs) ? recipe.outputs : [];
     const hasAutoCraft = !!recipe.auto_craft_plan?.auto_crafted?.length;
 
-    craftingConfirmQty.value = 1;
+    craftingConfirmQty.value = Math.max(1, recipe.max_craftable ?? 1);
     craftingConfirmEntry.value = entry;
     craftingConfirmLucky.value = sr >= 100 ? true : null;
     craftingConfirmOutputId.value = outputs.length === 1 ? outputs[0].item_id : null;
@@ -2334,18 +2334,37 @@ watch(buySearch, throttle(async (val) => {
 
                         <!-- Quantity picker -->
                         <div class="space-y-2">
-                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.qty.label') }}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('craft.qty.label') }}</span>
+                                <span v-if="(craftingConfirmEntry?.recipe?.max_craftable ?? 0) > 0"
+                                      class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                                    max {{ craftingConfirmEntry.recipe.max_craftable }}
+                                </span>
+                            </div>
                             <div class="flex items-center gap-2">
                                 <button type="button"
                                         @click="craftingConfirmQty = Math.max(1, craftingConfirmQty - 1)"
                                         class="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-black hover:bg-gray-300 dark:hover:bg-gray-700 transition text-xl leading-none flex items-center justify-center">−</button>
                                 <input type="number" v-model.number="craftingConfirmQty" min="1" max="999"
                                        @blur="craftingConfirmQty = Math.max(1, Math.min(999, craftingConfirmQty || 1))"
-                                       class="w-20 text-center font-black text-base border border-gray-200 dark:border-gray-700 rounded-xl bg-white/70 dark:bg-black/30 text-gray-900 dark:text-gray-100 py-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                                       class="w-20 text-center font-black text-base border rounded-xl bg-white/70 dark:bg-black/30 text-gray-900 dark:text-gray-100 py-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                       :class="craftingConfirmQty > (craftingConfirmEntry?.recipe?.max_craftable ?? Infinity)
+                                           ? 'border-red-400 dark:border-red-600'
+                                           : 'border-gray-200 dark:border-gray-700'" />
                                 <button type="button"
-                                        @click="craftingConfirmQty = Math.min(999, craftingConfirmQty + 1)"
+                                        @click="craftingConfirmQty = Math.min(craftingConfirmEntry?.recipe?.max_craftable ?? 999, craftingConfirmQty + 1)"
                                         class="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-black hover:bg-gray-300 dark:hover:bg-gray-700 transition text-xl leading-none flex items-center justify-center">+</button>
+                                <button type="button"
+                                        v-if="(craftingConfirmEntry?.recipe?.max_craftable ?? 0) > 1"
+                                        @click="craftingConfirmQty = craftingConfirmEntry.recipe.max_craftable"
+                                        class="px-3 h-9 rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600/20 transition">
+                                    Max
+                                </button>
                             </div>
+                            <p v-if="craftingConfirmQty > (craftingConfirmEntry?.recipe?.max_craftable ?? Infinity)"
+                               class="text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                                {{ $t('craft.qty.exceeds_max') }}
+                            </p>
                         </div>
 
                         <!-- Lucky picker (success_rate < 100) -->
@@ -2388,7 +2407,10 @@ watch(buySearch, throttle(async (val) => {
                                 {{ $t('common.cancel') }}
                             </button>
                             <button type="button" @click="confirmCraftFinal"
-                                    :disabled="craftingConfirmLucky === null || (craftingConfirmLucky === true && (craftingConfirmEntry?.recipe?.outputs?.length ?? 0) > 1 && !craftingConfirmOutputId)"
+                                    :disabled="craftingConfirmLucky === null
+                                        || (craftingConfirmLucky === true && (craftingConfirmEntry?.recipe?.outputs?.length ?? 0) > 1 && !craftingConfirmOutputId)
+                                        || craftingConfirmQty < 1
+                                        || craftingConfirmQty > (craftingConfirmEntry?.recipe?.max_craftable ?? Infinity)"
                                     class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30">
                                 {{ $t('craft.outcome.confirm') }}
                             </button>
