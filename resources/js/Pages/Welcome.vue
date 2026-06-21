@@ -178,6 +178,22 @@ onMounted(() => {
         </nav>
 
         <main>
+            <!-- New feature announcement bar -->
+            <div class="border-b" :class="darkMode ? 'bg-amber-950/40 border-amber-800/30' : 'bg-amber-50 border-amber-200'">
+                <div class="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-center gap-3 flex-wrap text-center">
+                    <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border shrink-0"
+                          :class="darkMode ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-300'">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        Nuevo
+                    </span>
+                    <span class="text-xs font-semibold" :class="darkMode ? 'text-amber-100' : 'text-amber-900'">
+                        <strong>Sistema de Clanes</strong> — Federación de CPs, eventos cross-clan con DKP global, Raid Boss Tracker, vault compartido y mercado interno.
+                    </span>
+                    <a href="#clan" class="text-xs font-black uppercase tracking-widest underline shrink-0"
+                       :class="darkMode ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-900'">Ver más ↓</a>
+                </div>
+            </div>
+
             <!-- Hero -->
             <section class="relative overflow-hidden">
                 <div class="absolute inset-0 pointer-events-none">
@@ -223,6 +239,53 @@ onMounted(() => {
                             <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> {{ $t('footer.free') }}</span>
                             <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> {{ $t('welcome.hero.chip_audit') }}</span>
                             <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> C1 &middot; C2 &middot; C3 &middot; C4 &middot; C5 &middot; IL &middot; CT1 &middot; GF &middot; HB &middot; Classic &middot; LU4</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Clan System — moved up so it's visible on first scroll -->
+            <section id="clan" class="py-16 sm:py-20 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6">
+                    <div class="rounded-2xl border-2 overflow-hidden" :class="darkMode ? 'border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50'">
+                        <div class="p-6 sm:p-10">
+                            <div class="flex items-center gap-4 mb-8">
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" :class="darkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-100 text-amber-700'">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-widest mb-1" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">{{ $t('welcome.clan.kicker') }}</p>
+                                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.clan.title') }}</h2>
+                                    <p class="text-sm mt-1 leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('welcome.clan.subtitle') }}</p>
+                                </div>
+                            </div>
+                            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div v-for="(card, i) in [
+                                    { emoji: '👥', titleKey: 'welcome.clan.card.federation.title', textKey: 'welcome.clan.card.federation.text' },
+                                    { emoji: '⚔️', titleKey: 'welcome.clan.card.events.title', textKey: 'welcome.clan.card.events.text' },
+                                    { emoji: '🏆', titleKey: 'welcome.clan.card.dkp.title', textKey: 'welcome.clan.card.dkp.text' },
+                                    { emoji: '💀', titleKey: 'welcome.clan.card.bosses.title', textKey: 'welcome.clan.card.bosses.text' },
+                                    { emoji: '🏦', titleKey: 'welcome.clan.card.vault.title', textKey: 'welcome.clan.card.vault.text' },
+                                    { emoji: '🛒', titleKey: 'welcome.clan.card.market.title', textKey: 'welcome.clan.card.market.text' },
+                                ]" :key="i" class="card-base rounded-xl p-4">
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span class="text-xl">{{ card.emoji }}</span>
+                                        <h3 class="font-bold text-sm" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t(card.titleKey) }}</h3>
+                                    </div>
+                                    <p class="text-xs leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t(card.textKey) }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Tutorial detail: step-by-step bullets -->
+                            <div class="mt-6 pt-6 border-t" :class="darkMode ? 'border-amber-500/20' : 'border-amber-300/40'">
+                                <p class="text-xs font-bold uppercase tracking-widest mb-4" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">{{ $t('tutorials.topic.clan_system.intro') }}</p>
+                                <ul class="space-y-3">
+                                    <li v-for="i in 7" :key="`clan-bullet-${i}`" class="flex gap-3 text-sm leading-relaxed" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">
+                                        <span class="shrink-0 mt-0.5 font-bold" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">▸</span>
+                                        <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -358,53 +421,6 @@ onMounted(() => {
                             <div class="w-10 h-10 rounded-full mx-auto mb-4 flex items-center justify-center text-sm font-bold" :class="darkMode ? 'bg-white/5 text-white border border-white/10' : 'bg-gray-100 text-gray-900 border border-gray-200'">{{ step.n }}</div>
                             <h3 class="text-sm font-bold mb-1.5" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ step.title }}</h3>
                             <p class="text-sm leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ step.text }}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Clan System -->
-            <section class="py-16 sm:py-20 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
-                <div class="max-w-4xl mx-auto px-4 sm:px-6">
-                    <div class="rounded-2xl border-2 overflow-hidden" :class="darkMode ? 'border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50'">
-                        <div class="p-6 sm:p-10">
-                            <div class="flex items-center gap-4 mb-8">
-                                <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" :class="darkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-100 text-amber-700'">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-bold uppercase tracking-widest mb-1" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">{{ $t('welcome.clan.kicker') }}</p>
-                                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('welcome.clan.title') }}</h2>
-                                    <p class="text-sm mt-1 leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t('welcome.clan.subtitle') }}</p>
-                                </div>
-                            </div>
-                            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div v-for="(card, i) in [
-                                    { emoji: '👥', titleKey: 'welcome.clan.card.federation.title', textKey: 'welcome.clan.card.federation.text' },
-                                    { emoji: '⚔️', titleKey: 'welcome.clan.card.events.title', textKey: 'welcome.clan.card.events.text' },
-                                    { emoji: '🏆', titleKey: 'welcome.clan.card.dkp.title', textKey: 'welcome.clan.card.dkp.text' },
-                                    { emoji: '💀', titleKey: 'welcome.clan.card.bosses.title', textKey: 'welcome.clan.card.bosses.text' },
-                                    { emoji: '🏦', titleKey: 'welcome.clan.card.vault.title', textKey: 'welcome.clan.card.vault.text' },
-                                    { emoji: '🛒', titleKey: 'welcome.clan.card.market.title', textKey: 'welcome.clan.card.market.text' },
-                                ]" :key="i" class="card-base rounded-xl p-4">
-                                    <div class="flex items-center gap-2 mb-1.5">
-                                        <span class="text-xl">{{ card.emoji }}</span>
-                                        <h3 class="font-bold text-sm" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t(card.titleKey) }}</h3>
-                                    </div>
-                                    <p class="text-xs leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t(card.textKey) }}</p>
-                                </div>
-                            </div>
-
-                            <!-- Tutorial detail: step-by-step bullets -->
-                            <div class="mt-6 pt-6 border-t" :class="darkMode ? 'border-amber-500/20' : 'border-amber-300/40'">
-                                <p class="text-xs font-bold uppercase tracking-widest mb-4" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">{{ $t('tutorials.topic.clan_system.intro') }}</p>
-                                <ul class="space-y-3">
-                                    <li v-for="i in 7" :key="`clan-bullet-${i}`" class="flex gap-3 text-sm leading-relaxed" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">
-                                        <span class="shrink-0 mt-0.5 font-bold" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">▸</span>
-                                        <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
-                                    </li>
-                                </ul>
-                            </div>
                         </div>
                     </div>
                 </div>

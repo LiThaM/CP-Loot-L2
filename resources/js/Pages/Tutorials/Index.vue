@@ -77,27 +77,9 @@ const launch = (tourKey) => startTour(tourKey, t);
                     </p>
                 </div>
 
-                <!-- Clan System callout (cp_leader only) — pinned above the regular accordion -->
-                <div v-if="roleName === 'cp_leader'" class="rounded-2xl border-2 border-amber-500/30 bg-amber-500/5 overflow-hidden">
-                    <div class="px-5 py-4 flex items-center gap-3 border-b border-amber-500/20">
-                        <ShieldCheckIcon class="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                        <span class="font-cinzel text-sm text-gray-900 dark:text-white tracking-widest uppercase flex-1">{{ $t('tutorials.topic.clan_system.title') }}</span>
-                        <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">{{ $t('welcome.clan.kicker') }}</span>
-                    </div>
-                    <div class="px-5 py-5 space-y-3">
-                        <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed changelog-body" v-html="renderInlineMarkdown($t('tutorials.topic.clan_system.intro'))"></p>
-                        <ul class="space-y-2">
-                            <li v-for="i in 7" :key="`clan-bullet-${i}`" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed flex gap-3">
-                                <span class="text-amber-500 select-none mt-0.5">▸</span>
-                                <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-            <!-- Topic accordion -->
+                <!-- Topic accordion -->
                 <details
-                    v-for="topic in ownSection.topics.filter(t => t.id !== 'clan_system')"
+                    v-for="topic in ownSection.topics"
                     :key="`own-${topic.id}`"
                     class="l2-panel rounded-2xl border-gray-200 dark:border-gray-800 group overflow-hidden"
                 >
@@ -135,6 +117,31 @@ const launch = (tourKey) => startTour(tourKey, t);
                         </div>
                     </div>
                 </details>
+            </section>
+
+            <!-- Sistema de Clanes — sección completa al mismo nivel que los roles -->
+            <section v-if="roleName === 'cp_leader'" class="space-y-3">
+                <div class="rounded-3xl border-2 border-amber-500/30 bg-amber-500/5 p-6">
+                    <div class="flex items-center gap-3">
+                        <ShieldCheckIcon class="w-7 h-7 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                        <div>
+                            <h2 class="font-cinzel text-xl text-gray-900 dark:text-white tracking-widest uppercase">
+                                {{ $t('tutorials.topic.clan_system.title') }}
+                            </h2>
+                            <p class="text-[10px] uppercase tracking-widest font-bold text-amber-600 dark:text-amber-400">
+                                {{ $t('welcome.clan.kicker') }}
+                            </p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mt-4 changelog-body"
+                       v-html="renderInlineMarkdown($t('tutorials.topic.clan_system.intro'))"></p>
+                </div>
+                <div v-for="i in 7" :key="`clan-step-${i}`"
+                     class="l2-panel rounded-2xl border-amber-500/20 dark:border-amber-500/20 px-5 py-4 flex items-start gap-3">
+                    <span class="text-amber-500 dark:text-amber-400 font-bold mt-0.5 shrink-0 select-none">▸</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed changelog-body"
+                          v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
+                </div>
             </section>
 
             <!-- Other roles (collapsible) -->
