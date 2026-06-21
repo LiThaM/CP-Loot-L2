@@ -77,9 +77,9 @@ const launch = (tourKey) => startTour(tourKey, t);
                     </p>
                 </div>
 
-                <!-- Topic accordion -->
+                <!-- Topic accordion (clan_system tiene su propia sección abajo) -->
                 <details
-                    v-for="topic in ownSection.topics"
+                    v-for="topic in ownSection.topics.filter(t => t.id !== 'clan_system')"
                     :key="`own-${topic.id}`"
                     class="l2-panel rounded-2xl border-gray-200 dark:border-gray-800 group overflow-hidden"
                 >
@@ -119,9 +119,9 @@ const launch = (tourKey) => startTour(tourKey, t);
                 </details>
             </section>
 
-            <!-- Sistema de Clanes — sección completa al mismo nivel que los roles -->
-            <section v-if="roleName === 'cp_leader'" class="space-y-3">
-                <div class="rounded-3xl border-2 border-amber-500/30 bg-amber-500/5 p-6">
+            <!-- Sistema de Clanes — sección independiente, misma estructura que ownSection -->
+            <section v-if="roleName === 'cp_leader'" class="space-y-4">
+                <div class="l2-panel p-6 rounded-3xl border-amber-500/30 dark:border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5">
                     <div class="flex items-center gap-3">
                         <ShieldCheckIcon class="w-7 h-7 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                         <div>
@@ -136,12 +136,25 @@ const launch = (tourKey) => startTour(tourKey, t);
                     <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mt-4 changelog-body"
                        v-html="renderInlineMarkdown($t('tutorials.topic.clan_system.intro'))"></p>
                 </div>
-                <div v-for="i in 7" :key="`clan-step-${i}`"
-                     class="l2-panel rounded-2xl border-amber-500/20 dark:border-amber-500/20 px-5 py-4 flex items-start gap-3">
-                    <span class="text-amber-500 dark:text-amber-400 font-bold mt-0.5 shrink-0 select-none">▸</span>
-                    <span class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed changelog-body"
-                          v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
-                </div>
+
+                <details class="l2-panel rounded-2xl border-amber-500/20 dark:border-amber-500/20 group overflow-hidden">
+                    <summary class="px-5 py-4 cursor-pointer flex items-center gap-3 list-none hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
+                        <ShieldCheckIcon class="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                        <span class="font-cinzel text-sm text-gray-900 dark:text-white tracking-widest uppercase flex-1">
+                            {{ $t('tutorials.topic.clan_system.title') }}
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 group-open:hidden">{{ $t('tutorials.expand') }}</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 hidden group-open:inline">{{ $t('tutorials.collapse') }}</span>
+                    </summary>
+                    <div class="px-5 pb-5 space-y-3 border-t border-gray-200 dark:border-gray-800">
+                        <ul class="space-y-2 mt-4">
+                            <li v-for="i in 7" :key="`clan-${i}`" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed flex gap-3">
+                                <span class="text-amber-500 select-none mt-0.5">▸</span>
+                                <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
+                            </li>
+                        </ul>
+                    </div>
+                </details>
             </section>
 
             <!-- Other roles (collapsible) -->

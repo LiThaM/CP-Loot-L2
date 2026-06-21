@@ -367,8 +367,8 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <!-- Group: leader-only extras -->
-                    <div>
+                    <!-- Group: leader-only extras (sin clan_system, tiene su propia sección) -->
+                    <div class="mb-10">
                         <div class="flex items-center gap-3 mb-3">
                             <ShieldCheckIcon class="w-6 h-6 text-purple-600 dark:text-purple-400" aria-hidden="true" />
                             <h3 class="font-cinzel text-lg tracking-widest uppercase" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('tutorials.role.cp_leader.title') }}</h3>
@@ -378,7 +378,7 @@ onMounted(() => {
                         </p>
                         <div class="space-y-2">
                             <details
-                                v-for="topic in leaderTopics"
+                                v-for="topic in leaderTopics.filter(t => t.id !== 'clan_system')"
                                 :key="`lead-${topic.id}`"
                                 class="card-base rounded-2xl group overflow-hidden"
                             >
@@ -396,6 +396,38 @@ onMounted(() => {
                                         <li v-for="i in topic.bulletCount" :key="`lead-${topic.id}-${i}`" class="text-sm leading-relaxed flex gap-3" :class="darkMode ? 'text-gray-400' : 'text-gray-700'">
                                             <span class="select-none mt-0.5" :class="darkMode ? 'text-purple-500' : 'text-purple-600'">▸</span>
                                             <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.${topic.id}.bullet.${i - 1}`))"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Group: Sistema de Clanes — misma estructura que member/leader pero amber -->
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <ShieldCheckIcon class="w-6 h-6 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                            <h3 class="font-cinzel text-lg tracking-widest uppercase" :class="darkMode ? 'text-white' : 'text-gray-900'">{{ $t('tutorials.topic.clan_system.title') }}</h3>
+                            <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border"
+                                  :class="darkMode ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-300'">{{ $t('welcome.clan.kicker') }}</span>
+                        </div>
+                        <p class="text-sm mb-4 leading-relaxed changelog-body" :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
+                           v-html="renderInlineMarkdown($t('tutorials.topic.clan_system.intro'))"></p>
+                        <div class="space-y-2">
+                            <details class="card-base rounded-2xl group overflow-hidden border-amber-500/20 dark:border-amber-500/20">
+                                <summary class="px-5 py-4 cursor-pointer flex items-center gap-3 list-none">
+                                    <ShieldCheckIcon class="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                                    <span class="font-cinzel text-sm tracking-widest uppercase flex-1" :class="darkMode ? 'text-white' : 'text-gray-900'">
+                                        {{ $t('tutorials.topic.clan_system.title') }}
+                                    </span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest group-open:hidden" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ $t('tutorials.expand') }}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest hidden group-open:inline" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">{{ $t('tutorials.collapse') }}</span>
+                                </summary>
+                                <div class="px-5 pb-5 space-y-3 border-t" :class="darkMode ? 'border-white/5' : 'border-gray-100'">
+                                    <ul class="space-y-2 mt-4">
+                                        <li v-for="i in 7" :key="`clan-${i}`" class="text-sm leading-relaxed flex gap-3" :class="darkMode ? 'text-gray-400' : 'text-gray-700'">
+                                            <span class="select-none mt-0.5 text-amber-500 dark:text-amber-400">▸</span>
+                                            <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
                                         </li>
                                     </ul>
                                 </div>
