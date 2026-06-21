@@ -394,6 +394,17 @@ onMounted(() => {
                                     <p class="text-xs leading-relaxed" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">{{ $t(card.textKey) }}</p>
                                 </div>
                             </div>
+
+                            <!-- Tutorial detail: step-by-step bullets -->
+                            <div class="mt-6 pt-6 border-t" :class="darkMode ? 'border-amber-500/20' : 'border-amber-300/40'">
+                                <p class="text-xs font-bold uppercase tracking-widest mb-4" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">{{ $t('tutorials.topic.clan_system.intro') }}</p>
+                                <ul class="space-y-3">
+                                    <li v-for="i in 7" :key="`clan-bullet-${i}`" class="flex gap-3 text-sm leading-relaxed" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">
+                                        <span class="shrink-0 mt-0.5 font-bold" :class="darkMode ? 'text-amber-400' : 'text-amber-600'">▸</span>
+                                        <span class="changelog-body" v-html="renderInlineMarkdown($t(`tutorials.topic.clan_system.bullet.${i - 1}`))"></span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
