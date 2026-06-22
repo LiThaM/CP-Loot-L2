@@ -123,7 +123,7 @@ class FetchLu4Command extends Command
                 $this->line('Image: '.($imageUrl ?: 'N/A'));
             }
 
-            $item = Item::updateOrCreate(
+            $item = Item::withoutGlobalScopes()->updateOrCreate(
                 ['external_id' => $id, 'chronicle' => 'LU4'],
                 [
                     'name' => $name,

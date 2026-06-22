@@ -745,10 +745,12 @@ class PartyController extends Controller
             ]);
 
             $file = $request->file('image_proof');
-            $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
-            $imagePath = $file->storeAs("transfers/{$cpId}", "{$report->id}.{$ext}", 'public');
-            $report->image_proof = $imagePath;
-            $report->save();
+            if ($file) {
+                $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+                $imagePath = $file->storeAs("transfers/{$cpId}", "{$report->id}.{$ext}", 'public');
+                $report->image_proof = $imagePath;
+                $report->save();
+            }
 
             LootEntry::create([
                 'loot_report_id' => $report->id,
@@ -1089,8 +1091,11 @@ class PartyController extends Controller
         return max(0, $farmed - $sold);
     }
 
-    private function storeSellImage($file, int $cpId, ?string $batchId = null): string
+    private function storeSellImage($file, int $cpId, ?string $batchId = null): ?string
     {
+        if (! $file) {
+            return null;
+        }
         $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
         $name = $batchId ? "auto_{$batchId}.{$ext}" : Str::uuid().".{$ext}";
         return $file->storeAs("warehouse_sell/{$cpId}", $name, 'public');
@@ -1458,10 +1463,12 @@ class PartyController extends Controller
             ]);
 
             $file = $request->file('image_proof');
-            $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
-            $imagePath = $file->storeAs("returns/{$member->cp_id}", "{$report->id}.{$ext}", 'public');
-            $report->image_proof = $imagePath;
-            $report->save();
+            if ($file) {
+                $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+                $imagePath = $file->storeAs("returns/{$member->cp_id}", "{$report->id}.{$ext}", 'public');
+                $report->image_proof = $imagePath;
+                $report->save();
+            }
 
             LootEntry::create([
                 'loot_report_id' => $report->id,
@@ -1538,10 +1545,12 @@ class PartyController extends Controller
             ]);
 
             $file = $request->file('image_proof');
-            $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
-            $imagePath = $file->storeAs("warehouse_add/{$current->cp_id}", "{$report->id}.{$ext}", 'public');
-            $report->image_proof = $imagePath;
-            $report->save();
+            if ($file) {
+                $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+                $imagePath = $file->storeAs("warehouse_add/{$current->cp_id}", "{$report->id}.{$ext}", 'public');
+                $report->image_proof = $imagePath;
+                $report->save();
+            }
 
             foreach ($request->items as $itemData) {
                 LootEntry::create([
