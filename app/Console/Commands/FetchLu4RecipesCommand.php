@@ -359,7 +359,7 @@ class FetchLu4RecipesCommand extends Command
 
         $payload = array_filter($fields, fn ($v) => $v !== null);
 
-        $item = Item::updateOrCreate(
+        $item = Item::withoutGlobalScopes()->updateOrCreate(
             ['external_id' => $externalId, 'chronicle' => $chronicle],
             $payload
         );
