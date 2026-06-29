@@ -71,9 +71,6 @@ class LootController extends Controller
                     $q4->where('external_name', 'like', '%'.$historySearch.'%')
                         ->orWhereHas('user', fn ($q5) => $q5->where('name', 'like', '%'.$historySearch.'%'));
                 });
-                $q->orWhereHas('entries', function ($q4) use ($historySearch) {
-                    $q4->whereHas('awardedTo', fn ($q5) => $q5->where('name', 'like', '%'.$historySearch.'%'));
-                });
             });
         }
 

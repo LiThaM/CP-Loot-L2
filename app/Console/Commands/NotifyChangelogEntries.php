@@ -41,10 +41,14 @@ class NotifyChangelogEntries extends Command
             return self::SUCCESS;
         }
 
+        // NOTE: this app does not enforce email verification (MustVerifyEmail
+        // is disabled on the User model), so `email_verified_at` is null for
+        // everyone. The opt-in flag `changelog_emails_enabled` is the real
+        // consent signal; gating on verification would silently drop every
+        // recipient and no changelog email would ever go out.
         $leaders = User::query()
             ->whereHas('role', fn ($q) => $q->where('name', 'cp_leader'))
             ->where('changelog_emails_enabled', true)
-            ->whereNotNull('email_verified_at')
             ->get();
 
         if ($leaders->isEmpty()) {
