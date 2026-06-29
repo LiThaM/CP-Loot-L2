@@ -364,10 +364,26 @@ const getEntryCategory = (entry) => {
     return 'other';
 };
 
+const reportMatchesMember = (report, searchLower) => {
+    if (!searchLower) return false;
+    if (String(report?.requestedBy?.name || '').toLowerCase().includes(searchLower)) return true;
+    const recipientIds = Array.isArray(report?.recipient_ids) ? report.recipient_ids : [];
+    if (recipientIds.length && (props.members || []).some(
+        m => recipientIds.includes(m.id) && String(m.name || '').toLowerCase().includes(searchLower)
+    )) return true;
+    if (Array.isArray(report?.attendees) && report.attendees.some(
+        a => a.external_name && String(a.external_name).toLowerCase().includes(searchLower)
+    )) return true;
+    return false;
+};
+
 const getReportFilteredEntries = (report) => {
     const entries = Array.isArray(report?.entries) ? report.entries : [];
     const searchLower = vaultSearch.value.toLowerCase().trim();
     const selectedCategory = vaultCategory.value;
+    if (searchLower && reportMatchesMember(report, searchLower)) {
+        return selectedCategory === 'all' ? entries : entries.filter(e => getEntryCategory(e) === selectedCategory);
+    }
     return entries.filter((entry) => {
         if (!getEntryMatches(entry, searchLower)) return false;
         if (selectedCategory === 'all') return true;
