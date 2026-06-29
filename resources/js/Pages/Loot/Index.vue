@@ -378,14 +378,21 @@ const getEntryCategory = (entry) => {
 
 const reportMatchesMember = (report, searchLower) => {
     if (!searchLower) return false;
-    if (String(report?.requestedBy?.name || '').toLowerCase().includes(searchLower)) return true;
+    // recipient_ids (ASSIGN reports)
     const recipientIds = Array.isArray(report?.recipient_ids) ? report.recipient_ids : [];
     if (recipientIds.length && (props.members || []).some(
         m => recipientIds.includes(m.id) && String(m.name || '').toLowerCase().includes(searchLower)
     )) return true;
-    if (Array.isArray(report?.attendees) && report.attendees.some(
-        a => a.external_name && String(a.external_name).toLowerCase().includes(searchLower)
-    )) return true;
+    // attendees: external by name, internal by user_id matched against members list
+    if (Array.isArray(report?.attendees)) {
+        for (const a of report.attendees) {
+            if (a.external_name && String(a.external_name).toLowerCase().includes(searchLower)) return true;
+            if (a.user_id) {
+                const m = (props.members || []).find(m => m.id === a.user_id);
+                if (m && String(m.name || '').toLowerCase().includes(searchLower)) return true;
+            }
+        }
+    }
     return false;
 };
 

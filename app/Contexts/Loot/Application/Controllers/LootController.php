@@ -64,9 +64,6 @@ class LootController extends Controller
                 if ($numericId) {
                     $q->orWhere('loot_reports.id', $numericId);
                 }
-                $q->orWhereHas('requestedBy', function ($q2) use ($historySearch) {
-                    $q2->where('name', 'like', '%'.$historySearch.'%');
-                });
                 $q->orWhereHas('entries.item', function ($q3) use ($historySearch) {
                     $q3->where('items.name', 'like', '%'.$historySearch.'%');
                 });
