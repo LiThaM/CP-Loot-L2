@@ -55,6 +55,7 @@ const initialTab = (() => {
 })();
 const activeTab = ref(initialTab);
 const vaultSearch = ref('');
+const memberFilter = ref('');
 const vaultCategory = ref('all');
 const vaultSort = ref('newest');
 const vaultType = ref('all');
@@ -225,6 +226,17 @@ watch([vaultSearch, vaultCategory, vaultSort, vaultType, activeTab], () => {
 watch([vaultSearch, vaultSort, vaultType, activeTab], () => {
     if (activeTab.value !== 'history') return;
     fetchHistoryPage(1, { append: false });
+});
+
+watch(memberFilter, (id) => {
+    if (!id) { vaultSearch.value = ''; return; }
+    const m = (props.members || []).find(m => String(m.id) === String(id));
+    if (m) vaultSearch.value = m.name;
+});
+
+watch(vaultSearch, (val) => {
+    const m = (props.members || []).find(m => String(m.id) === String(memberFilter.value));
+    if (m && val !== m.name) memberFilter.value = '';
 });
 
 const openResolveModal = (report) => {
@@ -596,6 +608,11 @@ onMounted(async () => {
                     <select v-model="vaultSort" class="h-11 bg-white border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 text-xs font-bold px-3 dark:bg-black/40 dark:border-gray-800 dark:text-gray-200">
                         <option value="newest">{{ $t('loot.sort.newest') }}</option>
                         <option value="oldest">{{ $t('loot.sort.oldest') }}</option>
+                    </select>
+
+                    <select v-if="members && members.length" v-model="memberFilter" class="h-11 bg-white border border-gray-200 text-gray-900 rounded-xl focus:ring-purple-600 text-xs font-bold px-3 dark:bg-black/40 dark:border-gray-800 dark:text-gray-200">
+                        <option value="">{{ $t('loot.filter_member_placeholder') }}</option>
+                        <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
                     </select>
                 </div>
             </div>
