@@ -645,9 +645,39 @@ class PartyController extends Controller
               ['total_amount', 'desc'],
           ])->values();
 
+        // Items contributed: loot from FARM sessions the member attended
+        $farmReportIds = DB::table('loot_report_attendees')
+            ->join('loot_reports', 'loot_reports.id', '=', 'loot_report_attendees.loot_report_id')
+            ->where('loot_reports.cp_id', $cpId)
+            ->where('loot_reports.status', 'confirmed')
+            ->whereNull('loot_reports.voided_at')
+            ->where('loot_reports.event_type', 'FARM')
+            ->where('loot_report_attendees.user_id', $user->id)
+            ->pluck('loot_reports.id');
+
+        $contributed = LootEntry::query()
+            ->select([
+                'items.id',
+                'items.name',
+                'items.icon_name',
+                'items.image_url',
+                'items.grade',
+                DB::raw('SUM(loot_entries.amount) as total_amount'),
+                DB::raw('MAX(loot_reports.created_at) as last_added_at'),
+            ])
+            ->join('items', 'items.id', '=', 'loot_entries.item_id')
+            ->join('loot_reports', 'loot_reports.id', '=', 'loot_entries.loot_report_id')
+            ->whereIn('loot_entries.loot_report_id', $farmReportIds)
+            ->whereRaw('LOWER(items.name) != ?', ['adena'])
+            ->groupBy('items.id', 'items.name', 'items.icon_name', 'items.image_url', 'items.grade')
+            ->orderByDesc('last_added_at')
+            ->get()
+            ->values();
+
         return response()->json([
             'user_id' => $user->id,
             'items' => $items,
+            'contributed' => $contributed,
             'adena_gained' => $adenaGained,
             'adena_paid' => $adenaPaid,
             'adena_owed' => max(0, $adenaGained - $adenaPaid),

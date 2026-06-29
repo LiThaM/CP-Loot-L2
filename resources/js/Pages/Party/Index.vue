@@ -1679,6 +1679,33 @@ watch(buySearch, throttle(async (val) => {
                         </div>
 
                         <div v-if="expandedMembers.has(member.id)" class="border-t border-gray-200 dark:border-gray-800 p-5 bg-gray-100/60 dark:bg-black/30">
+                            <!-- Lo aportado: items from FARM sessions the member attended -->
+                            <div v-if="memberWarehouseById[member.id]" class="mb-6">
+                                <div class="flex items-center justify-between gap-4 mb-3">
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">{{ $t('party.member.contributed_title', { name: member.name }) }}</div>
+                                    <div class="px-3 py-1 rounded-full border text-[10px] font-black uppercase text-gray-700 bg-white/70 border-gray-200 dark:text-gray-300 dark:bg-black/30 dark:border-gray-800">
+                                        {{ (memberWarehouseById[member.id]?.contributed || []).length }} items
+                                    </div>
+                                </div>
+                                <div v-if="(memberWarehouseById[member.id]?.contributed || []).length === 0" class="text-sm text-gray-600 dark:text-gray-400 italic">
+                                    {{ $t('party.member.contributed_empty') }}
+                                </div>
+                                <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                                    <div
+                                        v-for="item in memberWarehouseById[member.id].contributed"
+                                        :key="item.id"
+                                        class="flex items-center gap-2 bg-white/70 border border-gray-200 rounded-xl p-2 dark:bg-gray-900/40 dark:border-gray-800"
+                                    >
+                                        <img v-if="item.image_url" :src="item.image_url" class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40 shrink-0">
+                                        <div v-else class="w-8 h-8 rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 shrink-0"></div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="text-xs text-gray-900 dark:text-white font-bold truncate" :title="item.name">{{ item.name }}</div>
+                                            <div class="text-[10px] font-black uppercase tracking-widest text-gray-500">x{{ item.total_amount }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div>
                                     <div class="flex items-center justify-between gap-4 mb-3">
