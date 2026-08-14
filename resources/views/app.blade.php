@@ -5,6 +5,19 @@
     // arrives too late for them. Per-locale copy keeps the meta in
     // step with the page the user actually sees.
     $locale = app()->getLocale();
+
+    // Same resolution order as HandleInertiaRequests::share() (query > session >
+    // cookie), but falling back to the browser's Accept-Language header instead of
+    // the static APP_LOCALE default. Needed because a first-time visitor with no
+    // session/cookie yet would otherwise always get $locale === 'en': the app only
+    // ever detects the browser language client-side (Welcome.vue / MainLayout.vue),
+    // after a round trip that doesn't run in time for this initial response.
+    $requestedLocale = request()->query('lang')
+        ?: (request()->session()->get('locale') ?: request()->cookie('locale'));
+    $widgetLocale = (is_string($requestedLocale) && in_array($requestedLocale, ['en', 'es', 'it', 'ru'], true))
+        ? $requestedLocale
+        : request()->getPreferredLanguage(['en', 'es', 'it', 'ru']);
+
     $appName = (string) config('app.name', 'AdenaLedger');
     $appUrl = rtrim((string) config('app.url', request()->getSchemeAndHttpHost()), '/');
     $currentUrl = $appUrl . request()->getRequestUri();
@@ -109,10 +122,11 @@
              is fixed to the same bottom-right corner (`lg:hidden`), and the widget's
              own CSS lives inside a closed-off shadow tree we can't reposition from
              here — so instead of colliding, it only mounts on desktop widths where
-             there's no bottom-nav. `data-lang` is intentionally omitted so the widget
-             follows `<html lang>` (set above from the request locale) instead of being
-             pinned to Spanish; `data-suggestions` is omitted too so it falls back to
-             the widget's own per-locale suggestion chips. --}}
+             there's no bottom-nav. `data-lang` uses $widgetLocale (query/session/
+             cookie, else Accept-Language) computed above — same resolution the rest
+             of the site uses, so the widget doesn't default to English for a
+             first-time non-English visitor. `data-suggestions` is left unset so it
+             falls back to the widget's own per-locale suggestion chips. --}}
         <style>
             @media (max-width: 1023px) {
                 #friday-support-widget { display: none !important; }
@@ -122,6 +136,7 @@
                 data-project="adenaledger"
                 data-key="pk_t5JlTv-hVsqBTPDnJJ85NDeCE_AP7ww3"
                 data-name="AdenaLedger"
+                data-lang="{{ $widgetLocale }}"
                 async></script>
     </body>
 </html>
