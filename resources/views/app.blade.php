@@ -103,5 +103,25 @@
     </head>
     <body class="font-sans antialiased">
         @inertia
+
+        {{-- Friday support widget (Shadow DOM chat widget, adenaledger.com project).
+             Hidden below the `lg` breakpoint (1024px): MainLayout's mobile bottom-nav
+             is fixed to the same bottom-right corner (`lg:hidden`), and the widget's
+             own CSS lives inside a closed-off shadow tree we can't reposition from
+             here — so instead of colliding, it only mounts on desktop widths where
+             there's no bottom-nav. `data-lang` is intentionally omitted so the widget
+             follows `<html lang>` (set above from the request locale) instead of being
+             pinned to Spanish; `data-suggestions` is omitted too so it falls back to
+             the widget's own per-locale suggestion chips. --}}
+        <style>
+            @media (max-width: 1023px) {
+                #friday-support-widget { display: none !important; }
+            }
+        </style>
+        <script src="https://friday.adenaledger.com/api/support/widget.js"
+                data-project="adenaledger"
+                data-key="pk_t5JlTv-hVsqBTPDnJJ85NDeCE_AP7ww3"
+                data-name="AdenaLedger"
+                async></script>
     </body>
 </html>
