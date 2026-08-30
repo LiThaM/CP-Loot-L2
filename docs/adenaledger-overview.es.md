@@ -59,10 +59,10 @@ Cuatro pilares:
 |---|---|---|
 | **Miembro** | Dashboard personal, reportar loot | Crear sesiones, ver su saldo adena, ver ranking del CP |
 | **CP Leader** | Vault + gestión de miembros | Aprobar/rechazar loot, sellear, asignar items, subastar, configurar reglas |
-| **Accountant** | Mismas que leader, sin transferir liderazgo | Pensado para co-líderes de confianza |
+| **Accountant** | Mismas que leader, sin transferir liderazgo | Pensado para co-líderes de confianza; con el toggle de la CP activo, ve el código de invitación y aprueba miembros pendientes |
 | **Admin (EGlobal/owner)** | Panel /system | Crashes, releases, users globales, gestión multi-CP |
 
-Cada CP tiene **siempre un leader fundador** + cualquier número de accountants. El sistema de roles es estricto (anti-mass-assignment, separación de privilegios documentada).
+Cada CP tiene **siempre un leader fundador** + cualquier número de accountants. El sistema de roles es estricto (anti-mass-assignment, separación de privilegios documentada). El fundador puede delegar la gestión de miembros (opción *staff_can_manage_members* en Configuración): co-líderes y accountants ven el código de invitación y aprueban solicitudes pendientes; regenerar el código sigue siendo exclusivo del fundador.
 
 ---
 

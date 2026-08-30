@@ -3,9 +3,11 @@ defineProps({
     cp: { type: Object, required: true },
     form: { type: Object, required: true },
     logoPreview: { type: String, default: null },
+    inviteCode: { type: String, default: null },
+    canRegenerateInvite: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['logo-change', 'submit', 'copy-invite', 'recompute']);
+const emit = defineEmits(['logo-change', 'submit', 'copy-invite', 'regenerate-invite', 'recompute']);
 </script>
 
 <template>
@@ -30,9 +32,15 @@ const emit = defineEmits(['logo-change', 'submit', 'copy-invite', 'recompute']);
                 <div class="l2-panel p-6 rounded-3xl border-gray-800 bg-white/60 dark:bg-black/40 shadow-xl text-center">
                     <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{{ $t('party.invite.title') }}</div>
                     <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-4">{{ $t('party.invite.description') }}</p>
+                    <div v-if="inviteCode" class="mb-4 py-3 px-4 rounded-2xl bg-gray-100 border border-gray-200 dark:bg-black/60 dark:border-gray-700">
+                        <div class="font-mono font-black text-purple-700 dark:text-purple-300 tracking-widest text-sm truncate">{{ inviteCode }}</div>
+                    </div>
                     <button @click="emit('copy-invite')" class="w-full py-4 rounded-2xl bg-gray-900 border border-gray-700 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-3">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
                         {{ $t('party.invite.copy_btn') }}
+                    </button>
+                    <button v-if="canRegenerateInvite" @click="emit('regenerate-invite')" class="mt-3 w-full py-3 rounded-2xl bg-red-950/10 border border-red-500/30 hover:bg-red-600 hover:text-white text-red-600 dark:text-red-400 dark:hover:text-white text-[10px] font-black uppercase tracking-widest transition">
+                        {{ $t('party.invite.regenerate_btn') }}
                     </button>
                 </div>
             </div>
@@ -72,6 +80,17 @@ const emit = defineEmits(['logo-change', 'submit', 'copy-invite', 'recompute']);
                                 <div>
                                     <div class="text-xs font-black uppercase tracking-widest text-gray-800 dark:text-gray-200">{{ $t('cp.settings.image_proof_required') }}</div>
                                     <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">{{ $t('cp.settings.image_proof_required_hint') }}</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="pt-4 border-t border-gray-200 dark:border-gray-800">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" v-model="form.staff_can_manage_members"
+                                       class="mt-1 w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-600">
+                                <div>
+                                    <div class="text-xs font-black uppercase tracking-widest text-gray-800 dark:text-gray-200">{{ $t('cp.settings.staff_manage_members') }}</div>
+                                    <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">{{ $t('cp.settings.staff_manage_members_hint') }}</div>
                                 </div>
                             </label>
                         </div>

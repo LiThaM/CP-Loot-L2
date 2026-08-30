@@ -59,10 +59,10 @@ Four pillars:
 |---|---|---|
 | **Member** | Personal dashboard, report loot | Create sessions, view personal adena, view CP ranking |
 | **CP Leader** | Vault + member management | Approve/reject loot, sell, assign items, auction, configure rules |
-| **Accountant** | Same as leader (no transfer of leadership) | Designed for trusted co-leaders |
+| **Accountant** | Same as leader (no transfer of leadership) | Designed for trusted co-leaders; with the CP toggle enabled, sees the invite code and approves pending members |
 | **Admin (EGlobal/owner)** | /system panel | Crashes, releases, global users, multi-CP management |
 
-Every CP **always has a founding leader** + any number of accountants. The role system is strict (anti-mass-assignment, documented privilege separation).
+Every CP **always has a founding leader** + any number of accountants. The role system is strict (anti-mass-assignment, documented privilege separation). The founder can delegate member management (*staff_can_manage_members* option in Settings): co-leaders and accountants see the invite code and approve pending requests; regenerating the code remains founder-only.
 
 ---
 

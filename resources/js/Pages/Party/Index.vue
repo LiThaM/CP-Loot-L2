@@ -35,6 +35,9 @@ const props = defineProps({
     canManageWarehouse: Boolean,
     isLeader: Boolean,
     isAdmin: Boolean,
+    canManageMembers: Boolean,
+    canRegenerateInvite: Boolean,
+    inviteCode: { type: String, default: null },
     initialTab: String,
     roles: Array,
     cps: Array,
@@ -56,7 +59,7 @@ const tFromProps = (key, fallback) => {
 };
 
 const normalizeTab = (tab) => {
-    if (tab === 'config' && !props.isLeader) return 'members';
+    if ((tab === 'config' || tab === 'settings') && !props.isLeader) return 'members';
     return tab || 'members';
 };
 
@@ -243,6 +246,7 @@ const cpSettingsForm = useForm({
     tracker_value_by_market: Boolean(props.cp?.tracker_value_by_market ?? true),
     tracker_round_up_below_1000: Boolean(props.cp?.tracker_round_up_below_1000 ?? false),
     tracker_round_points_up: Boolean(props.cp?.tracker_round_points_up ?? false),
+    staff_can_manage_members: Boolean(props.cp?.staff_can_manage_members ?? false),
 });
 
 const logoPreview = ref(null);
@@ -275,6 +279,20 @@ const recomputeTracker = async () => {
     );
     if (!ok) return;
     router.post(route('party.tracker.recompute'), {}, { preserveScroll: true });
+};
+
+const regenerateInviteCode = async () => {
+    const ok = await confirmAction(
+        t('party.invite.regenerate_confirm_title'),
+        t('party.invite.regenerate_confirm_body'),
+        t('party.invite.regenerate_btn'),
+        t('common.cancel'),
+    );
+    if (!ok) return;
+    router.post(route('cp.settings.invite-code'), {}, {
+        preserveScroll: true,
+        onSuccess: () => showToast(t('party.invite.regenerated')),
+    });
 };
 
 // CP rules editor — leader-only. Reads the current rule from shared props
@@ -1085,7 +1103,7 @@ const submitSell = () => {
 
 
 const copyInviteLink = () => {
-    const link = `${window.location.origin}/register?invite=${props.cp.invite_code}`;
+    const link = `${window.location.origin}/register?invite=${props.inviteCode}`;
     navigator.clipboard.writeText(link).then(() => {
         showToast(t('party.invite.copied'));
     }).catch(() => {
@@ -1538,11 +1556,11 @@ watch(buySearch, throttle(async (val) => {
                         </div>
                     </div>
 
-                    <div v-if="isLeader" class="flex-1 max-w-xs ml-auto">
+                    <div v-if="inviteCode" class="flex-1 max-w-xs ml-auto">
                         <div class="bg-white/70 border border-gray-200 p-3 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all dark:bg-black/40 dark:border-gray-800">
                             <div>
                                 <div class="text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">{{ $t('party.invite.label') }}</div>
-                                <div class="text-[10px] text-purple-700 dark:text-purple-300 font-black tracking-widest truncate max-w-[150px]">{{ cp.invite_code }}</div>
+                                <div class="text-[10px] text-purple-700 dark:text-purple-300 font-black tracking-widest truncate max-w-[150px]">{{ inviteCode }}</div>
                             </div>
                             <button @click="copyInviteLink" class="bg-gray-100 hover:bg-purple-600 p-2 rounded-xl transition-all shadow-lg group-hover:scale-110 active:scale-95 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                                 🔗
@@ -1614,7 +1632,7 @@ watch(buySearch, throttle(async (val) => {
                                 </button>
 
                                 <button
-                                    v-if="isLeader && member.membership_status === 'pending' && member.id !== cp.leader_id"
+                                    v-if="canManageMembers && member.membership_status === 'pending' && member.id !== cp.leader_id"
                                     class="px-3 py-2 rounded-xl bg-yellow-500/90 hover:bg-yellow-500 text-gray-900 text-[10px] font-black uppercase tracking-widest border border-yellow-600/30"
                                     @click.stop="approveMember(member.id)"
                                 >
@@ -2497,9 +2515,12 @@ watch(buySearch, throttle(async (val) => {
                 :cp="cp"
                 :form="cpSettingsForm"
                 :logo-preview="logoPreview"
+                :invite-code="inviteCode"
+                :can-regenerate-invite="canRegenerateInvite"
                 @logo-change="onLogoChange"
                 @submit="submitCpSettings"
                 @copy-invite="copyInviteLink"
+                @regenerate-invite="regenerateInviteCode"
                 @recompute="recomputeTracker"
             />
         </div>

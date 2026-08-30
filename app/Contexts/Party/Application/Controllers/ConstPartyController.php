@@ -4,6 +4,7 @@ namespace App\Contexts\Party\Application\Controllers;
 
 use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Contexts\System\Domain\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -189,6 +190,7 @@ class ConstPartyController extends Controller
             'tracker_value_by_market' => 'sometimes|boolean',
             'tracker_round_up_below_1000' => 'sometimes|boolean',
             'tracker_round_points_up' => 'sometimes|boolean',
+            'staff_can_manage_members' => 'sometimes|boolean',
         ]);
 
         // Note: `$request->server` is Symfony's ServerBag property, not the
@@ -221,6 +223,9 @@ class ConstPartyController extends Controller
         if ($request->has('tracker_round_points_up')) {
             $payload['tracker_round_points_up'] = $request->boolean('tracker_round_points_up');
         }
+        if ($request->has('staff_can_manage_members')) {
+            $payload['staff_can_manage_members'] = $request->boolean('staff_can_manage_members');
+        }
 
         $cp->update($payload);
 
@@ -231,6 +236,31 @@ class ConstPartyController extends Controller
         }
 
         return back()->with('success', 'Ajustes de la Const Party actualizados correctamente.');
+    }
+
+    public function regenerateInviteCode(Request $request)
+    {
+        $user = $request->user();
+        $cp = $user->cp;
+        $isAdmin = ($user->role?->name ?? null) === 'admin';
+
+        if (! $cp || (! $isAdmin && $user->id !== $cp->leader_id)) {
+            abort(403, 'Solo el líder fundador de la CP puede regenerar el código de invitación.');
+        }
+
+        $cp->update(['invite_code' => Str::random(12)]);
+
+        // The code itself is a secret — audit the rotation, not the values.
+        AuditLog::create([
+            'entity_type' => 'ConstParty',
+            'entity_id' => $cp->id,
+            'user_id' => $user->id,
+            'action' => 'INVITE_CODE_REGENERATED',
+            'old_values' => [],
+            'new_values' => [],
+        ]);
+
+        return back()->with('success', 'Código de invitación regenerado. El enlace anterior ya no funciona.');
     }
 
     public function toggleActive(Request $request, ConstParty $cp)

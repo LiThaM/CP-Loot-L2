@@ -50,8 +50,8 @@ export const leaderTopics = [
     { id: 'points_config',       icon: TrophyIcon,                     accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: null },
     { id: 'dkp_tracker',         icon: TrophyIcon,                     accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 6, tour: null },
     { id: 'weekly_objectives',   icon: TrophyIcon,                     accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 5, tour: null },
-    { id: 'cp_settings',         icon: Cog6ToothIcon,                  accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 5, tour: 'party-settings' },
-    { id: 'members_mgmt',        icon: UserGroupIcon,                  accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 6, tour: null },
+    { id: 'cp_settings',         icon: Cog6ToothIcon,                  accent: 'text-blue-700 dark:text-blue-300',       bulletCount: 6, tour: 'party-settings' },
+    { id: 'members_mgmt',        icon: UserGroupIcon,                  accent: 'text-purple-700 dark:text-purple-300',   bulletCount: 7, tour: null },
     { id: 'craft_bulk_external', icon: CalculatorIcon,                 accent: 'text-indigo-700 dark:text-indigo-300',   bulletCount: 6, tour: 'craft-bulk' },
     { id: 'clan_system',         icon: ShieldCheckIcon,                accent: 'text-amber-700 dark:text-amber-300',     bulletCount: 7, tour: null },
 ];

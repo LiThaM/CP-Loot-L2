@@ -59,7 +59,7 @@ Route::get('/', function () {
 });
 
 // Landing pública para descarga del bot (solo Lu4).
-Route::get('/download', [\App\Http\Controllers\LandingController::class, 'show'])
+Route::get('/download', [LandingController::class, 'show'])
     ->name('landing.download');
 
 // Tracking público de tickets desde la app (redirect a página Inertia).
@@ -86,6 +86,7 @@ Route::get('/privacy', function () {
 // hosts (cPanel default), which makes Chrome log a console warning.
 Route::get('/manifest.webmanifest', function () {
     $json = file_get_contents(public_path('manifest.webmanifest'));
+
     return response($json, 200, [
         'Content-Type' => 'application/manifest+json; charset=UTF-8',
         'Cache-Control' => 'public, max-age=3600',
@@ -132,7 +133,7 @@ Route::prefix('api/public')->middleware('throttle:30,1')->group(function () {
     Route::get('/recipes/chronicles', [PublicCraftingController::class, 'chronicles'])->name('public.recipes.chronicles');
 });
 
-Route::post('/locale', function (\Illuminate\Http\Request $request) {
+Route::post('/locale', function (Request $request) {
     $data = $request->validate([
         'locale' => 'required|string|in:en,es,it,ru',
     ]);
@@ -142,10 +143,10 @@ Route::post('/locale', function (\Illuminate\Http\Request $request) {
     return back();
 })->name('locale.set');
 
+use App\Http\Controllers\Admin\ImpersonateController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\TicketController;
-use App\Http\Controllers\Admin\ImpersonateController;
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
@@ -164,9 +165,11 @@ Route::post('/cp-requests', [SupportController::class, 'cpRequest'])
     ->middleware('throttle:6,1')
     ->name('cp.requests.store');
 
+use App\Contexts\Identity\Application\Controllers\CharactersController;
 use App\Contexts\Identity\Domain\Models\User;
 use App\Contexts\Loot\Application\Controllers\AdenaActionController;
 use App\Contexts\Loot\Application\Controllers\CpEventConfigController;
+use App\Contexts\Loot\Application\Controllers\CraftBulkController;
 use App\Contexts\Loot\Application\Controllers\CraftingController;
 use App\Contexts\Loot\Application\Controllers\LootActionController;
 use App\Contexts\Loot\Application\Controllers\LootController;
@@ -175,14 +178,25 @@ use App\Contexts\Loot\Application\Controllers\WishlistController;
 use App\Contexts\Loot\Domain\Models\Item;
 use App\Contexts\Loot\Domain\Models\LootEntry;
 use App\Contexts\Loot\Domain\Models\LootReport;
+use App\Contexts\Party\Application\Controllers\AuctionController;
 use App\Contexts\Party\Application\Controllers\ConstPartyController;
+use App\Contexts\Party\Application\Controllers\CpRulesController;
+use App\Contexts\Party\Application\Controllers\DonationsController;
+use App\Contexts\Party\Application\Controllers\ExternalPayoutsController;
 use App\Contexts\Party\Application\Controllers\PartyController;
+use App\Contexts\Party\Application\Controllers\PartyStatsController;
+use App\Contexts\Party\Application\Controllers\TrackerController;
+use App\Contexts\Party\Application\Controllers\WeeklyObjectivesController;
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Contexts\System\Application\Controllers\ChangelogController;
+use App\Contexts\System\Application\Controllers\CrashesController;
 use App\Contexts\System\Application\Controllers\ItemManagementController;
+use App\Contexts\System\Application\Controllers\ReleasesController;
 use App\Contexts\System\Application\Controllers\TranslationController;
 use App\Contexts\System\Application\Controllers\UserManagementController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\ProfileStatsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -192,25 +206,25 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // L2 characters — own page, separate from the web-account profile.
-    Route::get('/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'index'])
+    Route::get('/characters', [CharactersController::class, 'index'])
         ->name('characters.index');
-    Route::post('/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'store'])
+    Route::post('/characters', [CharactersController::class, 'store'])
         ->name('characters.store');
-    Route::patch('/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'update'])
+    Route::patch('/characters/{character}', [CharactersController::class, 'update'])
         ->name('characters.update');
-    Route::delete('/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'destroy'])
+    Route::delete('/characters/{character}', [CharactersController::class, 'destroy'])
         ->name('characters.destroy');
     // Legacy aliases kept so old tests / cached frontend routes keep
     // resolving until they get rebuilt.
-    Route::post('/profile/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'store'])
+    Route::post('/profile/characters', [CharactersController::class, 'store'])
         ->name('profile.characters.store');
-    Route::patch('/profile/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'update'])
+    Route::patch('/profile/characters/{character}', [CharactersController::class, 'update'])
         ->name('profile.characters.update');
-    Route::delete('/profile/characters/{character}', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'destroy'])
+    Route::delete('/profile/characters/{character}', [CharactersController::class, 'destroy'])
         ->name('profile.characters.destroy');
     // JSON listing for another CP member — feeds the per-attendee char
     // picker in the loot modal.
-    Route::get('/api/users/{user}/characters', [\App\Contexts\Identity\Application\Controllers\CharactersController::class, 'listForUser'])
+    Route::get('/api/users/{user}/characters', [CharactersController::class, 'listForUser'])
         ->name('api.users.characters');
 
     Route::get('/excluded', function (Request $request) {
@@ -240,9 +254,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/craft', [PartyController::class, 'index'])->name('party.crafting')->defaults('tab', 'crafting');
     // Bulk crafting planner — read-only calculator that aggregates N recipes
     // and crosses them against the CP warehouse stock.
-    Route::get('/party/craft-bulk', [\App\Contexts\Loot\Application\Controllers\CraftBulkController::class, 'index'])
+    Route::get('/party/craft-bulk', [CraftBulkController::class, 'index'])
         ->name('party.craft_bulk.index');
-    Route::post('/api/party/craft-bulk/plan', [\App\Contexts\Loot\Application\Controllers\CraftBulkController::class, 'plan'])
+    Route::post('/api/party/craft-bulk/plan', [CraftBulkController::class, 'plan'])
         ->name('party.craft_bulk.plan');
     Route::patch('/party/members/{user}/approve', [PartyController::class, 'approveMember'])->name('party.members.approve');
     Route::post('/party/points/reset', [PartyController::class, 'resetPoints'])->name('party.points.reset');
@@ -252,35 +266,35 @@ Route::middleware('auth')->group(function () {
     // CP deep-dive stats page: KPIs + charts + heatmap aggregated from
     // loot reports, points logs, warehouse and (if enabled) tracker rows.
     // Accessible to all members of the CP in read-only mode.
-    Route::get('/party/stats', [\App\Contexts\Party\Application\Controllers\PartyStatsController::class, 'index'])
+    Route::get('/party/stats', [PartyStatsController::class, 'index'])
         ->name('party.stats');
 
     // Personal "Me" stats page — mirrors party.stats but scoped to the
     // authenticated user. Shows their own KPIs, leaderboard position,
     // tracker contributions and recent activity.
-    Route::get('/profile/stats', [\App\Http\Controllers\ProfileStatsController::class, 'index'])
+    Route::get('/profile/stats', [ProfileStatsController::class, 'index'])
         ->name('profile.stats');
 
-    Route::get('/party/tracker', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'index'])
+    Route::get('/party/tracker', [TrackerController::class, 'index'])
         ->name('party.tracker');
 
     // CP auctions: leader opens, members bid, cron closes at ends_at,
     // leader fulfills to charge the winner and hand over the item.
-    Route::get('/party/auctions', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'index'])
+    Route::get('/party/auctions', [AuctionController::class, 'index'])
         ->name('party.auctions.index');
-    Route::post('/party/auctions', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'store'])
+    Route::post('/party/auctions', [AuctionController::class, 'store'])
         ->name('party.auctions.store');
-    Route::post('/party/auctions/{auction}/bid', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'bid'])
+    Route::post('/party/auctions/{auction}/bid', [AuctionController::class, 'bid'])
         ->name('party.auctions.bid');
-    Route::post('/party/auctions/{auction}/fulfill', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'fulfill'])
+    Route::post('/party/auctions/{auction}/fulfill', [AuctionController::class, 'fulfill'])
         ->name('party.auctions.fulfill');
-    Route::post('/party/auctions/{auction}/cancel', [\App\Contexts\Party\Application\Controllers\AuctionController::class, 'cancel'])
+    Route::post('/party/auctions/{auction}/cancel', [AuctionController::class, 'cancel'])
         ->name('party.auctions.cancel');
-    Route::post('/party/tracker/contributions', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'storeContribution'])
+    Route::post('/party/tracker/contributions', [TrackerController::class, 'storeContribution'])
         ->name('party.tracker.contributions.store');
-    Route::post('/party/tracker/recompute', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'recompute'])
+    Route::post('/party/tracker/recompute', [TrackerController::class, 'recompute'])
         ->name('party.tracker.recompute');
-    Route::delete('/party/tracker/contributions/{contribution}', [\App\Contexts\Party\Application\Controllers\TrackerController::class, 'destroyContribution'])
+    Route::delete('/party/tracker/contributions/{contribution}', [TrackerController::class, 'destroyContribution'])
         ->name('party.tracker.contributions.destroy');
     Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog.index');
     Route::post('/changelog/ack', [ChangelogController::class, 'acknowledge'])->name('changelog.ack');
@@ -292,10 +306,11 @@ Route::middleware('auth')->group(function () {
         if ($request->user()?->role?->name === 'admin') {
             return redirect()->route('dashboard');
         }
-        return \Inertia\Inertia::render('Tutorials/Index');
+
+        return Inertia::render('Tutorials/Index');
     })->name('tutorials.index');
-    Route::patch('/system/users/{user}/ban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'banMember'])->name('system.users.ban');
-    Route::patch('/system/users/{user}/unban', [App\Contexts\System\Application\Controllers\UserManagementController::class, 'unbanMember'])->name('system.users.unban');
+    Route::patch('/system/users/{user}/ban', [UserManagementController::class, 'banMember'])->name('system.users.ban');
+    Route::patch('/system/users/{user}/unban', [UserManagementController::class, 'unbanMember'])->name('system.users.unban');
     Route::get('/warehouse', [PartyController::class, 'myWarehouse'])->name('warehouse.index');
     Route::get('/loot', [LootController::class, 'index'])->name('loot.index');
     Route::post('/admin/cp', [ConstPartyController::class, 'store'])->name('admin.cp.store');
@@ -366,29 +381,29 @@ Route::middleware('auth')->group(function () {
     Route::delete('/system/items/{item}', [ItemManagementController::class, 'destroy'])->name('system.items.destroy');
 
     // Releases & Crashes (Admin Only)
-    Route::get('/system/releases', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'index'])
+    Route::get('/system/releases', [ReleasesController::class, 'index'])
         ->name('system.releases.index');
-    Route::post('/system/releases', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'store'])
+    Route::post('/system/releases', [ReleasesController::class, 'store'])
         ->name('system.releases.store');
-    Route::post('/system/releases/{release}/toggle-publish', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'togglePublish'])
+    Route::post('/system/releases/{release}/toggle-publish', [ReleasesController::class, 'togglePublish'])
         ->name('system.releases.toggle_publish');
-    Route::delete('/system/releases/{release}', [\App\Contexts\System\Application\Controllers\ReleasesController::class, 'destroy'])
+    Route::delete('/system/releases/{release}', [ReleasesController::class, 'destroy'])
         ->name('system.releases.destroy');
 
-    Route::get('/system/crashes', [\App\Contexts\System\Application\Controllers\CrashesController::class, 'index'])
+    Route::get('/system/crashes', [CrashesController::class, 'index'])
         ->name('system.crashes.index');
-    Route::get('/system/crashes/{fingerprint}', [\App\Contexts\System\Application\Controllers\CrashesController::class, 'show'])
+    Route::get('/system/crashes/{fingerprint}', [CrashesController::class, 'show'])
         ->where('fingerprint', '[a-f0-9]{64}')
         ->name('system.crashes.show');
-    Route::delete('/system/crashes/{fingerprint}', [\App\Contexts\System\Application\Controllers\CrashesController::class, 'destroy'])
+    Route::delete('/system/crashes/{fingerprint}', [CrashesController::class, 'destroy'])
         ->where('fingerprint', '[a-f0-9]{64}')
         ->name('system.crashes.destroy');
 
     // External payouts (leaders + admin) — adena owed to non-CP attendees
     // that the leader needs to settle outside the system.
-    Route::get('/system/external-payouts', [\App\Contexts\Party\Application\Controllers\ExternalPayoutsController::class, 'index'])
+    Route::get('/system/external-payouts', [ExternalPayoutsController::class, 'index'])
         ->name('system.external_payouts.index');
-    Route::post('/system/external-payouts/{attendee}/mark-paid', [\App\Contexts\Party\Application\Controllers\ExternalPayoutsController::class, 'markPaid'])
+    Route::post('/system/external-payouts/{attendee}/mark-paid', [ExternalPayoutsController::class, 'markPaid'])
         ->name('system.external_payouts.mark_paid');
 
     // User Management (Admin & CP Leader Audit)
@@ -401,12 +416,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/adena/transaction', [AdenaActionController::class, 'store'])->name('adena.transaction.store');
     // Donations to the CP fund — recorded as pending DONATION loot reports
     // (reviewable in /loot). Tracker CPs award the donor DKP on confirm.
-    Route::post('/donations/adena', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'donateAdena'])->name('donations.adena');
-    Route::post('/donations/item', [\App\Contexts\Party\Application\Controllers\DonationsController::class, 'donateItem'])->name('donations.item');
+    Route::post('/donations/adena', [DonationsController::class, 'donateAdena'])->name('donations.adena');
+    Route::post('/donations/item', [DonationsController::class, 'donateItem'])->name('donations.item');
 
     // Weekly objectives (items the CP hunts; multiplier boosts tracker points).
-    Route::post('/objectives', [\App\Contexts\Party\Application\Controllers\WeeklyObjectivesController::class, 'store'])->name('objectives.store');
-    Route::delete('/objectives/{objective}', [\App\Contexts\Party\Application\Controllers\WeeklyObjectivesController::class, 'destroy'])->name('objectives.destroy');
+    Route::post('/objectives', [WeeklyObjectivesController::class, 'store'])->name('objectives.store');
+    Route::delete('/objectives/{objective}', [WeeklyObjectivesController::class, 'destroy'])->name('objectives.destroy');
 
     Route::post('/alerts/{alert}/read', function (Request $request, $alert) {
         $user = $request->user();
@@ -457,11 +472,12 @@ Route::middleware('auth')->group(function () {
 
     // CP Settings & Identity
     Route::post('/cp/settings', [ConstPartyController::class, 'update'])->name('cp.settings.update');
+    Route::post('/cp/settings/invite-code', [ConstPartyController::class, 'regenerateInviteCode'])->name('cp.settings.invite-code');
     Route::post('/cp/event-config', [CpEventConfigController::class, 'update'])->name('cp.event-config.update');
 
     // CP Rules — leader edits, members accept (blocking modal when version changes)
-    Route::post('/cp/rules', [\App\Contexts\Party\Application\Controllers\CpRulesController::class, 'update'])->name('cp.rules.update');
-    Route::post('/cp/rules/accept', [\App\Contexts\Party\Application\Controllers\CpRulesController::class, 'accept'])->name('cp.rules.accept');
+    Route::post('/cp/rules', [CpRulesController::class, 'update'])->name('cp.rules.update');
+    Route::post('/cp/rules/accept', [CpRulesController::class, 'accept'])->name('cp.rules.accept');
 
     // Wishlist
     Route::post('/wishlist', [WishlistController::class, 'store'])->name('wishlist.store');

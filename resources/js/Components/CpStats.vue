@@ -71,35 +71,6 @@ const t = (key, params = {}) => {
     return out;
 };
 
-const copyInviteLink = () => {
-    if (!currentCp.value?.invite_code) {
-        showAlert(t('common.error'), t('cp.invite.none'), 'error');
-        return;
-    }
-    const link = `${window.location.origin}/register?invite=${currentCp.value.invite_code}`;
-
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(link).then(() => {
-            showToast(t('cp.invite.copied'));
-        }).catch(() => {
-            showAlert(t('common.attention'), t('cp.invite.copy_failed'), 'warning');
-        });
-    } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = link;
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            showToast(t('cp.invite.copied'));
-        } catch (err) {
-            showAlert(t('common.attention'), t('cp.invite.copy_failed'), 'warning');
-        }
-        document.body.removeChild(textArea);
-    }
-};
-
 const openLootModal = () => {
     emitter.emit('open-loot-modal');
 };

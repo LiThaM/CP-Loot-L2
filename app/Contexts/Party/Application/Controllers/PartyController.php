@@ -2,7 +2,9 @@
 
 namespace App\Contexts\Party\Application\Controllers;
 
+use App\Contexts\Identity\Domain\Models\Role;
 use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\Loot\Application\Controllers\CraftingController;
 use App\Contexts\Loot\Domain\Models\CpEventConfig;
 use App\Contexts\Loot\Domain\Models\CpRecipe;
 use App\Contexts\Loot\Domain\Models\Item;
@@ -11,13 +13,15 @@ use App\Contexts\Loot\Domain\Models\LootReport;
 use App\Contexts\Loot\Domain\Models\LootReportAttendee;
 use App\Contexts\Loot\Domain\Models\Recipe;
 use App\Contexts\Loot\Domain\Services\CraftedPriceService;
+use App\Contexts\Party\Application\Services\TrackerContributionService;
 use App\Contexts\Party\Domain\Models\ConstParty;
 use App\Contexts\Party\Domain\Models\PointsLog;
 use App\Contexts\System\Domain\Models\AuditLog;
-use App\Contexts\Identity\Domain\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -127,10 +131,10 @@ class PartyController extends Controller
         // effective price (market→NPC per the CP's basis) ÷ divisor, rounded the
         // same way the CP's tracker does (ceil when "whole points" is on, else 2
         // decimals). No 1000-floor (that's a per-stack rule) and no craft cost.
-        $trackerOn      = (bool) $cp->tracker_enabled;
+        $trackerOn = (bool) $cp->tracker_enabled;
         $trackerDivisor = max(1, (int) $cp->tracker_divisor);
-        $valueByMarket  = (bool) ($cp->tracker_value_by_market ?? true);
-        $wholePoints    = (bool) ($cp->tracker_round_points_up ?? false);
+        $valueByMarket = (bool) ($cp->tracker_value_by_market ?? true);
+        $wholePoints = (bool) ($cp->tracker_round_points_up ?? false);
 
         $warehouseItems = $warehouseIncoming->map(function ($row) use ($warehouseOutgoing, $priceEditorNames, $gradeRank, $craftedPrices, $trackerOn, $trackerDivisor, $valueByMarket, $wholePoints) {
             $out = (int) ($warehouseOutgoing[$row->id] ?? 0);
@@ -160,12 +164,12 @@ class PartyController extends Controller
 
             return $row;
         })->values()
-          ->filter(fn ($row) => (int) $row->total_amount > 0)
-          ->sortBy([
-              ['grade_rank', 'desc'],
-              ['total_amount', 'desc'],
-              ['last_added_at', 'desc'],
-          ])->values();
+            ->filter(fn ($row) => (int) $row->total_amount > 0)
+            ->sortBy([
+                ['grade_rank', 'desc'],
+                ['total_amount', 'desc'],
+                ['last_added_at', 'desc'],
+            ])->values();
 
         $warehouseAmountsByItemId = $warehouseItems->pluck('total_amount', 'id');
 
@@ -257,7 +261,7 @@ class PartyController extends Controller
                     ?? ($outputs->first()?->item);
                 $primaryOutputId = (int) ($primaryOutputItem?->id ?? 0);
                 $requiresScroll = $recipe && $primaryOutputId
-                    ? \App\Contexts\Loot\Application\Controllers\CraftingController::requiresRecipeScroll($recipe, $primaryOutputId)
+                    ? CraftingController::requiresRecipeScroll($recipe, $primaryOutputId)
                     : false;
 
                 if ($recipe?->recipe_item_id && $requiresScroll) {
@@ -265,7 +269,7 @@ class PartyController extends Controller
                     $have = (int) ($warehouseAmountsByItemId[$recipe->recipe_item_id] ?? 0);
                     $materialsList->prepend([
                         'item_id' => $recipe->recipe_item_id,
-                        'name' => $recipeItem?->name ?? 'Receta ' . $recipe->name,
+                        'name' => $recipeItem?->name ?? 'Receta '.$recipe->name,
                         'image_url' => $recipeItem?->image_url,
                         'need' => 1,
                         'have' => $have,
@@ -277,9 +281,9 @@ class PartyController extends Controller
                 }
 
                 // pluck() returns a Collection; simulate() expects arrays.
-                $autoPlan = $recipe ? \App\Contexts\Loot\Application\Controllers\CraftingController::simulate(
+                $autoPlan = $recipe ? CraftingController::simulate(
                     $recipe,
-                    $warehouseAmountsByItemId instanceof \Illuminate\Support\Collection ? $warehouseAmountsByItemId->all() : (array) $warehouseAmountsByItemId,
+                    $warehouseAmountsByItemId instanceof Collection ? $warehouseAmountsByItemId->all() : (array) $warehouseAmountsByItemId,
                     is_array($craftableRecipeIdByItemId) ? $craftableRecipeIdByItemId : (array) $craftableRecipeIdByItemId,
                 ) : null;
                 $hydratedAuto = null;
@@ -301,12 +305,14 @@ class PartyController extends Controller
                     ];
 
                     // max_craftable = min(floor(have / consumed_per_craft)) for each consumed item
-                    $warehouseAll = $warehouseAmountsByItemId instanceof \Illuminate\Support\Collection
+                    $warehouseAll = $warehouseAmountsByItemId instanceof Collection
                         ? $warehouseAmountsByItemId->all()
                         : (array) $warehouseAmountsByItemId;
                     $maxCraftable = PHP_INT_MAX;
                     foreach ($autoPlan['consumed'] as $itemId => $amountPerCraft) {
-                        if ($amountPerCraft <= 0) continue;
+                        if ($amountPerCraft <= 0) {
+                            continue;
+                        }
                         $have = (int) ($warehouseAll[$itemId] ?? 0);
                         $maxCraftable = min($maxCraftable, intdiv($have, $amountPerCraft));
                     }
@@ -375,10 +381,19 @@ class PartyController extends Controller
         if ($tab === '') {
             $tab = Str::of((string) $request->route('tab'))->lower()->toString();
         }
-        $initialTab = in_array($tab, ['members', 'warehouse_cp', 'crafting', 'config'], true) ? $tab : 'members';
+        $initialTab = in_array($tab, ['members', 'warehouse_cp', 'crafting', 'config', 'settings'], true) ? $tab : 'members';
 
         $warehouseStockValue = $warehouseItems->sum(fn ($r) => (int) ($r->stock_value ?? 0));
         $warehouseStockPriced = $warehouseItems->filter(fn ($r) => $r->market_price !== null)->count();
+
+        $isLeader = $user->id === $cp->leader_id;
+        $isAdmin = $user->role?->name === 'admin';
+        // With the CP's staff_can_manage_members opt-in, co-leaders and
+        // accountants can see the invite code and approve pending members.
+        // Regenerating the code stays founder/admin-only.
+        $canManageMembers = $isLeader || $isAdmin
+            || ((bool) $cp->staff_can_manage_members && in_array($user->role?->name, ['cp_leader', 'accountant'], true));
+        $canRegenerateInvite = $isLeader || $isAdmin;
 
         return Inertia::render('Party/Index', [
             'has_cp' => true,
@@ -394,18 +409,23 @@ class PartyController extends Controller
             'cpAdenaPaid' => $cpAdenaPaid,
             'cpRecipes' => $cpRecipes,
             'canManageWarehouse' => $canManageWarehouse,
-            'isLeader' => $user->id === $cp->leader_id,
+            'isLeader' => $isLeader,
+            'canManageMembers' => $canManageMembers,
+            'canRegenerateInvite' => $canRegenerateInvite,
+            // invite_code is $hidden on the model — this prop is the only
+            // way the code reaches the browser, and only for authorized users.
+            'inviteCode' => $canManageMembers ? $cp->invite_code : null,
             'initialTab' => $initialTab,
             // Non-admins must not see `admin` in the role dropdown of the
             // user-edit modal. The backend already rejects the assignment
             // in UserManagementController::update, but until now the
             // dropdown still listed it because this payload sent
             // Role::all() unconditionally.
-            'roles' => $user->role?->name === 'admin'
+            'roles' => $isAdmin
                 ? Role::all()
                 : Role::query()->whereIn('name', ['cp_leader', 'accountant', 'member'])->get(),
-            'cps' => in_array($user->role?->name, ['admin']) ? ConstParty::all() : [],
-            'isAdmin' => $user->role?->name === 'admin',
+            'cps' => $isAdmin ? ConstParty::all() : [],
+            'isAdmin' => $isAdmin,
         ]);
     }
 
@@ -419,12 +439,26 @@ class PartyController extends Controller
 
         $isLeader = (int) $actor->id === (int) ($actor->cp?->leader_id ?? 0);
         $isAdmin = ($actor->role?->name ?? null) === 'admin';
+        // Founder opt-in (staff_can_manage_members): co-leaders and
+        // accountants of the same CP may approve pending members too.
+        $isAuthorizedStaff = (bool) ($actor->cp?->staff_can_manage_members)
+            && in_array($actor->role?->name, ['cp_leader', 'accountant'], true);
 
-        if (! $isLeader && ! $isAdmin) {
+        if (! $isLeader && ! $isAdmin && ! $isAuthorizedStaff) {
             abort(403);
         }
 
+        $oldStatus = $user->membership_status;
         $user->update(['membership_status' => 'approved']);
+
+        AuditLog::create([
+            'entity_type' => 'User',
+            'entity_id' => $user->id,
+            'user_id' => $actor->id,
+            'action' => 'USER_APPROVED',
+            'old_values' => ['membership_status' => $oldStatus],
+            'new_values' => ['membership_status' => 'approved'],
+        ]);
 
         return back()->with('success', 'Miembro aprobado.');
     }
@@ -547,11 +581,11 @@ class PartyController extends Controller
 
             return $row;
         })->values()
-          ->filter(fn ($row) => (int) $row->total_amount > 0)
-          ->sortBy([
-              ['last_added_at', 'desc'],
-              ['total_amount', 'desc'],
-          ])->values();
+            ->filter(fn ($row) => (int) $row->total_amount > 0)
+            ->sortBy([
+                ['last_added_at', 'desc'],
+                ['total_amount', 'desc'],
+            ])->values();
 
         return Inertia::render('Warehouse/Index', [
             'has_cp' => true,
@@ -639,11 +673,11 @@ class PartyController extends Controller
 
             return $row;
         })->values()
-          ->filter(fn ($row) => (int) $row->total_amount > 0)
-          ->sortBy([
-              ['last_added_at', 'desc'],
-              ['total_amount', 'desc'],
-          ])->values();
+            ->filter(fn ($row) => (int) $row->total_amount > 0)
+            ->sortBy([
+                ['last_added_at', 'desc'],
+                ['total_amount', 'desc'],
+            ])->values();
 
         // Items contributed: loot from FARM sessions the member attended
         $farmReportIds = DB::table('loot_report_attendees')
@@ -765,78 +799,78 @@ class PartyController extends Controller
                     throw new \RuntimeException('INSUFFICIENT_STOCK:'.$available);
                 }
 
-            $report = LootReport::create([
-                'cp_id' => $cpId,
-                'requested_by_id' => $current->id,
-                'event_type' => 'ASSIGN',
-                'status' => 'confirmed',
-                'image_proof' => null,
-                'recipient_ids' => [$targetUser->id],
-            ]);
-
-            $file = $request->file('image_proof');
-            if ($file) {
-                $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
-                $imagePath = $file->storeAs("transfers/{$cpId}", "{$report->id}.{$ext}", 'public');
-                $report->image_proof = $imagePath;
-                $report->save();
-            }
-
-            LootEntry::create([
-                'loot_report_id' => $report->id,
-                'item_id' => $request->item_id,
-                'awarded_to' => $targetUser->id,
-                'amount' => $request->amount,
-            ]);
-
-            $item = Item::find($request->item_id);
-            if ($adenaOffset > 0) {
-                PointsLog::create([
+                $report = LootReport::create([
                     'cp_id' => $cpId,
-                    'user_id' => $targetUser->id,
-                    'action_type' => 'ADENA_OFFSET',
-                    'points' => 0,
-                    'adena' => -$adenaOffset,
-                    'description' => 'Descuento de Adena por asignación ('.$item?->name.') - Reporte #'.$report->id,
+                    'requested_by_id' => $current->id,
+                    'event_type' => 'ASSIGN',
+                    'status' => 'confirmed',
+                    'image_proof' => null,
+                    'recipient_ids' => [$targetUser->id],
                 ]);
-            }
-            $audit = AuditLog::create([
-                'entity_type' => 'LootReport',
-                'entity_id' => $report->id,
-                'user_id' => $current->id,
-                'action' => 'WAREHOUSE_ASSIGN',
-                'old_values' => null,
-                'new_values' => [
-                    'item_id' => (int) $request->item_id,
-                    'item_name' => $item?->name,
-                    'amount' => (int) $request->amount,
-                    'awarded_to' => (int) $targetUser->id,
-                    'adena_offset' => (int) $adenaOffset,
-                ],
-            ]);
-            $recipients = collect([$current->id, $targetUser->id]);
-            $leaderId = optional($current->cp)->leader_id;
-            if ($leaderId) {
-                $recipients->push($leaderId);
-            }
-            $recipients = $recipients->unique()->values();
-            $amountLabel = 'x'.number_format((int) $request->amount, 0, ',', '.');
-            $offsetLabel = $adenaOffset > 0 ? ' (-'.number_format($adenaOffset, 0, ',', '.').' adena)' : '';
-            $summary = "{$current->name} asignó {$item?->name} {$amountLabel} a {$targetUser->name}{$offsetLabel}";
-            $now = now();
-            $rows = $recipients->map(fn ($rid) => [
-                'audit_log_id' => $audit->id,
-                'recipient_user_id' => $rid,
-                'actor_user_id' => $current->id,
-                'entity_type' => 'LootReport',
-                'entity_id' => $report->id,
-                'action' => 'WAREHOUSE_ASSIGN',
-                'summary' => $summary,
-                'meta' => json_encode(['report_id' => $report->id, 'item_id' => (int) $request->item_id]),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ])->all();
-            DB::table('audit_alerts')->insert($rows);
+
+                $file = $request->file('image_proof');
+                if ($file) {
+                    $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
+                    $imagePath = $file->storeAs("transfers/{$cpId}", "{$report->id}.{$ext}", 'public');
+                    $report->image_proof = $imagePath;
+                    $report->save();
+                }
+
+                LootEntry::create([
+                    'loot_report_id' => $report->id,
+                    'item_id' => $request->item_id,
+                    'awarded_to' => $targetUser->id,
+                    'amount' => $request->amount,
+                ]);
+
+                $item = Item::find($request->item_id);
+                if ($adenaOffset > 0) {
+                    PointsLog::create([
+                        'cp_id' => $cpId,
+                        'user_id' => $targetUser->id,
+                        'action_type' => 'ADENA_OFFSET',
+                        'points' => 0,
+                        'adena' => -$adenaOffset,
+                        'description' => 'Descuento de Adena por asignación ('.$item?->name.') - Reporte #'.$report->id,
+                    ]);
+                }
+                $audit = AuditLog::create([
+                    'entity_type' => 'LootReport',
+                    'entity_id' => $report->id,
+                    'user_id' => $current->id,
+                    'action' => 'WAREHOUSE_ASSIGN',
+                    'old_values' => null,
+                    'new_values' => [
+                        'item_id' => (int) $request->item_id,
+                        'item_name' => $item?->name,
+                        'amount' => (int) $request->amount,
+                        'awarded_to' => (int) $targetUser->id,
+                        'adena_offset' => (int) $adenaOffset,
+                    ],
+                ]);
+                $recipients = collect([$current->id, $targetUser->id]);
+                $leaderId = optional($current->cp)->leader_id;
+                if ($leaderId) {
+                    $recipients->push($leaderId);
+                }
+                $recipients = $recipients->unique()->values();
+                $amountLabel = 'x'.number_format((int) $request->amount, 0, ',', '.');
+                $offsetLabel = $adenaOffset > 0 ? ' (-'.number_format($adenaOffset, 0, ',', '.').' adena)' : '';
+                $summary = "{$current->name} asignó {$item?->name} {$amountLabel} a {$targetUser->name}{$offsetLabel}";
+                $now = now();
+                $rows = $recipients->map(fn ($rid) => [
+                    'audit_log_id' => $audit->id,
+                    'recipient_user_id' => $rid,
+                    'actor_user_id' => $current->id,
+                    'entity_type' => 'LootReport',
+                    'entity_id' => $report->id,
+                    'action' => 'WAREHOUSE_ASSIGN',
+                    'summary' => $summary,
+                    'meta' => json_encode(['report_id' => $report->id, 'item_id' => (int) $request->item_id]),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->all();
+                DB::table('audit_alerts')->insert($rows);
             });
         } catch (\RuntimeException $e) {
             if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
@@ -861,11 +895,11 @@ class PartyController extends Controller
                         ->latest('id')
                         ->first();
                     if ($latestReport) {
-                        app(\App\Contexts\Party\Application\Services\TrackerContributionService::class)
+                        app(TrackerContributionService::class)
                             ->recordAssignmentCost($latestReport->load('cp', 'entries.item'));
                     }
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('Assign DKP cost recording failed', [
+                    Log::warning('Assign DKP cost recording failed', [
                         'cp_id' => $cpId, 'error' => $e->getMessage(),
                     ]);
                 }
@@ -906,13 +940,13 @@ class PartyController extends Controller
         }
 
         $sourceReport = LootReport::with('attendees')->find($request->source_report_id);
-        if (!$sourceReport || $sourceReport->cp_id !== $cpId || $sourceReport->status !== 'confirmed') {
+        if (! $sourceReport || $sourceReport->cp_id !== $cpId || $sourceReport->status !== 'confirmed') {
             return back()->withErrors(['source_report_id' => 'La sesión de farm seleccionada no es válida para esta CP.']);
         }
         $sourceHasItem = LootEntry::where('loot_report_id', $sourceReport->id)
             ->where('item_id', $item->id)
             ->exists();
-        if (!$sourceHasItem) {
+        if (! $sourceHasItem) {
             return back()->withErrors(['source_report_id' => 'Esa sesión de farm no contiene este ítem.']);
         }
 
@@ -938,11 +972,13 @@ class PartyController extends Controller
                 if ($stock < $amount) {
                     throw new \RuntimeException('INSUFFICIENT_STOCK:'.$stock);
                 }
+
                 return $this->createSellReportForSource($cpId, $sourceReport, $item, $amount, $unitPrice, $cpSharePct, $imagePath, $current);
             });
         } catch (\RuntimeException $e) {
             if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
                 $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
+
                 return back()->withErrors(['amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
             }
             throw $e;
@@ -1037,11 +1073,13 @@ class PartyController extends Controller
                         $imagePath, $current, $batchId,
                     );
                 }
+
                 return $out;
             });
         } catch (\RuntimeException $e) {
             if (str_starts_with($e->getMessage(), 'INSUFFICIENT_STOCK:')) {
                 $available = (int) substr($e->getMessage(), strlen('INSUFFICIENT_STOCK:'));
+
                 return back()->withErrors(['total_amount' => 'Stock insuficiente en el warehouse. Disponible: '.$available]);
             }
             throw $e;
@@ -1061,6 +1099,7 @@ class PartyController extends Controller
     private function imageProofRule(?User $user): string
     {
         $required = $user?->cp?->image_proof_required ?? true;
+
         return ($required ? 'required' : 'nullable').'|image|max:4096';
     }
 
@@ -1070,6 +1109,7 @@ class PartyController extends Controller
             return false;
         }
         $role = $user->role?->name;
+
         return in_array($role, ['admin', 'cp_leader', 'accountant'], true);
     }
 
@@ -1112,9 +1152,16 @@ class PartyController extends Controller
             ->get(['new_values'])
             ->reduce(function ($acc, $row) use ($sourceReportId, $itemId) {
                 $payload = is_string($row->new_values) ? json_decode($row->new_values, true) : (array) $row->new_values;
-                if (! is_array($payload)) return $acc;
-                if ((int) ($payload['item_id'] ?? 0) !== $itemId) return $acc;
-                if ((int) ($payload['source_report_id'] ?? 0) !== $sourceReportId) return $acc;
+                if (! is_array($payload)) {
+                    return $acc;
+                }
+                if ((int) ($payload['item_id'] ?? 0) !== $itemId) {
+                    return $acc;
+                }
+                if ((int) ($payload['source_report_id'] ?? 0) !== $sourceReportId) {
+                    return $acc;
+                }
+
                 return $acc + (int) ($payload['amount'] ?? 0);
             }, 0);
 
@@ -1128,6 +1175,7 @@ class PartyController extends Controller
         }
         $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
         $name = $batchId ? "auto_{$batchId}.{$ext}" : Str::uuid().".{$ext}";
+
         return $file->storeAs("warehouse_sell/{$cpId}", $name, 'public');
     }
 
@@ -1166,7 +1214,7 @@ class PartyController extends Controller
             'event_type' => 'SELL',
             'status' => 'confirmed',
             'image_proof' => $imagePath,
-            'recipient_ids' => !empty($memberIds) ? $memberIds : null,
+            'recipient_ids' => ! empty($memberIds) ? $memberIds : null,
             'adena_distribution' => $cpSharePct === 100 ? 'cp' : 'attendees',
             'cp_share_pct' => $cpSharePct,
         ]);
@@ -1201,7 +1249,7 @@ class PartyController extends Controller
                 'share_adena' => $perAttendee,
             ]);
 
-            if (!$att->is_external && $att->user_id && $perAttendee > 0) {
+            if (! $att->is_external && $att->user_id && $perAttendee > 0) {
                 PointsLog::create([
                     'cp_id' => $cpId,
                     'user_id' => $att->user_id,
@@ -1398,7 +1446,7 @@ class PartyController extends Controller
                 ->get(['new_values'])
         )->reduce(function ($acc, $row) use ($itemId) {
             $payload = is_string($row->new_values) ? json_decode($row->new_values, true) : (array) $row->new_values;
-            if (!is_array($payload)) {
+            if (! is_array($payload)) {
                 return $acc;
             }
             if ((int) ($payload['item_id'] ?? 0) !== $itemId) {
@@ -1409,6 +1457,7 @@ class PartyController extends Controller
                 return $acc;
             }
             $acc[$srcId] = ($acc[$srcId] ?? 0) + (int) ($payload['amount'] ?? 0);
+
             return $acc;
         }, []);
 
@@ -1652,7 +1701,9 @@ class PartyController extends Controller
             $real = (int) $row['real_amount'];
             $current_stock = $this->currentStock($cpId, $itemId);
             $delta = $real - $current_stock;
-            if ($delta === 0) continue;
+            if ($delta === 0) {
+                continue;
+            }
             $diff[] = ['item_id' => $itemId, 'before' => $current_stock, 'after' => $real, 'delta' => $delta];
             if ($delta > 0) {
                 $gains[$itemId] = ($gains[$itemId] ?? 0) + $delta;
@@ -1704,6 +1755,7 @@ class PartyController extends Controller
                         'amount' => $amount,
                     ]);
                 }
+
                 return $report;
             };
 
@@ -1773,6 +1825,7 @@ class PartyController extends Controller
     {
         $ext = $file->extension() ?: ($file->guessExtension() ?: 'jpg');
         $name = 'recheck_'.Str::uuid().'.'.$ext;
+
         return $file->storeAs("warehouse_recheck/{$cpId}", $name, 'public');
     }
 

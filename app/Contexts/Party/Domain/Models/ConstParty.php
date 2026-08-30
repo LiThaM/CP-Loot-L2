@@ -15,7 +15,16 @@ class ConstParty extends Model
     // (`RegisteredUserController` on first-member registration,
     // `ConstPartyController::toggleActive` for the admin) that use
     // forceFill() to bypass the guard after their own authorization.
-    protected $fillable = ['name', 'server', 'chronicle', 'invite_code', 'logo_path', 'image_proof_required', 'tracker_enabled', 'tracker_divisor', 'tracker_enabled_at', 'tracker_value_by_market', 'tracker_round_up_below_1000', 'tracker_round_points_up'];
+    protected $fillable = ['name', 'server', 'chronicle', 'invite_code', 'logo_path', 'image_proof_required', 'tracker_enabled', 'tracker_divisor', 'tracker_enabled_at', 'tracker_value_by_market', 'tracker_round_up_below_1000', 'tracker_round_points_up', 'staff_can_manage_members'];
+
+    // The invite code is a shared secret: anyone holding it can register
+    // into the CP. It must never leave the server through a serialized
+    // model (HandleInertiaRequests shares `auth.user.cp` with every
+    // authenticated user, and PartyController shares `cp` with every
+    // member). Authorized viewers get it through the explicit `inviteCode`
+    // prop in PartyController::index. `$hidden` only affects
+    // serialization — property access ($cp->invite_code) still works.
+    protected $hidden = ['invite_code'];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -26,6 +35,7 @@ class ConstParty extends Model
         'tracker_value_by_market' => 'boolean',
         'tracker_round_up_below_1000' => 'boolean',
         'tracker_round_points_up' => 'boolean',
+        'staff_can_manage_members' => 'boolean',
     ];
 
     protected $appends = ['logo_url'];
@@ -33,9 +43,9 @@ class ConstParty extends Model
     public function getLogoUrlAttribute()
     {
         if ($this->logo_path) {
-            return asset('storage/' . $this->logo_path);
+            return asset('storage/'.$this->logo_path);
         }
-        
+
         // Return a premium looking default based on the CP name or just a fallback
         return null;
     }
