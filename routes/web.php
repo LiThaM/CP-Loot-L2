@@ -1,7 +1,27 @@
 <?php
 
+// All imports MUST live in this single top block. PHP `use` statements only
+// apply to code below them, so a mid-file import block silently changes how
+// earlier lines resolve class names — and Pint's fully_qualified_strict_types
+// fixer will happily shorten an FQCN whose import sits further down, breaking
+// the route at runtime (this happened with the /locale closure resolving
+// `Request` to the facade alias instead of Illuminate\Http\Request).
 use App\Contexts\ClientApi\Domain\Models\Release;
+use App\Contexts\Identity\Application\Controllers\CharactersController;
+use App\Contexts\Identity\Domain\Models\User;
+use App\Contexts\Loot\Application\Controllers\AdenaActionController;
+use App\Contexts\Loot\Application\Controllers\CpEventConfigController;
+use App\Contexts\Loot\Application\Controllers\CraftBulkController;
+use App\Contexts\Loot\Application\Controllers\CraftingController;
+use App\Contexts\Loot\Application\Controllers\LootActionController;
+use App\Contexts\Loot\Application\Controllers\LootController;
+use App\Contexts\Loot\Application\Controllers\LootSearchController;
 use App\Contexts\Loot\Application\Controllers\PublicCraftingController;
+use App\Contexts\Loot\Application\Controllers\WishlistController;
+use App\Contexts\Loot\Domain\Models\Item;
+use App\Contexts\Loot\Domain\Models\LootEntry;
+use App\Contexts\Loot\Domain\Models\LootReport;
+use App\Contexts\Party\Application\Controllers\AuctionController;
 use App\Contexts\Party\Application\Controllers\ClanController;
 use App\Contexts\Party\Application\Controllers\ClanDkpAdjustmentController;
 use App\Contexts\Party\Application\Controllers\ClanEventAttendeeController;
@@ -11,9 +31,33 @@ use App\Contexts\Party\Application\Controllers\ClanMarketController;
 use App\Contexts\Party\Application\Controllers\ClanRaidBossController;
 use App\Contexts\Party\Application\Controllers\ClanVaultAuctionController;
 use App\Contexts\Party\Application\Controllers\ClanVaultController;
+use App\Contexts\Party\Application\Controllers\ConstPartyController;
+use App\Contexts\Party\Application\Controllers\CpRulesController;
+use App\Contexts\Party\Application\Controllers\DonationsController;
+use App\Contexts\Party\Application\Controllers\ExternalPayoutsController;
+use App\Contexts\Party\Application\Controllers\PartyController;
+use App\Contexts\Party\Application\Controllers\PartyStatsController;
+use App\Contexts\Party\Application\Controllers\TrackerController;
+use App\Contexts\Party\Application\Controllers\WeeklyObjectivesController;
+use App\Contexts\Party\Domain\Models\ConstParty;
+use App\Contexts\Party\Domain\Models\PointsLog;
+use App\Contexts\System\Application\Controllers\ChangelogController;
+use App\Contexts\System\Application\Controllers\CrashesController;
+use App\Contexts\System\Application\Controllers\ItemManagementController;
+use App\Contexts\System\Application\Controllers\ReleasesController;
+use App\Contexts\System\Application\Controllers\TranslationController;
+use App\Contexts\System\Application\Controllers\UserManagementController;
 use App\Contexts\System\Domain\Models\ChangelogEntry;
+use App\Http\Controllers\Admin\ImpersonateController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfileStatsController;
+use App\Http\Controllers\SupportController;
+use App\Http\Controllers\TicketController;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -143,11 +187,6 @@ Route::post('/locale', function (Request $request) {
     return back();
 })->name('locale.set');
 
-use App\Http\Controllers\Admin\ImpersonateController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\SupportController;
-use App\Http\Controllers\TicketController;
-
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -164,41 +203,6 @@ Route::post('/support/contact', [SupportController::class, 'contact'])
 Route::post('/cp-requests', [SupportController::class, 'cpRequest'])
     ->middleware('throttle:6,1')
     ->name('cp.requests.store');
-
-use App\Contexts\Identity\Application\Controllers\CharactersController;
-use App\Contexts\Identity\Domain\Models\User;
-use App\Contexts\Loot\Application\Controllers\AdenaActionController;
-use App\Contexts\Loot\Application\Controllers\CpEventConfigController;
-use App\Contexts\Loot\Application\Controllers\CraftBulkController;
-use App\Contexts\Loot\Application\Controllers\CraftingController;
-use App\Contexts\Loot\Application\Controllers\LootActionController;
-use App\Contexts\Loot\Application\Controllers\LootController;
-use App\Contexts\Loot\Application\Controllers\LootSearchController;
-use App\Contexts\Loot\Application\Controllers\WishlistController;
-use App\Contexts\Loot\Domain\Models\Item;
-use App\Contexts\Loot\Domain\Models\LootEntry;
-use App\Contexts\Loot\Domain\Models\LootReport;
-use App\Contexts\Party\Application\Controllers\AuctionController;
-use App\Contexts\Party\Application\Controllers\ConstPartyController;
-use App\Contexts\Party\Application\Controllers\CpRulesController;
-use App\Contexts\Party\Application\Controllers\DonationsController;
-use App\Contexts\Party\Application\Controllers\ExternalPayoutsController;
-use App\Contexts\Party\Application\Controllers\PartyController;
-use App\Contexts\Party\Application\Controllers\PartyStatsController;
-use App\Contexts\Party\Application\Controllers\TrackerController;
-use App\Contexts\Party\Application\Controllers\WeeklyObjectivesController;
-use App\Contexts\Party\Domain\Models\ConstParty;
-use App\Contexts\Party\Domain\Models\PointsLog;
-use App\Contexts\System\Application\Controllers\ChangelogController;
-use App\Contexts\System\Application\Controllers\CrashesController;
-use App\Contexts\System\Application\Controllers\ItemManagementController;
-use App\Contexts\System\Application\Controllers\ReleasesController;
-use App\Contexts\System\Application\Controllers\TranslationController;
-use App\Contexts\System\Application\Controllers\UserManagementController;
-use App\Http\Controllers\LandingController;
-use App\Http\Controllers\ProfileStatsController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
