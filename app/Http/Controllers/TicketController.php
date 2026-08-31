@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use App\Mail\NewTicketAdminNotification;
 use App\Mail\NewTicketReplyAdminNotification;
 use App\Mail\TicketAuthorConfirmation;
+use App\Mail\TicketReplyAuthorNotification;
 use App\Models\SupportTicket;
 use App\Models\TicketReply;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,10 +31,10 @@ class TicketController extends Controller
             // Leader sees: tickets assigned to them + bugs they created
             $query->where(function ($q) use ($user) {
                 $q->where('assigned_to_user_id', $user->id)
-                  ->orWhere(function ($q2) use ($user) {
-                      $q2->where('user_id', $user->id)
-                         ->where('type', 'bug');
-                  });
+                    ->orWhere(function ($q2) use ($user) {
+                        $q2->where('user_id', $user->id)
+                            ->where('type', 'bug');
+                    });
             });
         } else {
             // Members see only their own tickets
@@ -42,15 +42,15 @@ class TicketController extends Controller
         }
 
         $tickets = $query->get()->map(fn ($t) => [
-            'id'           => $t->id,
+            'id' => $t->id,
             'ticket_number' => $t->ticket_number,
-            'subject'      => $t->subject,
-            'type'         => $t->type,
-            'status'       => $t->status,
-            'created_at'   => $t->created_at,
-            'closed_at'    => $t->closed_at,
-            'creator'      => $t->user ? ['id' => $t->user->id, 'name' => $t->user->name] : null,
-            'assigned_to'  => $t->assignedTo ? ['id' => $t->assignedTo->id, 'name' => $t->assignedTo->name] : null,
+            'subject' => $t->subject,
+            'type' => $t->type,
+            'status' => $t->status,
+            'created_at' => $t->created_at,
+            'closed_at' => $t->closed_at,
+            'creator' => $t->user ? ['id' => $t->user->id, 'name' => $t->user->name] : null,
+            'assigned_to' => $t->assignedTo ? ['id' => $t->assignedTo->id, 'name' => $t->assignedTo->name] : null,
             'replies_count' => $t->replies->count(),
         ]);
 
@@ -71,10 +71,10 @@ class TicketController extends Controller
             : ['bug', 'data_discrepancy'];
 
         $data = $request->validate([
-            'subject'       => 'required|string|max:140',
-            'message'       => 'required|string|max:5000',
-            'type'          => 'required|string|in:' . implode(',', $allowedTypes),
-            'attachments'   => 'nullable|array|max:5',
+            'subject' => 'required|string|max:140',
+            'message' => 'required|string|max:5000',
+            'type' => 'required|string|in:'.implode(',', $allowedTypes),
+            'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'file|mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov|max:20480',
         ]);
 
@@ -88,20 +88,20 @@ class TicketController extends Controller
         }
 
         $ticket = SupportTicket::create([
-            'user_id'              => $user->id,
-            'subject'              => $data['subject'],
-            'message'              => $data['message'],
-            'name'                 => $user->name,
-            'email'                => $user->email,
-            'status'               => 'open',
-            'type'                 => $data['type'],
-            'assigned_to_user_id'  => $assignedToUserId,
-            'ticket_number'        => SupportTicket::generateTicketNumber(),
-            'metadata'             => [
+            'user_id' => $user->id,
+            'subject' => $data['subject'],
+            'message' => $data['message'],
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => 'open',
+            'type' => $data['type'],
+            'assigned_to_user_id' => $assignedToUserId,
+            'ticket_number' => SupportTicket::generateTicketNumber(),
+            'metadata' => [
                 'user_id' => $user->id,
-                'cp_id'   => $user->cp_id,
-                'role'    => $role,
-                'ip'      => $request->ip(),
+                'cp_id' => $user->cp_id,
+                'role' => $role,
+                'ip' => $request->ip(),
             ],
         ]);
 
@@ -129,30 +129,30 @@ class TicketController extends Controller
         ]);
 
         return Inertia::render('Tickets/Show', [
-            'ticket'   => [
-                'id'            => $ticket->id,
+            'ticket' => [
+                'id' => $ticket->id,
                 'ticket_number' => $ticket->ticket_number,
-                'subject'       => $ticket->subject,
-                'message'       => $ticket->message,
-                'type'          => $ticket->type,
-                'status'        => $ticket->status,
-                'created_at'    => $ticket->created_at,
-                'closed_at'     => $ticket->closed_at,
-                'attachments'   => $ticket->attachments ?? [],
-                'creator'       => $ticket->user ? ['id' => $ticket->user->id, 'name' => $ticket->user->name] : null,
-                'assigned_to'   => $ticket->assignedTo ? ['id' => $ticket->assignedTo->id, 'name' => $ticket->assignedTo->name] : null,
-                'replies'       => $ticket->replies->map(fn ($r) => [
-                    'id'          => $r->id,
-                    'message'     => $r->message,
-                    'created_at'  => $r->created_at,
+                'subject' => $ticket->subject,
+                'message' => $ticket->message,
+                'type' => $ticket->type,
+                'status' => $ticket->status,
+                'created_at' => $ticket->created_at,
+                'closed_at' => $ticket->closed_at,
+                'attachments' => $ticket->attachments ?? [],
+                'creator' => $ticket->user ? ['id' => $ticket->user->id, 'name' => $ticket->user->name] : null,
+                'assigned_to' => $ticket->assignedTo ? ['id' => $ticket->assignedTo->id, 'name' => $ticket->assignedTo->name] : null,
+                'replies' => $ticket->replies->map(fn ($r) => [
+                    'id' => $r->id,
+                    'message' => $r->message,
+                    'created_at' => $r->created_at,
                     'attachments' => $r->attachments ?? [],
-                    'user'        => ['id' => $r->user->id, 'name' => $r->user->name],
-                    'is_mine'     => $r->user_id === $user->id,
+                    'user' => ['id' => $r->user->id, 'name' => $r->user->name],
+                    'is_mine' => $r->user_id === $user->id,
                 ]),
             ],
-            'userRole'  => $role,
-            'canReply'  => ! $ticket->isClosed(),
-            'canClose'  => $this->canClose($user, $role, $ticket),
+            'userRole' => $role,
+            'canReply' => ! $ticket->isClosed(),
+            'canClose' => $this->canClose($user, $role, $ticket),
             'isCreator' => $ticket->user_id === $user->id,
         ]);
     }
@@ -169,15 +169,15 @@ class TicketController extends Controller
         }
 
         $data = $request->validate([
-            'message'       => 'required|string|max:5000',
-            'attachments'   => 'nullable|array|max:5',
+            'message' => 'required|string|max:5000',
+            'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'file|mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov|max:20480',
         ]);
 
         $reply = TicketReply::create([
             'ticket_id' => $ticket->id,
-            'user_id'   => $user->id,
-            'message'   => $data['message'],
+            'user_id' => $user->id,
+            'message' => $data['message'],
         ]);
 
         $stored = $this->storeAttachments($request, "tickets/{$ticket->id}/replies/{$reply->id}");
@@ -190,7 +190,7 @@ class TicketController extends Controller
             $ticket->update(['status' => 'open', 'closed_at' => null]);
         }
 
-        $this->sendTicketReplyEmail($ticket, $reply);
+        $this->sendTicketReplyEmails($ticket, $reply);
 
         return back()->with('success', __('tickets.flash.replied'));
     }
@@ -233,8 +233,8 @@ class TicketController extends Controller
 
         $stored = [];
         foreach ($request->file('attachments') as $file) {
-            $ext  = $file->getClientOriginalExtension();
-            $name = uniqid('att_', true) . '.' . $ext;
+            $ext = $file->getClientOriginalExtension();
+            $name = uniqid('att_', true).'.'.$ext;
             $path = $file->storeAs($folder, $name, 'public');
             if ($path) {
                 $stored[] = [
@@ -255,8 +255,12 @@ class TicketController extends Controller
         }
 
         if ($role === 'cp_leader') {
-            if ($ticket->assigned_to_user_id === $user->id) return;
-            if ($ticket->user_id === $user->id && $ticket->type === 'bug') return;
+            if ($ticket->assigned_to_user_id === $user->id) {
+                return;
+            }
+            if ($ticket->user_id === $user->id && $ticket->type === 'bug') {
+                return;
+            }
             abort(403);
         }
 
@@ -267,8 +271,13 @@ class TicketController extends Controller
 
     private function canClose($user, string $role, SupportTicket $ticket): bool
     {
-        if ($role === 'admin') return true;
-        if ($role === 'cp_leader' && $ticket->assigned_to_user_id === $user->id) return true;
+        if ($role === 'admin') {
+            return true;
+        }
+        if ($role === 'cp_leader' && $ticket->assigned_to_user_id === $user->id) {
+            return true;
+        }
+
         return false;
     }
 
@@ -303,7 +312,33 @@ class TicketController extends Controller
         }
     }
 
-    private function sendTicketReplyEmail(SupportTicket $ticket, TicketReply $reply): void
+    /**
+     * Notify everyone involved in the ticket except whoever just replied:
+     * - The author replying to their own ticket → support mailbox only (unchanged).
+     * - An admin replying to someone else's ticket → the author only (admin doesn't
+     *   need a heads-up about their own reply).
+     * - A non-admin (e.g. an assigned cp_leader) replying to someone else's ticket
+     *   → both the author and the support mailbox.
+     */
+    private function sendTicketReplyEmails(SupportTicket $ticket, TicketReply $reply): void
+    {
+        $isAuthorReplying = $reply->user_id === $ticket->user_id;
+
+        if ($isAuthorReplying) {
+            $this->sendTicketReplyAdminNotification($ticket, $reply);
+
+            return;
+        }
+
+        $this->sendTicketReplyAuthorNotification($ticket, $reply);
+
+        $replierRole = $reply->user?->role?->name;
+        if ($replierRole !== 'admin') {
+            $this->sendTicketReplyAdminNotification($ticket, $reply);
+        }
+    }
+
+    private function sendTicketReplyAdminNotification(SupportTicket $ticket, TicketReply $reply): void
     {
         $supportTo = config('services.support.mail_to');
         if (! $supportTo) {
@@ -314,6 +349,24 @@ class TicketController extends Controller
             Mail::to($supportTo)->send(new NewTicketReplyAdminNotification($ticket, $reply));
         } catch (\Throwable $e) {
             Log::warning('Ticket reply notification failed: '.get_class($e).' — '.$e->getMessage(), [
+                'ticket_id' => $ticket->id,
+                'reply_id' => $reply->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    private function sendTicketReplyAuthorNotification(SupportTicket $ticket, TicketReply $reply): void
+    {
+        $authorEmail = $ticket->email ?: $ticket->user?->email;
+        if (! $authorEmail) {
+            return;
+        }
+
+        try {
+            Mail::to($authorEmail)->send(new TicketReplyAuthorNotification($ticket, $reply));
+        } catch (\Throwable $e) {
+            Log::warning('Ticket reply author notification failed: '.get_class($e).' — '.$e->getMessage(), [
                 'ticket_id' => $ticket->id,
                 'reply_id' => $reply->id,
                 'trace' => $e->getTraceAsString(),
